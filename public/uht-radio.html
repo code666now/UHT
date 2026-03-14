@@ -1,0 +1,2536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Undeniable Hit Theory</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=VT323&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
+
+    :root {
+      --bg: #050508;
+      --radio-body: #1c1c26;
+      --radio-dark: #0e0e16;
+      --radio-darker: #08080e;
+      --radio-light: #30303e;
+      --radio-chrome: #8888a8;
+      --speaker-bg: #060608;
+      --dial-ring: #5858a0;
+      --freq-bg: #020208;
+      --freq-ink: #90e8b0;
+      --display: 'Bebas Neue', sans-serif;
+      --mono: 'Courier Prime', monospace;
+      --vt: 'VT323', monospace;
+    }
+
+    body {
+      background: var(--bg);
+      font-family: var(--mono);
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
+      position: relative;
+      transition: background 1.5s;
+    }
+    body.t-fire  { --bg: #080200; --radio-body: #6a2008; --radio-dark: #3a0a00; --radio-darker: #200400; --radio-light: #ff6030; --radio-chrome: #ff4010; --dial-ring: #ff6020; --freq-ink: #ff5000; --freq-bg: #0a0200; --speaker-bg: #100400; }
+    body.t-party { --bg: #08040e; --radio-body: #3a1868; --radio-dark: #220a48; --radio-darker: #140628; --radio-light: #6030a8; --radio-chrome: #8040c0; --dial-ring: #a060e0; --freq-ink: #c0a0ff; --freq-bg: #0c0618; --speaker-bg: #0e0820; }
+
+    /* grain */
+    body::after {
+      content: ''; position: fixed; inset: 0; z-index: 999; pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.78' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      opacity: 0.05; mix-blend-mode: overlay;
+    }
+
+    /* atmospherics */
+    .atmos { position: fixed; inset: 0; z-index: 0; pointer-events: none; transition: opacity 1.2s; }
+    .atmos-dark  { background: radial-gradient(ellipse 70% 60% at 50% 70%, rgba(60,40,100,0.25), transparent 70%), radial-gradient(ellipse 50% 40% at 20% 30%, rgba(20,20,60,0.3), transparent 60%); }
+    .atmos-fire  {
+      background:
+        radial-gradient(ellipse 70% 50% at 50% 110%, rgba(255,80,0,0.7), transparent 55%),
+        radial-gradient(ellipse 100% 40% at 20% 100%, rgba(200,30,0,0.4), transparent 60%),
+        radial-gradient(ellipse 100% 40% at 80% 100%, rgba(255,120,0,0.3), transparent 60%);
+      opacity: 0;
+    }
+    .atmos-party { background: radial-gradient(ellipse 80% 70% at 50% 60%, rgba(120,50,220,0.2), transparent 70%); opacity: 0; }
+    body.t-fire  .atmos-fire  { opacity: 1; }
+    body.t-fire  .atmos-dark  { opacity: 0; }
+    body.t-party .atmos-party { opacity: 1; }
+    body.t-party .atmos-dark  { opacity: 0; }
+
+    /* Radio glows like a furnace */
+    body.t-fire .radio {
+      box-shadow:
+        0 30px 80px rgba(0,0,0,0.95),
+        0 0 140px rgba(255,50,0,0.4),
+        0 0 60px rgba(255,100,0,0.3),
+        0 0 20px rgba(255,150,0,0.2),
+        inset 0 2px 0 rgba(255,80,0,0.2),
+        inset 0 -2px 0 rgba(0,0,0,0.6) !important;
+      animation: furnaceGlow 2.5s ease-in-out infinite;
+    }
+    @keyframes furnaceGlow {
+      0%,100% { filter: brightness(1); }
+      33%     { filter: brightness(1.08) saturate(1.2); }
+      66%     { filter: brightness(0.95) saturate(0.9); }
+    }
+
+    /* Freq display flickers like fire */
+    body.t-fire .freq-number {
+      animation: fireFlicker 0.12s ease-in-out infinite !important;
+      color: #ff5000 !important;
+      text-shadow: 0 0 12px #ff3000, 0 0 30px #ff1000, 0 0 60px rgba(255,50,0,0.4) !important;
+    }
+    @keyframes fireFlicker {
+      0%   { opacity:1;    transform:translateX(0) scaleX(1); }
+      15%  { opacity:0.8;  transform:translateX(-0.5px) scaleX(0.998); }
+      30%  { opacity:1;    transform:translateX(0.4px) scaleX(1.001); }
+      50%  { opacity:0.88; transform:translateX(0) scaleX(1); }
+      70%  { opacity:1;    transform:translateX(-0.3px) scaleX(0.999); }
+      85%  { opacity:0.92; transform:translateX(0.2px) scaleX(1); }
+      100% { opacity:1;    transform:translateX(0) scaleX(1); }
+    }
+
+    /* Speaker cloth burns orange */
+    body.t-fire .speaker-cloth {
+      background:
+        repeating-linear-gradient(0deg, rgba(255,40,0,0.07) 0px, rgba(255,40,0,0.07) 1px, transparent 1px, transparent 4px),
+        repeating-linear-gradient(90deg, rgba(255,40,0,0.07) 0px, rgba(255,40,0,0.07) 1px, transparent 1px, transparent 4px) !important;
+      animation: clothFlicker 1.8s ease-in-out infinite;
+    }
+    @keyframes clothFlicker { 0%,100%{opacity:0.7} 50%{opacity:1.1} }
+
+    /* VU bars become flames */
+    body.t-fire .vu-bar {
+      background: linear-gradient(to top, #ff1000, #ff6000, #ffaa00, #ffee00) !important;
+      box-shadow: 0 0 6px rgba(255,80,0,0.8) !important;
+    }
+
+    /* Heat distortion on the whole wrap */
+    body.t-fire .radio-wrap {
+      animation: heatShimmer 3s ease-in-out infinite;
+    }
+    @keyframes heatShimmer {
+      0%,100% { transform: translateY(0) scaleY(1); }
+      25%     { transform: translateY(-1px) scaleY(1.001); }
+      75%     { transform: translateY(0.5px) scaleY(0.999); }
+    }
+
+    /* embers */
+    .embers { position: fixed; inset: 0; z-index: 1; pointer-events: none; overflow: hidden; display: none; }
+    body.t-fire .embers { display: block; }
+    .ember { position: absolute; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #fff8a0, #ff8000 40%, #ff2000 65%, transparent 75%); box-shadow: 0 0 10px rgba(255,100,0,1), 0 0 20px rgba(255,60,0,0.5); animation: rise var(--dur,8s) ease-in infinite; animation-delay: var(--dl,0s); }
+    @keyframes rise { 0%{transform:translateY(0) translateX(0) scale(.4);opacity:0} 6%{opacity:1} 100%{transform:translateY(-110vh) translateX(var(--dx,40px)) scale(1.2);opacity:0} }
+
+    /* stars */
+    .stars { position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0; transition: opacity 1s; }
+    body.t-dark .stars { opacity: 1; }
+    .stars::before { content: ''; position: absolute; inset: 0; opacity: 0.45;
+      background: radial-gradient(1px 1px at 8% 15%,#fff 100%,transparent), radial-gradient(1px 1px at 35% 60%,#c8d0ff 100%,transparent), radial-gradient(1.5px 1.5px at 78% 22%,#fff 100%,transparent), radial-gradient(1px 1px at 55% 8%,#e8f8ff 100%,transparent), radial-gradient(1px 1px at 20% 78%,#fff 100%,transparent), radial-gradient(1px 1px at 90% 48%,#fff 100%,transparent), radial-gradient(1.5px 1.5px at 64% 88%,#d8e0ff 100%,transparent), radial-gradient(1px 1px at 12% 44%,#fff 100%,transparent);
+      animation: starDrift 90s linear infinite; }
+    @keyframes starDrift { to { transform: translate(-140px,-80px); } }
+
+    /* confetti */
+    .confetti { position: fixed; inset: 0; z-index: 1; pointer-events: none; overflow: hidden; display: none; }
+    body.t-party .confetti { display: block; }
+    .speck { position: absolute; border-radius: 2px; animation: fall var(--fd,8s) linear infinite; animation-delay: var(--dl,0s); }
+
+    /* ── DISCO BALL ── */
+    .disco-wrap {
+      position: fixed; top: 0; left: 50%; transform: translateX(-50%);
+      z-index: 50; pointer-events: none;
+      display: flex; flex-direction: column; align-items: center;
+      opacity: 0; transition: opacity 0.8s;
+    }
+    body.t-party .disco-wrap { opacity: 1; }
+
+    /* wire/string from top */
+    .disco-wire {
+      width: 2px; height: 40px;
+      background: linear-gradient(to bottom, rgba(255,255,255,0.15), rgba(255,255,255,0.4));
+    }
+
+    /* the ball itself */
+    .disco-ball {
+      width: 80px; height: 80px; border-radius: 50%;
+      position: relative;
+      animation: discoSpin 8s linear infinite;
+      background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.9), rgba(200,180,255,0.4) 40%, rgba(100,60,200,0.6) 70%, rgba(40,10,80,0.9));
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.1),
+        0 8px 40px rgba(0,0,0,0.8),
+        inset 0 0 20px rgba(0,0,0,0.4);
+      overflow: hidden;
+    }
+    @keyframes discoSpin { to { transform: rotate(360deg); } }
+
+    /* mirror tiles via grid of pseudo-elements — done with CSS boxes */
+    .disco-ball::before {
+      content: '';
+      position: absolute; inset: 0; border-radius: 50%;
+      background:
+        /* row 1 */
+        linear-gradient(rgba(255,255,255,0.7) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.7) 1px, transparent 1px),
+        /* tile fill */
+        repeating-conic-gradient(
+          rgba(255,255,255,0.15) 0deg 45deg,
+          rgba(160,120,255,0.08) 45deg 90deg,
+          rgba(255,255,255,0.12) 90deg 135deg,
+          rgba(120,80,255,0.06) 135deg 180deg
+        );
+      background-size: 12px 12px, 12px 12px, 24px 24px;
+      mix-blend-mode: screen;
+    }
+
+    /* sparkle tiles */
+    .disco-ball::after {
+      content: '';
+      position: absolute; inset: 0; border-radius: 50%;
+      background:
+        radial-gradient(2px 2px at 20% 30%, rgba(255,255,255,0.95), transparent),
+        radial-gradient(2px 2px at 70% 20%, rgba(200,180,255,0.9), transparent),
+        radial-gradient(3px 3px at 45% 55%, rgba(255,255,255,0.8), transparent),
+        radial-gradient(2px 2px at 80% 70%, rgba(180,140,255,0.9), transparent),
+        radial-gradient(2px 2px at 30% 75%, rgba(255,255,255,0.7), transparent),
+        radial-gradient(3px 3px at 60% 40%, rgba(220,200,255,0.85), transparent),
+        radial-gradient(2px 2px at 15% 60%, rgba(255,255,255,0.6), transparent),
+        radial-gradient(2px 2px at 85% 40%, rgba(255,255,255,0.8), transparent);
+      animation: tileFlash 0.3s linear infinite;
+    }
+    @keyframes tileFlash {
+      0%   { opacity: 1;   transform: rotate(0deg); }
+      25%  { opacity: 0.6; transform: rotate(90deg); }
+      50%  { opacity: 1;   transform: rotate(180deg); }
+      75%  { opacity: 0.7; transform: rotate(270deg); }
+      100% { opacity: 1;   transform: rotate(360deg); }
+    }
+
+    /* light beams sweeping the room */
+    .disco-beam {
+      position: fixed; top: 110px; left: 50%;
+      width: 3px; height: 60vh;
+      transform-origin: top center;
+      border-radius: 2px;
+      opacity: 0; transition: opacity 0.8s;
+      pointer-events: none; z-index: 3;
+    }
+    body.t-party .disco-beam { opacity: 1; }
+    .disco-beam:nth-child(1) { background: linear-gradient(to bottom, rgba(255,100,255,0.6), transparent); animation: sweep1 3s ease-in-out infinite; }
+    .disco-beam:nth-child(2) { background: linear-gradient(to bottom, rgba(100,200,255,0.5), transparent); animation: sweep2 4s ease-in-out infinite; }
+    .disco-beam:nth-child(3) { background: linear-gradient(to bottom, rgba(180,255,100,0.4), transparent); animation: sweep3 3.5s ease-in-out infinite; }
+    .disco-beam:nth-child(4) { background: linear-gradient(to bottom, rgba(255,200,50,0.5), transparent); animation: sweep4 2.8s ease-in-out infinite; }
+    @keyframes sweep1 { 0%,100%{transform:rotate(-45deg)} 50%{transform:rotate(45deg)} }
+    @keyframes sweep2 { 0%,100%{transform:rotate(30deg)} 50%{transform:rotate(-60deg)} }
+    @keyframes sweep3 { 0%,100%{transform:rotate(-20deg)} 50%{transform:rotate(70deg)} }
+    @keyframes sweep4 { 0%,100%{transform:rotate(60deg)} 50%{transform:rotate(-30deg)} }
+    @keyframes fall { 0%{transform:translateY(-10vh) rotate(0)} 100%{transform:translateY(110vh) rotate(720deg)} }
+
+    /* ═══════════════════════════════
+       RADIO OUTER WRAP
+    ═══════════════════════════════ */
+    .radio-wrap {
+      position: relative; z-index: 10;
+      display: flex; flex-direction: column; align-items: center; gap: 18px;
+      width: 100%; padding: 0 12px; box-sizing: border-box;
+    }
+
+    /* ── Mobile responsive ── */
+    @media (max-width: 600px) {
+      .radio-card { width: 100% !important; max-width: 100% !important; border-radius: 16px !important; }
+      .radio-main { flex-direction: column !important; }
+      .radio-controls { display: none !important; }
+      .chat-msgs { min-height: 240px !important; max-height: 340px !important; }
+      .cbub { font-size: 16px !important; max-width: 90% !important; }
+      .cchip { font-size: 15px !important; padding: 9px 18px !important; }
+      .cfield { font-size: 16px !important; }
+      .page-title { font-size: clamp(28px, 8vw, 42px) !important; letter-spacing: 3px !important; }
+      .curator-strip { padding: 8px 12px !important; }
+      .curator-modal { width: 95vw !important; max-height: 92vh !important; }
+      .tsw { top: 8px !important; right: 8px !important; }
+    }
+
+    .page-title {
+      font-family: var(--display); font-size: clamp(22px, 4vw, 38px);
+      letter-spacing: 6px; color: var(--radio-light);
+      text-shadow: 0 0 30px rgba(100,100,200,0.3);
+      text-align: center; transition: color 1.2s, text-shadow 1.2s;
+    }
+    body.t-fire  .page-title { color: #ff9060; text-shadow: 0 0 30px rgba(255,80,20,0.4); }
+    body.t-party .page-title { color: #c0a0ff; text-shadow: 0 0 30px rgba(160,100,255,0.4); }
+    .page-sub { font-family: var(--mono); font-size: 10px; letter-spacing: 4px; text-transform: uppercase; text-align: center; color: rgba(160,160,190,0.45); margin-top: 4px; transition: color 1.2s; }
+    body.t-fire  .page-sub { color: rgba(255,150,80,0.4); }
+    body.t-party .page-sub { color: rgba(180,140,255,0.4); }
+
+    /* ═══════════════════════════════
+       THE RADIO BODY
+    ═══════════════════════════════ */
+    .radio {
+      width: min(700px, 96vw);
+      position: relative;
+      border-radius: 24px 24px 16px 16px;
+      background: var(--radio-body);
+      box-shadow:
+        0 30px 80px rgba(0,0,0,0.97),
+        0 6px 16px rgba(0,0,0,0.8),
+        inset 0 2px 0 rgba(255,255,255,0.06),
+        inset 0 -2px 0 rgba(0,0,0,0.5),
+        inset 2px 0 0 rgba(255,255,255,0.03),
+        inset -2px 0 0 rgba(0,0,0,0.3);
+      transition: background 1.5s, box-shadow 1.5s;
+    }
+    body.t-dark  .radio { box-shadow: 0 30px 80px rgba(0,0,0,0.97), 0 0 50px rgba(60,40,120,0.12), inset 0 2px 0 rgba(255,255,255,0.05), inset 0 -2px 0 rgba(0,0,0,0.6); }
+    body.t-fire  .radio { box-shadow: 0 30px 80px rgba(0,0,0,0.85), 0 0 60px rgba(255,60,10,0.15), inset 0 2px 0 rgba(255,255,255,0.1), inset 0 -2px 0 rgba(0,0,0,0.4); }
+    body.t-party .radio { box-shadow: 0 30px 80px rgba(0,0,0,0.85), 0 0 60px rgba(140,60,255,0.18), inset 0 2px 0 rgba(255,255,255,0.1), inset 0 -2px 0 rgba(0,0,0,0.4); }
+
+    /* Top ridge */
+    .radio-top-ridge {
+      height: 10px; border-radius: 24px 24px 0 0;
+      background: var(--radio-light);
+      transition: background 1.5s;
+    }
+
+    /* Main body content */
+    .radio-body { padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 14px; }
+
+    /* ── FREQUENCY DISPLAY ── */
+    .freq-display {
+      border-radius: 6px; padding: 6px 14px;
+      display: flex; align-items: center; justify-content: space-between;
+      border: 2px inset rgba(0,0,0,0.4);
+      background: var(--freq-bg);
+      box-shadow: inset 0 2px 8px rgba(0,0,0,0.8), 0 1px 0 rgba(255,255,255,0.06);
+      transition: background 1.5s;
+    }
+    .freq-band { font-family: var(--vt); font-size: 22px; color: var(--freq-ink); opacity: 0.6; transition: color 1.5s; letter-spacing: 2px; }
+    .freq-number {
+      font-family: var(--vt); font-size: 28px; color: var(--freq-ink);
+      transition: color 1.5s; letter-spacing: 2px;
+      text-shadow: 0 0 12px currentColor;
+      animation: freqGlow 3s ease-in-out infinite;
+    }
+    @keyframes freqGlow { 0%,100%{opacity:0.85} 50%{opacity:1} }
+    .freq-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--freq-ink); box-shadow: 0 0 8px currentColor; animation: blink 1.8s ease-in-out infinite; transition: background 1.5s; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+    /* ── FREQUENCY SCALE BAR ── */
+    .freq-scale {
+      position: relative; height: 28px;
+      background: var(--radio-darker);
+      border-radius: 4px;
+      border: 1px solid rgba(0,0,0,0.4);
+      overflow: hidden;
+      box-shadow: inset 0 1px 4px rgba(0,0,0,0.6);
+      transition: background 1.5s;
+    }
+    .freq-track {
+      position: absolute; top: 0; left: 0; right: 0; height: 100%;
+      display: flex; align-items: flex-end; padding: 0 10px 3px;
+      justify-content: space-between;
+    }
+    .freq-tick { width: 1px; background: rgba(160,160,190,0.3); transition: background 1.5s; }
+    .freq-tick.major { width: 1px; background: rgba(160,160,190,0.6); }
+    .freq-tick.h { height: 60%; }
+    .freq-tick.m { height: 40%; }
+    .freq-tick.s { height: 25%; }
+    .freq-nums {
+      position: absolute; top: 3px; left: 0; right: 0;
+      display: flex; justify-content: space-between; padding: 0 8px;
+    }
+    .freq-num { font-family: var(--vt); font-size: 11px; color: rgba(160,160,190,0.5); transition: color 1.5s; }
+    body.t-fire  .freq-tick, body.t-fire  .freq-num { color: rgba(255,150,80,0.4); }
+    body.t-fire  .freq-tick.major { background: rgba(255,150,80,0.5); }
+    body.t-fire  .freq-tick       { background: rgba(255,150,80,0.22); }
+    body.t-party .freq-tick, body.t-party .freq-num { color: rgba(180,140,255,0.4); }
+    body.t-party .freq-tick.major { background: rgba(180,140,255,0.5); }
+    body.t-party .freq-tick       { background: rgba(180,140,255,0.22); }
+
+    /* Needle */
+    .freq-needle {
+      position: absolute; top: 0; bottom: 0; width: 2px;
+      background: var(--dial-ring);
+      box-shadow: 0 0 6px var(--dial-ring);
+      transition: left 0.8s cubic-bezier(0.4,0,0.2,1), background 1.5s;
+      left: 30%;
+    }
+    .freq-needle::after { content: '▼'; position: absolute; top: -2px; left: 50%; transform: translateX(-50%); font-size: 8px; color: var(--dial-ring); }
+
+    /* ── MAIN ROW: speaker + controls ── */
+    .radio-main { display: flex; gap: 14px; align-items: stretch; }
+
+    /* SPEAKER GRILLE — chat lives here */
+    .speaker-wrap {
+      flex: 1; position: relative;
+      border-radius: 10px;
+      background: var(--speaker-bg);
+      border: 3px solid var(--radio-darker);
+      box-shadow: inset 0 4px 16px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(0,0,0,0.5);
+      overflow: hidden;
+      min-height: 240px;
+      transition: background 1.5s, border-color 1.5s, box-shadow 0.4s;
+    }
+    .speaker-wrap.waiting {
+      animation: speakerWait 2s ease-in-out infinite;
+    }
+    @keyframes speakerWait {
+      0%,100% { box-shadow: inset 0 4px 16px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(0,0,0,0.5), 0 0 0 2px var(--dial-ring), 0 0 18px rgba(200,168,112,0.2); }
+      50%     { box-shadow: inset 0 4px 16px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(0,0,0,0.5), 0 0 0 2px var(--dial-ring), 0 0 32px rgba(200,168,112,0.4); }
+    }
+    body.t-fire  .speaker-wrap.waiting { animation-name: speakerWaitFire; }
+    @keyframes speakerWaitFire {
+      0%,100% { box-shadow: inset 0 4px 16px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(0,0,0,0.5), 0 0 0 2px #ff5000, 0 0 18px rgba(255,80,0,0.25); }
+      50%     { box-shadow: inset 0 4px 16px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(0,0,0,0.5), 0 0 0 2px #ff5000, 0 0 32px rgba(255,80,0,0.45); }
+    }
+    body.t-party .speaker-wrap.waiting { animation-name: speakerWaitParty; }
+    @keyframes speakerWaitParty {
+      0%,100% { box-shadow: inset 0 4px 16px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(0,0,0,0.5), 0 0 0 2px #a060e0, 0 0 18px rgba(160,80,255,0.25); }
+      50%     { box-shadow: inset 0 4px 16px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(0,0,0,0.5), 0 0 0 2px #a060e0, 0 0 32px rgba(160,80,255,0.45); }
+    }
+
+    /* Grille dot texture overlay — just the border area */
+    .speaker-wrap::before {
+      content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+      background-image: radial-gradient(circle, rgba(0,0,0,0.5) 1px, transparent 1px);
+      background-size: 8px 8px;
+      mask-image: radial-gradient(ellipse 100% 100% at 50% 50%, transparent 75%, black 100%);
+      -webkit-mask-image: radial-gradient(ellipse 100% 100% at 50% 50%, transparent 75%, black 100%);
+    }
+
+    /* Grille cloth texture in center */
+    .speaker-cloth {
+      position: absolute; inset: 0; z-index: 1;
+      background:
+        repeating-linear-gradient(0deg, rgba(0,0,0,0.08) 0px, rgba(0,0,0,0.08) 1px, transparent 1px, transparent 4px),
+        repeating-linear-gradient(90deg, rgba(0,0,0,0.08) 0px, rgba(0,0,0,0.08) 1px, transparent 1px, transparent 4px);
+      pointer-events: none;
+      opacity: 0.6;
+    }
+
+    /* Chat area sits on top of the cloth */
+    .chat-area {
+      position: absolute; inset: 0; z-index: 5;
+      display: flex; flex-direction: column;
+      background: transparent;
+      overflow: hidden;
+    }
+
+    /* How it works */
+    .hiw {
+      flex-shrink: 0;
+      padding: 6px 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .hiw summary {
+      cursor: pointer; list-style: none;
+      display: flex; align-items: center; justify-content: space-between;
+      font-family: var(--mono); font-size: 9px; letter-spacing: 2px;
+      text-transform: uppercase; padding: 5px 0;
+      color: rgba(160,160,190,0.6); transition: color 1.5s;
+    }
+    body.t-fire  .hiw summary { color: rgba(255,160,80,0.6); }
+    body.t-party .hiw summary { color: rgba(180,140,255,0.6); }
+    .hiw summary::-webkit-details-marker { display: none; }
+    .hiw-arrow { transition: transform 0.2s; }
+    .hiw[open] .hiw-arrow { transform: rotate(180deg); }
+    .hiw-body { padding: 4px 0 8px; }
+    .hiw-body p { font-family: var(--mono); font-size: 9px; line-height: 1.7; color: rgba(160,160,190,0.5); margin: 1px 0; transition: color 1.5s; }
+    body.t-fire  .hiw-body p { color: rgba(255,160,80,0.45); }
+    body.t-party .hiw-body p { color: rgba(180,140,255,0.45); }
+    .hiw-body p b { color: rgba(160,160,190,0.85); }
+    body.t-fire  .hiw-body p b { color: rgba(255,160,80,0.85); }
+    body.t-party .hiw-body p b { color: rgba(180,140,255,0.85); }
+
+    /* Messages */
+    .chat-msgs {
+      flex: 1; overflow-y: scroll; overflow-x: hidden;
+      padding: 12px 14px 8px;
+      display: flex; flex-direction: column; gap: 8px;
+      min-height: 0;
+      scrollbar-width: thin; scrollbar-color: rgba(160,160,190,0.2) transparent;
+    }
+    .chat-msgs::-webkit-scrollbar { width: 3px; }
+    .chat-msgs::-webkit-scrollbar-thumb { background: rgba(160,160,190,0.2); border-radius: 2px; }
+
+    .chat-date { text-align: center; font-family: var(--vt); font-size: 11px; letter-spacing: 3px; color: rgba(160,160,190,0.3); padding: 2px 0 4px; transition: color 1.5s; }
+    body.t-fire  .chat-date { color: rgba(255,160,80,0.3); }
+    body.t-party .chat-date { color: rgba(180,140,255,0.3); }
+
+    .cmsg { display: flex; }
+    .cmsg.them { justify-content: flex-start; }
+    .cmsg.me   { justify-content: flex-end; }
+    .cbub {
+      max-width: 86%; padding: 12px 16px;
+      font-family: var(--mono); font-size: 17px; line-height: 1.7;
+      border-radius: 10px;
+    }
+    .them .cbub {
+      background: rgba(140,140,180,0.08); color: rgba(200,200,220,0.95);
+      border: 1px solid rgba(140,140,180,0.14); border-radius: 10px 10px 10px 2px;
+    }
+    body.t-fire  .them .cbub { background: rgba(255,130,40,0.1); color: rgba(255,180,100,0.95); border-color: rgba(255,130,40,0.15); }
+    body.t-party .them .cbub { background: rgba(160,100,255,0.1); color: rgba(200,160,255,0.95); border-color: rgba(160,100,255,0.15); }
+
+    .me .cbub { color: #fff; border-radius: 10px 10px 2px 10px; transition: background 1.5s; }
+    body.t-dark  .me .cbub { background: #383860; }
+    body.t-fire  .me .cbub { background: #c84010; }
+    body.t-party .me .cbub { background: #7030c0; }
+    .cbub em { font-style: italic; }
+    .cbub strong { font-weight: 700; }
+
+    /* Typing dots */
+    .ctyping { display: flex; }
+    .ctdots {
+      padding: 12px 16px; display: flex; gap: 5px; align-items: center;
+      opacity: 0; transition: opacity .2s; border-radius: 10px 10px 10px 2px;
+      background: rgba(160,160,190,0.1); border: 1px solid rgba(160,160,190,0.15);
+    }
+    body.t-fire  .ctdots { background: rgba(255,130,40,0.1); border-color: rgba(255,130,40,0.15); }
+    body.t-party .ctdots { background: rgba(160,100,255,0.1); border-color: rgba(160,100,255,0.15); }
+    .ctdots.on { opacity: 1; }
+    .ctdots span { width: 6px; height: 6px; border-radius: 50%; animation: tdot 1.2s ease-in-out infinite; background: rgba(160,160,190,0.6); transition: background 1.5s; }
+    body.t-fire  .ctdots span { background: rgba(255,160,80,0.6); }
+    body.t-party .ctdots span { background: rgba(180,140,255,0.6); }
+    .ctdots span:nth-child(2){animation-delay:.15s} .ctdots span:nth-child(3){animation-delay:.3s}
+    @keyframes tdot{0%,60%,100%{transform:translateY(0);opacity:.3}30%{transform:translateY(-5px);opacity:1}}
+
+    /* Chips */
+    .cchips { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 14px; opacity: 0; transform: translateY(6px); animation: cIn .4s .1s ease forwards; }
+    @keyframes cIn { to{opacity:1;transform:translateY(0)} }
+    .cchip {
+      border-radius: 999px; padding: 9px 20px; font-size: 15px;
+      font-family: var(--mono); cursor: pointer; white-space: nowrap;
+      border: 1px solid rgba(160,160,190,0.3); background: rgba(160,160,190,0.08);
+      color: rgba(160,160,190,0.85); transition: all .15s;
+    }
+    .cchip:hover { background: rgba(160,160,190,0.2); border-color: rgba(160,160,190,0.5); }
+    body.t-fire  .cchip { border-color: rgba(255,130,40,0.3); background: rgba(255,130,40,0.08); color: rgba(255,180,100,0.85); }
+    body.t-fire  .cchip:hover { background: rgba(255,130,40,0.2); }
+    body.t-party .cchip { border-color: rgba(160,100,255,0.3); background: rgba(160,100,255,0.08); color: rgba(200,160,255,0.85); }
+    body.t-party .cchip:hover { background: rgba(160,100,255,0.2); }
+
+    /* Input bar */
+    .cinput-bar {
+      flex-shrink: 0; padding: 8px 10px 10px;
+      display: none; flex-direction: column; gap: 5px;
+      border-top: 1px solid rgba(160,160,190,0.12);
+      background: rgba(0,0,0,0.25);
+      transition: border-color 1.5s;
+    }
+    body.t-fire  .cinput-bar { border-color: rgba(255,130,40,0.15); }
+    body.t-party .cinput-bar { border-color: rgba(160,100,255,0.15); }
+    .cinput-bar.on { display: flex; animation: inputPulse 0.5s ease forwards; }
+    @keyframes inputPulse {
+      0%   { opacity: 0; transform: translateY(6px); }
+      60%  { opacity: 1; transform: translateY(-2px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    .cinput-row { display: flex; gap: 8px; align-items: center; }
+    .cfield {
+      flex: 1; border-radius: 999px; padding: 9px 14px;
+      font-family: var(--mono); font-size: 16px; outline: none;
+      background: rgba(0,0,0,0.4); border: 1px solid rgba(160,160,190,0.2);
+      color: rgba(220,190,130,0.95); transition: border-color .2s, box-shadow .2s;
+    }
+    body.t-fire  .cfield { border-color: rgba(255,130,40,0.2); color: rgba(255,200,130,0.95); }
+    body.t-party .cfield { border-color: rgba(160,100,255,0.2); color: rgba(200,160,255,0.95); }
+    .cfield::placeholder { opacity: 0.35; }
+    .cfield:focus {
+      border-color: var(--dial-ring);
+      box-shadow: 0 0 0 3px rgba(160,160,190,0.08), 0 0 12px rgba(160,160,190,0.1);
+    }
+    body.t-fire  .cfield:focus { box-shadow: 0 0 0 3px rgba(255,100,20,0.1), 0 0 12px rgba(255,80,0,0.15); }
+    body.t-party .cfield:focus { box-shadow: 0 0 0 3px rgba(140,80,255,0.1), 0 0 12px rgba(140,80,255,0.15); }
+
+    /* BIG SEND BUTTON */
+    .csend {
+      width: 40px; height: 40px; border-radius: 50%; border: none;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; background: var(--dial-ring);
+      transition: transform .1s, background 1.5s, box-shadow .2s;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.4), 0 0 0 2px rgba(255,255,255,0.06);
+      animation: sendPulse 2.5s ease-in-out infinite;
+    }
+    @keyframes sendPulse {
+      0%,100% { box-shadow: 0 3px 10px rgba(0,0,0,0.4), 0 0 0 0px rgba(200,160,80,0); }
+      50%     { box-shadow: 0 3px 10px rgba(0,0,0,0.4), 0 0 0 5px rgba(200,160,80,0.15); }
+    }
+    body.t-fire  .csend { animation-name: sendPulseFire; }
+    @keyframes sendPulseFire {
+      0%,100% { box-shadow: 0 3px 10px rgba(0,0,0,0.4), 0 0 0 0px rgba(255,100,0,0); }
+      50%     { box-shadow: 0 3px 10px rgba(0,0,0,0.4), 0 0 0 5px rgba(255,100,0,0.2); }
+    }
+    body.t-party .csend { animation-name: sendPulseParty; }
+    @keyframes sendPulseParty {
+      0%,100% { box-shadow: 0 3px 10px rgba(0,0,0,0.4), 0 0 0 0px rgba(160,80,255,0); }
+      50%     { box-shadow: 0 3px 10px rgba(0,0,0,0.4), 0 0 0 5px rgba(160,80,255,0.2); }
+    }
+    .csend:hover { transform: scale(1.08); }
+    .csend:active { transform: scale(0.92); }
+    .csend svg { width: 15px; height: 15px; fill: #fff; }
+    .cconsent { display: flex; gap: 5px; align-items: flex-start; }
+    .cconsent input { margin-top: 2px; flex-shrink: 0; }
+    .cconsent label { font-size: 9px; line-height: 1.5; color: rgba(160,160,190,0.45); transition: color 1.5s; }
+    body.t-fire  .cconsent label { color: rgba(255,160,80,0.45); }
+    body.t-party .cconsent label { color: rgba(180,140,255,0.45); }
+    .chint { font-size: 9px; color: rgba(160,160,190,0.4); padding: 0 2px; }
+
+    /* Success */
+    .csuccess {
+      position: absolute; inset: 0; z-index: 20;
+      display: none; flex-direction: column; align-items: center;
+      justify-content: center; text-align: center; padding: 20px;
+      background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+    }
+    .csuccess.on { display: flex; animation: cIn .5s ease forwards; }
+    .cs-icon { font-size: 36px; margin-bottom: 10px; animation: popIn .5s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+    @keyframes popIn{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+    .cs-title { font-family: var(--display); font-size: 28px; letter-spacing: 4px; color: var(--freq-ink); margin-bottom: 8px; transition: color 1.5s; text-shadow: 0 0 20px currentColor; }
+    .cs-sub { font-family: var(--mono); font-size: 11px; line-height: 1.7; color: rgba(160,160,190,0.6); transition: color 1.5s; }
+    body.t-fire  .cs-sub { color: rgba(255,160,80,0.6); }
+    body.t-party .cs-sub { color: rgba(180,140,255,0.6); }
+    .cs-badge { margin-top: 12px; font-family: var(--display); font-size: 14px; letter-spacing: 3px; border-radius: 999px; padding: 5px 18px; border: 1px solid rgba(160,160,190,0.25); color: rgba(160,160,190,0.85); transition: all 1.5s; }
+
+    .cmsg,.ctyping { opacity:0;transform:translateY(4px);animation:cIn .3s ease forwards; }
+
+    /* ── RIGHT PANEL: dials + buttons ── */
+    .radio-controls {
+      width: 130px; flex-shrink: 0;
+      display: flex; flex-direction: column; gap: 10px; align-items: center;
+    }
+
+    /* Volume / Tuning knobs */
+    .knob-row { display: flex; gap: 10px; justify-content: center; width: 100%; }
+    .knob-group { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .knob-label { font-family: var(--mono); font-size: 8px; letter-spacing: 2px; text-transform: uppercase; color: rgba(160,160,190,0.45); transition: color 1.5s; }
+    body.t-fire  .knob-label { color: rgba(255,160,80,0.45); }
+    body.t-party .knob-label { color: rgba(180,140,255,0.45); }
+
+    .knob {
+      width: 44px; height: 44px; border-radius: 50%;
+      position: relative; cursor: grab;
+      background: radial-gradient(circle at 35% 30%, var(--radio-chrome), var(--radio-darker) 80%);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.1), inset 0 1px 3px rgba(255,255,255,0.12), inset 0 -1px 3px rgba(0,0,0,0.4);
+      transition: background 1.5s;
+      border: 2px solid var(--radio-darker);
+      user-select: none;
+    }
+    .knob:active { cursor: grabbing; }
+    .knob::after {
+      content: ''; position: absolute;
+      top: 10%; left: 50%; transform: translateX(-50%);
+      width: 3px; height: 35%; border-radius: 2px;
+      background: rgba(255,255,255,0.5);
+    }
+    .knob.spinning { animation: knobSpin 2s linear infinite; }
+    @keyframes knobSpin { to { transform: rotate(360deg); } }
+
+    /* Band select buttons */
+    .band-btns { display: flex; flex-direction: column; gap: 5px; width: 100%; }
+    .band-btn {
+      width: 100%; padding: 6px 4px;
+      font-family: var(--mono); font-size: 9px; letter-spacing: 1px;
+      text-transform: uppercase; cursor: pointer;
+      border-radius: 4px; border: 1px solid rgba(160,160,190,0.2);
+      background: rgba(0,0,0,0.3); color: rgba(160,160,190,0.45);
+      transition: all .2s;
+    }
+    .band-btn:hover { border-color: rgba(160,160,190,0.4); color: rgba(160,160,190,0.75); }
+    .band-btn.on { background: var(--radio-darker); border-color: var(--dial-ring); color: var(--freq-ink); box-shadow: 0 0 8px rgba(160,160,190,0.2); }
+    body.t-fire  .band-btn { border-color: rgba(255,130,40,0.2); color: rgba(255,160,80,0.45); }
+    body.t-fire  .band-btn.on { border-color: #ff6020; color: #ff8040; box-shadow: 0 0 8px rgba(255,100,20,0.25); }
+    body.t-party .band-btn { border-color: rgba(160,100,255,0.2); color: rgba(180,140,255,0.45); }
+    body.t-party .band-btn.on { border-color: #a060e0; color: #c0a0ff; box-shadow: 0 0 8px rgba(140,80,255,0.25); }
+
+    /* VU meter */
+    .vu-wrap { width: 100%; }
+    .vu-label { font-family: var(--mono); font-size: 7px; letter-spacing: 2px; text-transform: uppercase; color: rgba(160,160,190,0.35); margin-bottom: 3px; transition: color 1.5s; }
+    body.t-fire  .vu-label { color: rgba(255,160,80,0.35); }
+    body.t-party .vu-label { color: rgba(180,140,255,0.35); }
+    .vu-bars { display: flex; gap: 2px; align-items: flex-end; height: 20px; }
+    .vu-bar {
+      flex: 1; border-radius: 1px;
+      background: var(--dial-ring);
+      opacity: 0.3;
+      animation: vuPulse var(--vd,0.6s) ease-in-out infinite alternate;
+      transition: background 1.5s;
+    }
+    .vu-bar.on { opacity: 1; }
+    @keyframes vuPulse { from{transform:scaleY(0.3)} to{transform:scaleY(1)} }
+
+    /* Bottom bar */
+    .radio-bottom {
+      padding: 8px 20px 14px;
+      display: flex; align-items: center; justify-content: space-between;
+      border-top: 1px solid rgba(0,0,0,0.25);
+    }
+    .brand-plate {
+      font-family: var(--display); font-size: clamp(11px, 1.8vw, 16px);
+      letter-spacing: 3px; color: var(--radio-chrome);
+      text-shadow: 0 1px 0 rgba(0,0,0,0.4), 0 -1px 0 rgba(255,255,255,0.1);
+      transition: color 1.5s;
+    }
+    .model-tag {
+      font-family: var(--vt); font-size: 12px; letter-spacing: 2px;
+      color: rgba(160,160,190,0.4); transition: color 1.5s;
+    }
+    body.t-fire  .model-tag { color: rgba(255,160,80,0.35); }
+    body.t-party .model-tag { color: rgba(180,140,255,0.35); }
+
+    /* ── THEME SWITCHER ── */
+    .tsw {
+      position: fixed; top: 14px; right: 14px; z-index: 100;
+      display: flex; gap: 6px;
+      background: rgba(10,8,4,0.7); backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.07); border-radius: 999px;
+      padding: 5px 8px;
+    }
+    .tb {
+      border: 1px solid transparent; border-radius: 999px;
+      padding: 5px 13px; font-size: 11px; font-family: var(--mono);
+      background: transparent; color: rgba(255,255,255,0.3);
+      cursor: pointer; transition: all .2s; letter-spacing: .4px;
+    }
+    .tb:hover { color: rgba(255,255,255,0.7); }
+    .tb.on { color: #fff; background: rgba(255,255,255,0.09); border-color: rgba(255,255,255,0.12); }
+
+    .abtn {
+      position: fixed; bottom: 14px; right: 14px; z-index: 100;
+      background: rgba(10,8,4,0.7); backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.07); border-radius: 999px;
+      padding: 7px 15px; font-family: var(--mono); font-size: 10px;
+      color: rgba(255,255,255,0.3); cursor: pointer; display: none; transition: color .2s;
+    }
+    .abtn.on { display: block; }
+    .abtn:hover { color: #fff; }
+
+    .yt-h { position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:0; }
+
+    /* ── Power LED ── */
+    .power-led {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--freq-ink);
+      box-shadow: 0 0 8px var(--freq-ink), 0 0 16px var(--freq-ink);
+      animation: blink 2.5s ease-in-out infinite;
+      transition: background 1.5s, box-shadow 1.5s;
+    }
+    /* ── CURATOR STRIP ── */
+    .curator-strip {
+      display: flex; align-items: center; justify-content: center;
+      gap: 14px; flex-wrap: wrap;
+      width: min(700px, 96vw);
+    }
+    .curator-strip-label {
+      width: 100%; text-align: center;
+      font-family: var(--mono); font-size: 9px; letter-spacing: 3px;
+      text-transform: uppercase; color: rgba(200,168,112,0.35);
+      margin-bottom: 2px; transition: color 1.2s;
+    }
+    body.t-fire  .curator-strip-label { color: rgba(255,160,80,0.3); }
+    body.t-party .curator-strip-label { color: rgba(180,140,255,0.3); }
+
+    .curator-avatar {
+      display: flex; flex-direction: column; align-items: center; gap: 5px;
+      cursor: pointer; transition: transform 0.2s;
+    }
+    .curator-avatar:hover { transform: translateY(-3px); }
+    .curator-avatar:hover .curator-ring { box-shadow: 0 0 0 2px var(--dial-ring), 0 0 16px rgba(200,168,112,0.3); }
+    body.t-fire  .curator-avatar:hover .curator-ring { box-shadow: 0 0 0 2px #ff5000, 0 0 16px rgba(255,80,0,0.3); }
+    body.t-party .curator-avatar:hover .curator-ring { box-shadow: 0 0 0 2px #a060e0, 0 0 16px rgba(160,80,255,0.3); }
+
+    .curator-ring {
+      width: 180px; height: 180px; border-radius: 50%;
+      overflow: hidden; border: 2px solid rgba(200,168,112,0.2);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+      transition: box-shadow 0.25s;
+      background: var(--radio-darker);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .curator-ring img {
+      width: 100%; height: 100%; object-fit: cover;
+    }
+    .curator-ring .curator-initials {
+      font-family: var(--display); font-size: 18px; letter-spacing: 1px;
+      color: rgba(200,168,112,0.7); transition: color 1.2s;
+    }
+    body.t-fire  .curator-ring .curator-initials { color: rgba(255,160,80,0.7); }
+    body.t-party .curator-ring .curator-initials { color: rgba(180,140,255,0.7); }
+
+    .curator-ig {
+      display: block; text-align: center;
+      font-family: var(--mono); font-size: 8px; letter-spacing: 1px;
+      color: rgba(160,160,190,0.5); text-decoration: none;
+      margin-top: 2px; transition: color 0.2s;
+    }
+    .curator-ig:hover { color: var(--dial-ring); }
+    .curator-ig {
+      display: block; text-align: center;
+      font-family: var(--mono); font-size: 8px; letter-spacing: 1px;
+      color: rgba(160,160,190,0.5); text-decoration: none;
+      margin-top: 2px; transition: color 0.2s;
+    }
+    .curator-ig:hover { color: var(--dial-ring); }
+    .curator-name-tag {
+      font-family: var(--mono); font-size: 8px; letter-spacing: 1px;
+      color: rgba(200,168,112,0.45); text-align: center;
+      max-width: 60px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      transition: color 1.2s;
+    }
+    body.t-fire  .curator-name-tag { color: rgba(255,160,80,0.4); }
+    body.t-party .curator-name-tag { color: rgba(180,140,255,0.4); }
+
+    /* ── CURATOR MODAL ── */
+    .curator-modal-bg {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(0,0,0,0.75); backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .curator-modal-bg.open {
+      opacity: 1; pointer-events: all;
+    }
+    .curator-modal {
+      width: min(380px, 90vw);
+      border-radius: 16px;
+      overflow: hidden;
+      background: var(--radio-body);
+      box-shadow: 0 30px 80px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.06);
+      transform: translateY(20px) scale(0.97);
+      transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .curator-modal-bg.open .curator-modal {
+      transform: translateY(0) scale(1);
+    }
+    .curator-modal-img {
+      width: 100%; height: 200px; object-fit: cover;
+      display: block;
+    }
+    .curator-modal-img-placeholder {
+      width: 100%; height: 200px;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--radio-darker);
+      font-family: var(--display); font-size: 64px; letter-spacing: 2px;
+      color: rgba(200,168,112,0.3);
+    }
+    body.t-fire  .curator-modal-img-placeholder { color: rgba(255,160,80,0.3); }
+    body.t-party .curator-modal-img-placeholder { color: rgba(180,140,255,0.3); }
+    .curator-modal { max-height: 85vh; overflow-y: auto; }
+    .curator-modal-body {
+      padding: 20px 22px 24px;
+    }
+    .curator-modal-name {
+      font-family: var(--display); font-size: 32px; letter-spacing: 3px;
+      color: var(--radio-light); margin-bottom: 8px; transition: color 1.2s;
+    }
+    .curator-modal-bio {
+      font-family: var(--mono); font-size: 16px; line-height: 1.7;
+      color: rgba(200,168,112,0.75); transition: color 1.2s;
+    }
+    body.t-fire  .curator-modal-bio { color: rgba(255,160,80,0.55); }
+    body.t-party .curator-modal-bio { color: rgba(180,140,255,0.55); }
+    .curator-modal-close {
+      position: absolute; top: 12px; right: 14px;
+      width: 30px; height: 30px; border-radius: 50%;
+      background: rgba(0,0,0,0.5); border: none; cursor: pointer;
+      color: rgba(255,255,255,0.6); font-size: 16px;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s;
+    }
+    .curator-modal-close:hover { background: rgba(0,0,0,0.8); color: #fff; }
+    .curator-modal { position: relative; }
+
+    .curator-strip-empty {
+      font-family: var(--mono); font-size: 10px; letter-spacing: 1px;
+      color: rgba(200,168,112,0.2); font-style: italic;
+    }
+  </style>
+</head>
+<body class="t-dark">
+
+<div class="yt-h"><div id="ytA"></div><div id="ytB"></div></div>
+
+<div class="disco-wrap">
+  <div class="disco-wire"></div>
+  <div class="disco-ball"></div>
+</div>
+<div class="disco-beam"></div>
+<div class="disco-beam"></div>
+<div class="disco-beam"></div>
+<div class="disco-beam"></div>
+
+<div class="atmos atmos-dark"></div>
+<div class="atmos atmos-fire"></div>
+<div class="atmos atmos-party"></div>
+<div class="stars"></div>
+<div class="embers" id="embEl"></div>
+<div class="confetti" id="confEl"></div>
+
+<div class="tsw">
+  <button class="tb on" id="bDark"  type="button">🌑 Dark</button>
+  <button class="tb"    id="bFire"  type="button">🔥 Fire</button>
+  <button class="tb"    id="bParty" type="button">🪩 Party</button>
+</div>
+<button class="abtn" id="abtn">♪ audio off</button>
+
+<!-- Playback Modal -->
+<div id="uhtPlayModal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.85);align-items:center;justify-content:center;backdrop-filter:blur(8px)">
+  <div style="background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:0;max-width:480px;width:92%;overflow:hidden;position:relative">
+    <button onclick="closePlayModal()" style="position:absolute;top:14px;right:16px;background:rgba(255,255,255,0.1);border:none;color:#fff;width:32px;height:32px;border-radius:50%;font-size:18px;cursor:pointer;z-index:10;display:flex;align-items:center;justify-content:center">✕</button>
+    <div id="uhtPlayYT" style="display:none;width:100%;aspect-ratio:16/9;background:#000"></div>
+    <div style="padding:24px 24px 28px">
+      <div id="uhtPlayTitle" style="font-family:var(--display);font-size:26px;letter-spacing:2px;color:#fff;margin-bottom:4px;text-transform:uppercase;padding-right:36px"></div>
+      <div id="uhtPlayArtist" style="font-family:var(--mono);font-size:15px;color:rgba(255,255,255,0.5);margin-bottom:20px"></div>
+      <div id="uhtPlayButtons"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Curator modal -->
+<!-- Follow Confirmation Modal -->
+<div id="followConfirmModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center">
+  <div style="background:#1a1a1a;border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:32px 28px;max-width:340px;width:90%;text-align:center;position:relative">
+    <div style="font-size:48px;margin-bottom:16px">🎧</div>
+    <div id="followConfirmName" style="font-family:var(--display);font-size:26px;letter-spacing:3px;color:#fff;margin-bottom:8px;text-transform:uppercase"></div>
+    <div style="font-size:13px;color:rgba(255,255,255,0.4);font-family:var(--mono);letter-spacing:2px;text-transform:uppercase;margin-bottom:20px">You're now following</div>
+    <div style="background:rgba(255,255,255,0.05);border-radius:12px;padding:16px;text-align:left;margin-bottom:20px">
+      <div style="font-family:var(--mono);font-size:13px;color:rgba(255,255,255,0.7);line-height:2">
+        🎵 &nbsp;Monday drops straight to your phone<br>
+        🔔 &nbsp;First to know when they return<br>
+        📋 &nbsp;Full playlist unlocked<br>
+        🔥 &nbsp;Vote on every pick they make
+      </div>
+    </div>
+    <button onclick="closeFollowConfirm()" style="width:100%;padding:12px;border-radius:999px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#fff;font-family:var(--mono);font-size:13px;letter-spacing:2px;cursor:pointer;">Let's go 🔥</button>
+  </div>
+</div>
+
+<div class="curator-modal-bg" id="curatorModalBg">
+  <div class="curator-modal" id="curatorModal">
+    <button class="curator-modal-close" id="curatorModalClose">✕</button>
+    <div id="curatorModalImgWrap"></div>
+    <div class="curator-modal-body">
+      <div class="curator-modal-name" id="curatorModalName"></div>
+      <div class="curator-modal-bio"  id="curatorModalBio"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap">
+        <button class="uht-share-btn" id="curatorShareBtn" onclick="openCuratorShare()">⤴ Share Curator</button>
+        <button class="uht-follow-btn" id="curatorFollowBtn" onclick="handleFollowClick()">+ Follow</button>
+        <div id="curatorModalIg"></div>
+      </div>
+
+      <!-- Follow phone input — always shown when follow clicked -->
+      <div id="curatorPhoneInput" style="display:none;margin-top:12px">
+        <div style="font-size:12px;color:rgba(255,255,255,0.5);font-family:var(--mono);letter-spacing:1px;margin-bottom:8px;text-transform:uppercase">Enter your number to follow</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="tel" id="followPhoneField" placeholder="+1 (212) 555-1234"
+            style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:10px 14px;color:#fff;font-family:var(--mono);font-size:14px;outline:none;flex:1"
+            onkeydown="if(event.key==='Enter') confirmFollow()">
+          <button class="uht-follow-btn" onclick="confirmFollow()" style="white-space:nowrap;padding:10px 16px">✓ Follow</button>
+        </div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.3);margin-top:8px;font-family:var(--mono);line-height:1.7">
+          📱 Monday drops to your phone &nbsp;·&nbsp; 🔔 First to know when they return &nbsp;·&nbsp; 🔥 Vote on every pick
+        </div>
+      </div>
+
+      <!-- Already following state -->
+      <div id="curatorFollowPerks" style="display:none;margin-top:12px;padding:12px 16px;border-radius:10px;background:rgba(100,220,120,0.06);border:1px solid rgba(100,220,120,0.2);font-family:var(--mono);font-size:13px;color:rgba(100,220,120,0.8);line-height:1.8">
+        ✓ Following &nbsp;·&nbsp; 📱 Monday drops &nbsp;·&nbsp; 🔔 Drop alerts &nbsp;·&nbsp; 🔥 Vote on picks
+        <div style="margin-top:6px;font-size:11px;color:rgba(255,255,255,0.25);cursor:pointer" onclick="handleUnfollow()">Unfollow</div>
+      </div>
+
+      <div id="curatorScorecard" style="margin-top:18px"></div>
+    </div>
+  </div>
+</div>
+
+<div class="radio-wrap">
+
+  <div>
+    <div class="page-title">Undeniable Hit Theory</div>
+    <div class="page-sub">Weekly SMS · Vote Hit or Denied</div>
+  </div>
+
+  <!-- Curator strip -->
+  <div class="curator-strip" id="curatorStrip">
+    <div class="curator-strip-label">Curator of the Month</div>
+  </div>
+
+  <div class="radio">
+    <div class="radio-top-ridge"></div>
+    <div class="radio-body">
+
+      <!-- Frequency display -->
+      <div class="freq-display">
+        <div class="freq-band" id="freqBand">FM</div>
+        <div class="freq-number" id="freqNum">88.5</div>
+        <div class="freq-dot"></div>
+      </div>
+
+      <!-- Frequency scale -->
+      <div class="freq-scale">
+        <div class="freq-nums">
+          <span class="freq-num">88</span>
+          <span class="freq-num">92</span>
+          <span class="freq-num">96</span>
+          <span class="freq-num">100</span>
+          <span class="freq-num">104</span>
+          <span class="freq-num">108</span>
+        </div>
+        <div class="freq-track" id="freqTrack"></div>
+        <div class="freq-needle" id="freqNeedle"></div>
+      </div>
+
+      <!-- Main row -->
+      <div class="radio-main">
+
+        <!-- Speaker / Chat -->
+        <div class="speaker-wrap">
+          <div class="speaker-cloth"></div>
+          <div class="chat-area">
+            <!-- How it works -->
+            <details class="hiw">
+              <summary>How it works <span class="hiw-arrow">▾</span></summary>
+              <div class="hiw-body">
+                <p>1) Pick one genre &amp; confirm your number.</p>
+                <p>2) Every Friday: one undeniable track lands by text.</p>
+                <p>3) Reply <b>HIT</b> or <b>DENIED</b>. We publish the weekly chart.</p>
+              </div>
+            </details>
+
+            <div class="chat-msgs" id="msgs">
+              <div class="chat-date">— ON AIR —</div>
+              <div class="ctyping" id="typRow">
+                <div class="ctdots" id="tdots"><span></span><span></span><span></span></div>
+              </div>
+            </div>
+
+            <div class="cinput-bar" id="cbar">
+              <div class="cconsent" id="consRow" style="display:none">
+                <input type="checkbox" id="cons"/>
+                <label for="cons">I agree to receive weekly SMS from UHT. Reply STOP to unsubscribe.</label>
+              </div>
+              <div class="cinput-row">
+                <input class="cfield" id="cfield" type="text" placeholder="" autocomplete="off" autocorrect="off" autocapitalize="off"/>
+                <button class="csend" id="csend">
+                  <svg viewBox="0 0 24 24"><path d="M2 12L22 2 12 22 10 14 2 12z"/></svg>
+                </button>
+              </div>
+              <div class="chint" id="chint"></div>
+            </div>
+
+            <div class="csuccess" id="csucc">
+              <div class="cs-icon" id="csicon">📻</div>
+              <div class="cs-title">You're on the list.</div>
+              <div class="cs-sub" id="cs-sub-text" style="margin-bottom:10px">Check your phone.</div>
+              <div id="cs-yes-box" style="font-family:var(--mono);font-size:14px;line-height:1.8;color:rgba(160,160,190,0.85);background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:12px 16px;margin-bottom:10px;text-align:left">
+                Reply <strong style="color:#fff">YES</strong> to confirm and start your drops.<br>
+                Reply <strong style="color:rgba(160,160,190,0.6)">STOP</strong> anytime to unsubscribe.
+              </div>
+              <div class="cs-badge" id="csbadge"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right controls -->
+        <div class="radio-controls">
+          <!-- Knobs -->
+          <div class="knob-row">
+            <div class="knob-group">
+              <div class="knob" id="knobVol" title="Volume"></div>
+              <div class="knob-label">VOL</div>
+            </div>
+            <div class="knob-group">
+              <div class="knob" id="knobTune" title="Tuning"></div>
+              <div class="knob-label">TUNE</div>
+            </div>
+          </div>
+
+          <!-- Band buttons = theme switcher -->
+          <div class="band-btns">
+            <button class="band-btn on" id="bbDark"  type="button">🌑 AM DARK</button>
+            <button class="band-btn"    id="bbFire"  type="button">🔥 FM FIRE</button>
+            <button class="band-btn"    id="bbParty" type="button">🪩 SW PARTY</button>
+          </div>
+
+          <!-- VU meter -->
+          <div class="vu-wrap">
+            <div class="vu-label">Signal</div>
+            <div class="vu-bars" id="vuBars"></div>
+          </div>
+
+          <!-- Power LED -->
+          <div class="power-led" id="powerLed"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom bar -->
+    <div class="radio-bottom">
+      <div class="brand-plate">UHT · HIT RADIO</div>
+      <div class="model-tag" id="modelTag">MODEL UHT-46</div>
+      <div class="power-led"></div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+(function(){
+  const TTRACKS = { dark:'ZmZ6_tbLgXM', fire:'nVqNwBGOLhM', party:'0CFuCYNx-1g' };
+  const GTRACKS = { Rock:'dQw4w9WgXcQ', Country:'ZmZ6_tbLgXM', Pop:'0CFuCYNx-1g', Punk:'nVqNwBGOLhM', 'Hip-Hop':'nVqNwBGOLhM', 'R&B':'ZmZ6_tbLgXM' };
+  const GLABELS = { Rock:'🎸 Rock', Country:'🤠 Country', Pop:'✨ Pop', Punk:'⚡ Punk', 'Hip-Hop':'🎤 Hip-Hop', 'R&B':'🌙 R&B' };
+  const TICONS  = { dark:'📻', fire:'🔥', party:'🎉' };
+  const TFREQS  = { dark:'88.5', fire:'107.3', party:'99.9' };
+  const TNEEDLE = { dark:'30%', fire:'82%', party:'56%' };
+  const TBANDS  = { dark:'AM', fire:'FM', party:'SW' };
+
+  let theme='dark', ud={name:'',phone:'',genre:'',followCurator:null,cotmName:''}, curPhone='';
+
+  const msgsEl  = document.getElementById('msgs');
+  const typRow  = document.getElementById('typRow');
+  const tdots   = document.getElementById('tdots');
+  const cbar    = document.getElementById('cbar');
+  const cfield  = document.getElementById('cfield');
+  const csend   = document.getElementById('csend');
+  const chint   = document.getElementById('chint');
+  const consRow = document.getElementById('consRow');
+  const embEl   = document.getElementById('embEl');
+  const confEl  = document.getElementById('confEl');
+  const abtn    = document.getElementById('abtn');
+  const knobVol  = document.getElementById('knobVol');
+  const knobTune = document.getElementById('knobTune');
+
+  const sleep = ms=>new Promise(r=>setTimeout(r,ms));
+  const scrollBot=()=>{
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+    requestAnimationFrame(()=>{ msgsEl.scrollTop = msgsEl.scrollHeight; });
+    setTimeout(()=>{ msgsEl.scrollTop = msgsEl.scrollHeight; }, 150);
+  };
+
+  // ── VU meter ──
+  const vuBars = document.getElementById('vuBars');
+  (function buildVU(){
+    for(let i=0;i<16;i++){
+      const b=document.createElement('div'); b.className='vu-bar';
+      const h=20+Math.random()*80;
+      b.style.cssText=`height:${h}%;--vd:${0.3+Math.random()*0.8}s;animation-delay:${Math.random()*0.5}s`;
+      vuBars.appendChild(b);
+    }
+  })();
+
+  let vuActive = false;
+  function setVU(on){
+    vuActive=on;
+    document.querySelectorAll('.vu-bar').forEach(b=>b.classList.toggle('on',on));
+  }
+
+  // ── Freq scale ticks ──
+  (function buildTicks(){
+    const track=document.getElementById('freqTrack');
+    for(let i=0;i<60;i++){
+      const d=document.createElement('div');
+      d.className='freq-tick '+(i%10===0?'major h':i%5===0?'m':'s');
+      d.style.height=(i%10===0?'65':i%5===0?'40':'22')+'%';
+      track.appendChild(d);
+    }
+  })();
+
+  // ── Knob spin on typing ──
+  function spinKnobs(on){ knobTune.classList.toggle('spinning',on); }
+
+  async function showTyping(ms){
+    spinKnobs(true); setVU(true);
+    typRow.style.display='flex'; tdots.classList.add('on'); scrollBot();
+    await sleep(ms);
+    tdots.classList.remove('on'); await sleep(160); typRow.style.display='none';
+    spinKnobs(false); setVU(false);
+  }
+
+  async function botMsg(html, thinkMs){
+    const t=thinkMs??Math.min(450+html.replace(/<[^>]+>/g,'').length*20,1500);
+    await showTyping(t);
+    const r=document.createElement('div'); r.className='cmsg them';
+    r.innerHTML=`<div class="cbub">${html}</div>`;
+    typRow.parentNode.insertBefore(r,typRow); 
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+  }
+
+  function userMsg(text){
+    const r=document.createElement('div'); r.className='cmsg me';
+    r.innerHTML=`<div class="cbub">${text}</div>`;
+    typRow.parentNode.insertBefore(r,typRow); 
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+    spinKnobs(true); setVU(true);
+    setTimeout(()=>{spinKnobs(false);setVU(false);},800);
+  }
+
+  let chipsEl=null;
+  function showChips(opts,onPick){
+    if(chipsEl){chipsEl.remove();chipsEl=null;}
+    chipsEl=document.createElement('div'); chipsEl.className='cchips';
+    opts.forEach(o=>{
+      const b=document.createElement('button'); b.className='cchip'; b.textContent=o.label||o;
+      b.addEventListener('click',()=>{if(chipsEl){chipsEl.remove();chipsEl=null;}hideInput();onPick(o);});
+      chipsEl.appendChild(b);
+    });
+    cbar.parentNode.insertBefore(chipsEl,cbar); scrollBot();
+  }
+
+  const speakerEl = document.querySelector('.speaker-wrap');
+
+  function showInput(ph,hint,type,consent=false){
+    cfield.value=''; cfield.placeholder=ph;
+    cfield.type=type==='phone'?'tel':type==='code'?'number':'text';
+    chint.textContent=hint||''; consRow.style.display=consent?'flex':'none';
+    cbar.classList.add('on');
+    speakerEl?.classList.add('waiting');
+    setTimeout(()=>{ cfield.focus(); msgsEl.scrollTop = msgsEl.scrollHeight; }, 200);
+  }
+  function hideInput(){
+    cbar.classList.remove('on');
+    speakerEl?.classList.remove('waiting');
+    cfield.value=''; consRow.style.display='none';
+  }
+
+  async function fetchGenres(){
+    try{const r=await fetch('/api/genres');const d=await r.json();const n=(d.genres||[]).map(g=>g.name);return n.length?n:['Rock','Country','Pop','Punk'];}
+    catch(e){return['Rock','Country','Pop','Punk'];}
+  }
+
+  // ── Needle animation ──
+  function setNeedle(pos, freq, band){
+    const needle=document.getElementById('freqNeedle');
+    const num=document.getElementById('freqNum');
+    const bandEl=document.getElementById('freqBand');
+    if(needle) needle.style.left=pos;
+    if(num){
+      num.style.opacity='0';
+      setTimeout(()=>{ num.textContent=freq; num.style.opacity='1'; },300);
+    }
+    if(bandEl) bandEl.textContent=band;
+  }
+
+  let resendTimer = null;
+  function startResend(){
+    const btn = document.getElementById('resendBtn'); if(!btn) return;
+    let t=60; btn.disabled=true; btn.textContent=`Resend (${t}s)`;
+    clearInterval(resendTimer);
+    resendTimer = setInterval(()=>{
+      t--; btn.textContent=`Resend (${t}s)`;
+      if(t<=0){ clearInterval(resendTimer); btn.disabled=false; btn.textContent='Resend code'; }
+    },1000);
+  }
+
+  async function start(){
+    await sleep(1200);
+    await botMsg(`Welcome to Undeniable Hit Theory.`, 1200);
+    await sleep(300);
+    await botMsg(`Every Friday.`, 1000);
+    await sleep(200);
+    await botMsg(`One track hits your phone. Every Friday.`, 1100);
+    await sleep(200);
+    await botMsg(`No algorithms. No playlists. Human powered hits.`, 1300);
+    await sleep(500);
+    await botMsg(`You vote <strong>HIT</strong> or <strong>DENIED</strong>. We keep score.`, 1200);
+    await sleep(700);
+    await botMsg(`Who am I talking to?`, 800);
+    showInput('Your name…', '', 'text');
+    csend.onclick = submitName;
+    cfield.onkeydown = e=>{ if(e.key==='Enter') submitName(); };
+  }
+
+  async function submitName(){
+    const v = cfield.value.trim(); if(!v) return;
+    hideInput(); ud.name = v; userMsg(v);
+    await sleep(500);
+    await botMsg(`Hi ${v}! What's your number?`, 900);
+    showInput('+1 (415) 555-1234', '10-digit US/Canada. +1 pre-filled.', 'phone');
+    setTimeout(()=>{ if(!cfield.value){ cfield.value='+1'; cfield.setSelectionRange(2,2); } },160);
+    csend.onclick = submitPhone;
+    cfield.onkeydown = e=>{ if(e.key==='Enter') submitPhone(); };
+  }
+
+  async function submitPhone(){
+    let ph = cfield.value.trim();
+    const d = ph.replace(/\D/g,'');
+    if(d.length===10) ph='+1'+d;
+    else if(d.length===11 && d.startsWith('1')) ph='+'+d;
+    if(!ph || d.length<10){ chint.textContent='⚠ Need a valid 10-digit number.'; return; }
+    chint.textContent='';
+    hideInput(); curPhone=ph; userMsg(ph);
+    await botMsg(`Got it. Email? <em style="opacity:.45">— you can skip this one.</em>`, 600);
+    showInput('you@example.com', 'Optional — hit send to skip', 'email');
+    csend.onclick = submitEmail;
+    cfield.onkeydown = e=>{ if(e.key==='Enter') submitEmail(); };
+  }
+
+  async function submitEmail(){
+    const v = cfield.value.trim();
+    hideInput(); ud.email = v;
+    if(v) userMsg(v);
+    else userMsg('skipped');
+    const genres = await fetchGenres();
+    await botMsg(`Last thing — pick your genre. Every Friday drop will be from this world.`, 800);
+    showChips(genres.map(g=>({label:GLABELS[g]||g, value:g})), async opt=>{
+      ud.genre = opt.value; userMsg(opt.label);
+      crossfade(GTRACKS[opt.value]||TTRACKS[theme]);
+      await botMsg(`${opt.label} — every Friday, one ${opt.value} track straight to your phone.`, 900);
+      await askCurator();
+    });
+  }
+
+  async function fetchAllCurators(){
+    try{
+      const r = await fetch('/api/curators');
+      const d = await r.json();
+      console.log('[UHT] curators fetched:', d);
+      return d.curators || d || [];
+    }catch(e){ console.warn('[UHT] curator fetch failed:', e); return []; }
+  }
+
+  function initials(name=''){ return name.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase()||'?'; }
+
+  async function askCurator(){
+    const curators = await fetchAllCurators();
+    if(!curators.length){ await askConsent(); return; }
+
+    // First curator = Curator of the Month
+    const cotm = curators[0];
+
+    await botMsg(`One more thing — we have a Curator of the Month: <strong>${cotm.name}</strong>. They drop a personal pick every Monday. Want to follow them too?`, 900);
+
+    if(chipsEl){ chipsEl.remove(); chipsEl=null; }
+    chipsEl = document.createElement('div'); chipsEl.className='cchips';
+
+    // "See who it is" button
+    const previewBtn = document.createElement('button');
+    previewBtn.className = 'cchip';
+    previewBtn.innerHTML = cotm.image_url
+      ? `<img src="${cotm.image_url}" style="width:18px;height:18px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:5px;"> Who's ${cotm.name.split(' ')[0]}?`
+      : `⭐ Who's ${cotm.name.split(' ')[0]}?`;
+    previewBtn.addEventListener('click', ()=> showCuratorPreview(cotm, true, null, true));
+    chipsEl.appendChild(previewBtn);
+
+    // Yes — follow curator too
+    const yesBtn = document.createElement('button');
+    yesBtn.className = 'cchip';
+    yesBtn.textContent = `🎧 Yes, follow ${cotm.name.split(' ')[0]}`;
+    yesBtn.addEventListener('click', async ()=>{
+      if(chipsEl){ chipsEl.remove(); chipsEl=null; }
+      ud.followCurator = cotm.id;
+      ud.cotmName = cotm.name;
+      userMsg(`Yes — follow ${cotm.name}`);
+      await botMsg(`${cotm.name} drops a personal pick every Monday. 🎧`, 800);
+      await sleep(600);
+      await botMsg(`You'll get Friday ${ud.genre} drops AND Monday curator picks.`, 900);
+      await sleep(500);
+      await botMsg(`Best of both. Let's lock it in.`, 700);
+      await sleep(400);
+      await askConsent();
+    });
+    chipsEl.appendChild(yesBtn);
+
+    // No — genre only
+    const noBtn = document.createElement('button');
+    noBtn.className = 'cchip';
+    noBtn.textContent = `➡️ No thanks, just my genre`;
+    noBtn.addEventListener('click', async ()=>{
+      if(chipsEl){ chipsEl.remove(); chipsEl=null; }
+      ud.followCurator = null;
+      userMsg(`Just my genre`);
+      await botMsg(`Got it. Friday ${ud.genre} drops only.`, 700);
+      await sleep(400);
+      await askConsent();
+    });
+    chipsEl.appendChild(noBtn);
+
+    cbar.parentNode.insertBefore(chipsEl, cbar);
+    scrollBot();
+  }
+
+  // previewOnly = true means modal has no confirm button, just info
+  function showCuratorPreview(c, isCoTM, onConfirm, previewOnly=false){
+    const modalBg   = document.getElementById('curatorModalBg');
+    const modalName = document.getElementById('curatorModalName');
+    const modalBio  = document.getElementById('curatorModalBio');
+    const modalImg  = document.getElementById('curatorModalImgWrap');
+    const modalEl   = document.getElementById('curatorModal');
+
+    const badgeHtml = isCoTM
+      ? `<div style="display:inline-block;margin-bottom:6px;padding:3px 10px;border-radius:999px;font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;background:var(--dial-ring);color:#fff;opacity:0.9;">⭐ Curator of the Month</div>`
+      : '';
+
+    modalName.innerHTML = badgeHtml + `<div>${c.name}</div>`;
+    modalBio.textContent = c.bio || 'No bio yet.';
+
+    // Reset follow state
+    const followBtn = document.getElementById('curatorFollowBtn');
+    _followCuratorId = c.id;
+    if (followBtn) {
+      followBtn.classList.remove('following');
+      followBtn.textContent = '+ Follow';
+      // Check if already following
+      const phone = localStorage.getItem('uht_phone');
+      if (phone) {
+        checkFollowStatus(c.id, phone).then(isFollowing => {
+          if (isFollowing) {
+            followBtn.classList.add('following');
+            followBtn.textContent = '✓ Following';
+            const perks = document.getElementById('curatorFollowPerks');
+            if (perks) perks.style.display = 'block';
+          }
+        });
+      }
+    }
+    const perks = document.getElementById('curatorFollowPerks');
+    if (perks) perks.style.display = 'none';
+    const phoneInput = document.getElementById('curatorPhoneInput');
+    if (phoneInput) phoneInput.style.display = 'none';
+    const followBtnEl = document.getElementById('curatorFollowBtn');
+    if (followBtnEl) { followBtnEl.style.display = 'inline-flex'; followBtnEl.textContent = '+ Follow'; }
+
+    // Check if already following via localStorage phone
+    const savedPhone = localStorage.getItem('uht_phone');
+    if (savedPhone) {
+      checkFollowStatus(c.id, savedPhone).then(isFollowing => {
+        if (isFollowing) showFollowingState();
+      });
+    }
+
+    // ── Instagram link
+    const igEl = document.getElementById('curatorModalIg');
+    if (igEl) {
+      igEl.innerHTML = c.instagram
+        ? `<a href="https://instagram.com/${c.instagram}" target="_blank" class="uht-ig-icon" title="@${c.instagram}"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg></a>`
+        : '';
+    }
+
+    // ── Scorecard
+    const scorecardEl = document.getElementById('curatorScorecard');
+    if (scorecardEl) {
+      scorecardEl.innerHTML = '<div style="opacity:0.4;font-size:11px;letter-spacing:2px;font-family:var(--mono);margin-bottom:8px">LOADING PICKS…</div>';
+      fetch(`/api/curators/${c.id}/scorecard`)
+        .then(r => r.json())
+        .then(data => {
+          const st = data.stats || {};
+          const subs = data.submissions || [];
+          const hitRate = st.hit_rate ? parseFloat(st.hit_rate) : 0;
+          const rateColor = hitRate >= 70 ? '#4ade80' : hitRate >= 40 ? '#facc15' : '#f87171';
+          const rateEmoji = hitRate >= 70 ? '🔥' : hitRate >= 40 ? '🔥' : '💀';
+
+          // ── Tier calculation
+          const songCount = subs.length;
+          let tier = { emoji: '🌙', label: 'Rising Curator' };
+          if (songCount >= 20 && hitRate >= 70)      tier = { emoji: '👑', label: 'Legend' };
+          else if (songCount >= 10 && hitRate >= 60) tier = { emoji: '🎧', label: 'Taste Maker' };
+          else if (songCount >= 5  && hitRate >= 50) tier = { emoji: '🔥', label: 'Hit Hunter' };
+
+          // Inject tier under name
+          const nameEl = document.getElementById('curatorModalName');
+          if (nameEl && !nameEl.querySelector('.uht-tier')) {
+            const tierDiv = document.createElement('div');
+            tierDiv.className = 'uht-tier';
+            tierDiv.style.cssText = 'font-family:var(--mono);font-size:13px;letter-spacing:2px;opacity:0.6;margin-top:4px;margin-bottom:2px;text-transform:uppercase';
+            tierDiv.textContent = tier.emoji + ' ' + tier.label;
+            nameEl.appendChild(tierDiv);
+          }
+
+          let html = '';
+
+          // Hit rate badge (only if has votes)
+          if (parseInt(st.total) > 0) {
+            html += `<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:12px 16px;border-radius:10px;background:rgba(255,255,255,0.05)">
+              <div style="font-size:42px;font-weight:900;color:${rateColor};font-family:var(--display)">${hitRate}%</div>
+              <div>
+                <div style="font-size:13px;letter-spacing:2px;font-family:var(--mono);opacity:0.5;text-transform:uppercase">Hit Rate</div>
+                <div style="font-size:16px;opacity:0.7">🔥 ${st.ultra_hits||0} Mega Hit · 🎯 ${st.hits||0} Hit · 💀 ${st.denies||0} Denied</div>
+              </div>
+            </div>`;
+          }
+
+          // Weekly archive
+          if (subs.length) {
+            html += `<div style="font-size:13px;letter-spacing:2px;font-family:var(--mono);opacity:0.4;margin-bottom:12px;text-transform:uppercase">Archive</div>`;
+            subs.forEach(s => {
+              const total = (parseInt(s.ultra_hits)||0) + (parseInt(s.hits)||0) + (parseInt(s.denies)||0);
+              const votesHtml = total > 0
+                ? `<div style="display:flex;gap:12px;margin-top:8px;font-size:15px;opacity:0.7;font-family:var(--mono)">
+                    <span>🔥 ${s.ultra_hits||0} Mega Hit</span>
+                    <span>🎯 ${s.hits||0} Hit</span>
+                    <span>💀 ${s.denies||0} Denied</span>
+                   </div>`
+                : `<div style="font-size:13px;opacity:0.35;margin-top:4px;font-family:var(--mono)">no votes yet</div>`;
+
+              const playInline = s.spotify_url || s.youtube_url || s.apple_music_url || s.tidal_url || s.bandcamp_url
+                ? `<span onclick="openPlayModal(${JSON.stringify({title:s.title,artist:s.artist,spotifyUrl:s.spotify_url,youtubeUrl:s.youtube_url,appleMusicUrl:s.apple_music_url,tidalUrl:s.tidal_url,bandcampUrl:s.bandcamp_url}).replace(/"/g,'&quot;')})" style="font-size:16px;color:rgba(255,255,255,0.45);font-family:var(--mono);text-decoration:none;margin-left:6px;vertical-align:middle;cursor:pointer">▶</span>`
+                : '';
+
+              html += `<div style="padding:14px 16px;border-radius:10px;background:rgba(255,255,255,0.04);margin-bottom:10px">
+                ${s.theme ? `<div style="font-size:11px;letter-spacing:2px;font-family:var(--mono);opacity:0.6;text-transform:uppercase;margin-bottom:2px">${s.theme}</div>` : ''}
+                <div style="font-size:11px;letter-spacing:2px;font-family:var(--mono);opacity:0.35;text-transform:uppercase">Week ${s.week_number||'?'} Pick</div>
+                <div style="font-size:20px;font-weight:700;margin-top:4px">${s.title}${playInline}</div>
+                <div style="font-size:16px;opacity:0.7;margin-top:2px">${s.artist}</div>
+                ${s.curator_note ? `<div style="font-size:14px;opacity:0.5;margin-top:6px;font-style:italic">"${s.curator_note}"</div>` : ''}
+                ${votesHtml}
+              </div>`;
+            });
+          } else {
+            html += `<div style="font-size:11px;opacity:0.35;font-family:var(--mono);text-align:center;padding:16px 0">No picks yet.</div>`;
+          }
+
+          scorecardEl.innerHTML = html;
+        })
+        .catch(() => { scorecardEl.innerHTML = ''; });
+    }
+
+    if(c.image_url){
+      modalImg.innerHTML = `<img class="curator-modal-img" src="${c.image_url}" alt="${c.name}" onerror="this.parentNode.innerHTML='<div class=curator-modal-img-placeholder>${initials(c.name)}</div>'">`;
+    } else {
+      modalImg.innerHTML = `<div class="curator-modal-img-placeholder">${initials(c.name)}</div>`;
+    }
+
+    modalEl.querySelectorAll('.curator-confirm-btn,.curator-cotm-btn').forEach(b=>b.remove());
+
+    if(!previewOnly && onConfirm){
+      const confirmBtn = document.createElement('button');
+      confirmBtn.className = 'curator-confirm-btn';
+      confirmBtn.textContent = `Pick ${c.name.split(' ')[0]}`;
+      confirmBtn.style.cssText = `
+        display:block; width:calc(100% - 44px); margin:0 22px 20px;
+        padding:12px; border-radius:8px; border:none; cursor:pointer;
+        font-family:var(--display); font-size:18px; letter-spacing:3px;
+        background:var(--dial-ring); color:#fff; transition:opacity .2s;
+      `;
+      confirmBtn.addEventListener('click', ()=>{
+        modalBg.classList.remove('open');
+        modalEl.querySelectorAll('.curator-confirm-btn,.curator-cotm-btn').forEach(b=>b.remove());
+        onConfirm();
+      });
+      modalEl.appendChild(confirmBtn);
+    }
+
+    modalBg.classList.add('open');
+  }
+
+  async function askConsent(){
+    await botMsg(`Before I send anything — check the box. Weekly SMS only. Reply STOP anytime, no questions asked.`, 1000);
+    showInput('Ready?', '', 'text', true);
+    csend.onclick = submitConsent;
+    cfield.onkeydown = e=>{ if(e.key==='Enter') submitConsent(); };
+  }
+
+  async function submitConsent(){
+    const ok = document.getElementById('cons').checked;
+    if(!ok){ chint.textContent='⚠ Check the box first.'; chint.style.color='#ff6060'; return; }
+    chint.style.color='';
+    hideInput();
+    userMsg('Ready.');
+
+    try{
+      const params = new URLSearchParams({phone: curPhone});
+      if(ud.genre) params.append('genre', ud.genre);
+      const chk = await fetch(`/api/check_subscriber?${params}`);
+      const chkD = await chk.json();
+      if(chkD.exists && chkD.verified){
+        await botMsg(`${ud.name}. You're already on the list.`, 600);
+        await botMsg(`Friday drops are coming. Stay tuned. 📻`, 500);
+        await sleep(800);
+        document.getElementById('csicon').textContent = TICONS[theme]||'📻';
+        document.getElementById('csbadge').textContent = GLABELS[ud.genre]||ud.genre;
+        document.getElementById('cs-sub-text').textContent = 'First drop lands Friday.';
+        document.getElementById('csucc').classList.add('on');
+        setVU(true); spinKnobs(true);
+        return;
+      }
+    }catch(e){ console.warn('check_subscriber',e); }
+
+    await botMsg(`Sending a code to ${curPhone}…`, 500);
+    try{
+      const r = await fetch('/api/send_code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone:curPhone})});
+      const data = await r.json();
+      if(!r.ok||!data.ok) throw new Error(data.error||'Failed');
+      await botMsg(`It's in your messages. Six digits. Don't overthink it.`);
+      showOTP();
+    }catch(err){
+      await botMsg(`Something went sideways — ${err.message}. Try once more.`);
+      csend.onclick = submitConsent;
+    }
+  }
+
+  function showOTP(){
+    // Inject resend button into the input bar area
+    cfield.value=''; cfield.placeholder='123456'; cfield.type='number';
+    chint.innerHTML=''; consRow.style.display='none';
+    // Add resend btn if not present
+    if(!document.getElementById('resendBtn')){
+      const btn = document.createElement('button');
+      btn.id='resendBtn'; btn.type='button';
+      btn.style.cssText='font-family:var(--mono);font-size:9px;letter-spacing:1px;background:transparent;border:1px solid rgba(160,160,190,0.25);color:rgba(160,160,190,0.5);border-radius:4px;padding:3px 8px;cursor:pointer;margin-top:2px;transition:all .2s;';
+      btn.textContent='Resend (60s)';
+      btn.addEventListener('click', async()=>{
+        if(btn.disabled) return;
+        btn.textContent='Sending…';
+        try{
+          const r=await fetch('/api/send_code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone:curPhone})});
+          const d=await r.json();
+          if(r.ok&&d.ok){ startResend(); }
+          else{ btn.textContent='Failed — try again'; }
+        }catch(e){ btn.textContent='Error — try again'; }
+      });
+      document.querySelector('.cinput-row').after(btn);
+    }
+    cbar.classList.add('on');
+    startResend();
+    setTimeout(()=>cfield.focus(),200);
+    csend.onclick = submitCode;
+    cfield.onkeydown = e=>{ if(e.key==='Enter') submitCode(); };
+  }
+
+  async function submitCode(){
+    const code = cfield.value.trim();
+    if(!code||code.length<4){ chint.textContent='Enter the 6-digit code.'; return; }
+    hideInput(); userMsg(code);
+    // remove resend btn
+    document.getElementById('resendBtn')?.remove();
+    clearInterval(resendTimer);
+    await botMsg(`Checking…`, 400);
+    try{
+      const r = await fetch('/api/verify_code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone:curPhone, code, genre:ud.genre, curator_id:ud.curator||null})});
+      const data = await r.json();
+      if(!r.ok||!data.ok) throw new Error(data.error||'Invalid code');
+
+      // If they chose to follow the curator, save that too
+      if (ud.followCurator) {
+        try {
+          await fetch('/api/follows', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ phone: curPhone, curator_id: ud.followCurator })
+          });
+        } catch(e) { console.warn('follow save failed', e); }
+      }
+
+      // Save phone to localStorage for future curator card visits
+      localStorage.setItem('uht_phone', curPhone);
+
+      await botMsg(`You're in, ${ud.name}. ✅`, 1000);
+      await sleep(800);
+      await botMsg(`Check your phone — one last step. 📱`, 800);
+      await sleep(1200);
+
+      document.getElementById('csicon').textContent = TICONS[theme]||'📻';
+      const subText = ud.followCurator
+        ? `Friday ${ud.genre||''} drops + ${ud.cotmName||'curator'} Monday picks.`
+        : `Friday drops incoming.`;
+      document.getElementById('cs-sub-text').textContent = subText;
+
+      const yesBox = document.getElementById('cs-yes-box');
+      if (ud.followCurator) {
+        yesBox.innerHTML = `Reply <strong style="color:#fff">YES</strong> to confirm your Friday ${ud.genre||''} drops + ${ud.cotmName||'curator'}'s Monday picks.<br><strong style="color:rgba(160,160,190,0.6)">STOP</strong> anytime to unsubscribe.`;
+      } else {
+        yesBox.innerHTML = `Reply <strong style="color:#fff">YES</strong> to confirm and start your Friday drops.<br><strong style="color:rgba(160,160,190,0.6)">STOP</strong> anytime to unsubscribe.`;
+      }
+
+      document.getElementById('csbadge').textContent = ud.followCurator
+        ? `${GLABELS[ud.genre]||ud.genre||'UHT'} + ${ud.cotmName ? ud.cotmName.split(' ')[0] : 'Curator'}`
+        : GLABELS[ud.genre]||ud.genre||'UHT';
+      document.getElementById('csucc').classList.add('on');
+      setVU(true); spinKnobs(true);
+    }catch(err){
+      await botMsg(`That one didn't match. Try the code again.`);
+      showOTP();
+    }
+  }
+
+  // embers / confetti
+  function spawnEmbers(n=55){
+    embEl.innerHTML='';
+    for(let i=0;i<n;i++){
+      const e=document.createElement('div');e.className='ember';
+      const sz=2+Math.random()*8;
+      const fast=Math.random()>.6;
+      e.style.cssText=`left:${Math.random()*100}%;bottom:${Math.random()*3}vh;width:${sz}px;height:${sz}px;--dur:${fast?3+Math.random()*4:6+Math.random()*8}s;--dl:${Math.random()*6}s;--dx:${(Math.random()>.5?1:-1)*(10+Math.random()*80)}px;opacity:${0.6+Math.random()*0.4}`;
+      embEl.appendChild(e);
+    }
+  }
+  function spawnConfetti(n=40){
+    confEl.innerHTML='';
+    const cols=['#c8a0ff','#ff80d0','#80c0ff','#ffcc60','#80ffb0'];
+    for(let i=0;i<n;i++){
+      const e=document.createElement('div');e.className='speck';
+      const sz=3+Math.random()*5;
+      e.style.cssText=`left:${Math.random()*100}%;top:-10px;width:${sz}px;height:${sz*2}px;background:${cols[Math.floor(Math.random()*cols.length)]};opacity:${0.4+Math.random()*0.5};--fd:${6+Math.random()*10}s;--dl:${Math.random()*8}s`;
+      confEl.appendChild(e);
+    }
+  }
+
+  // theme
+  function setTheme(t){
+    theme=t; document.body.className='t-'+t;
+    ['bDark','bFire','bParty','bbDark','bbFire','bbParty'].forEach(id=>{
+      const n=id.replace(/^b{1,2}/,'').toLowerCase();
+      document.getElementById(id)?.classList.toggle('on',n===t);
+    });
+    if(t==='fire'){spawnEmbers(55);}else embEl.innerHTML='';
+    if(t==='party'){spawnConfetti(40);}else confEl.innerHTML='';
+    setNeedle(TNEEDLE[t], TFREQS[t], TBANDS[t]);
+    crossfade(TTRACKS[t]);
+    if(typeof snapTuneToTheme==='function') snapTuneToTheme(t);
+    try{localStorage.setItem('uht_t',t);}catch(_){}
+  }
+
+  document.getElementById('bDark') ?.addEventListener('click',()=>setTheme('dark'));
+  document.getElementById('bFire') ?.addEventListener('click',()=>setTheme('fire'));
+  document.getElementById('bParty')?.addEventListener('click',()=>setTheme('party'));
+  document.getElementById('bbDark') ?.addEventListener('click',()=>setTheme('dark'));
+  document.getElementById('bbFire') ?.addEventListener('click',()=>setTheme('fire'));
+  document.getElementById('bbParty')?.addEventListener('click',()=>setTheme('party'));
+
+  // ── VOL KNOB — click+drag to rotate, maps to real volume ──
+  let volLevel = 0;        // 0–100, starts at 0 (muted until first turn)
+  let knobAngle = -135;    // degrees, range -135 (min) to +135 (max)
+  const KNOB_MIN = -135, KNOB_MAX = 135;
+
+  function angleToVol(a){ return Math.round((a - KNOB_MIN) / (KNOB_MAX - KNOB_MIN) * 100); }
+  function applyVolKnob(angle){
+    knobAngle = Math.max(KNOB_MIN, Math.min(KNOB_MAX, angle));
+    volLevel  = angleToVol(knobAngle);
+    knobVol.style.transform = `rotate(${knobAngle}deg)`;
+    knobVol.style.transition = 'none';
+    if(volLevel === 0){
+      muted = true;
+      muteP(pA, true); muteP(pB, true);
+    } else {
+      if(muted){
+        muted = false;
+        muteP(pA, false); muteP(pB, false);
+        playP(pA); playP(pB);
+      }
+      const active = activeP==='A'?pA:pB;
+      setVol(active, volLevel);
+      setVol(activeP==='A'?pB:pA, 0);
+    }
+    updA();
+    // pulse VU with volume
+    document.querySelectorAll('.vu-bar').forEach(b=>{
+      b.style.opacity = volLevel===0 ? '0.15' : (0.3 + volLevel/100*0.7).toFixed(2);
+    });
+  }
+
+  (function initVolKnob(){
+    let dragging=false, startY=0, startAngle=knobAngle;
+    // set initial knob position (all the way left = silent)
+    knobVol.style.transform=`rotate(${knobAngle}deg)`;
+
+    knobVol.addEventListener('mousedown', e=>{
+      dragging=true; startY=e.clientY; startAngle=knobAngle;
+      e.preventDefault();
+      knobVol.style.cursor='grabbing';
+    });
+    knobVol.addEventListener('touchstart', e=>{
+      dragging=true; startY=e.touches[0].clientY; startAngle=knobAngle;
+      e.preventDefault();
+    }, {passive:false});
+
+    window.addEventListener('mousemove', e=>{
+      if(!dragging) return;
+      const delta = (startY - e.clientY) * 1.8; // px → degrees
+      applyVolKnob(startAngle + delta);
+    });
+    window.addEventListener('touchmove', e=>{
+      if(!dragging) return;
+      const delta = (startY - e.touches[0].clientY) * 1.8;
+      applyVolKnob(startAngle + delta);
+    }, {passive:false});
+
+    window.addEventListener('mouseup',  ()=>{ dragging=false; knobVol.style.cursor=''; });
+    window.addEventListener('touchend', ()=>{ dragging=false; });
+  })();
+
+  // ── TUNE KNOB — drag rotates through 3 detent positions, each = a theme ──
+  // Detents: Dark=-90°  Fire=0°  Party=+90°
+  const TUNE_DETENTS = { dark:-90, fire:0, party:90 };
+  const TUNE_THEMES  = [['dark',-90],['fire',0],['party',90]];
+  let tuneAngle = -90; // start on dark
+
+  function snapTuneToTheme(t){
+    tuneAngle = TUNE_DETENTS[t];
+    knobTune.style.transition = 'transform 0.35s cubic-bezier(0.34,1.56,0.64,1)';
+    knobTune.style.transform  = `rotate(${tuneAngle}deg)`;
+    setTimeout(()=>{ knobTune.style.transition='none'; }, 380);
+  }
+
+  (function initTuneKnob(){
+    let dragging=false, startY=0, startAngle=-90, pendingTheme=null;
+
+    function closestDetent(angle){
+      return TUNE_THEMES.reduce((best,[t,a])=>
+        Math.abs(angle-a) < Math.abs(angle-best[1]) ? [t,a] : best
+      );
+    }
+
+    function onMove(y){
+      if(!dragging) return;
+      const delta = (startY - y) * 1.4;
+      const raw   = Math.max(-130, Math.min(130, startAngle + delta));
+      tuneAngle   = raw;
+      knobTune.style.transition = 'none';
+      knobTune.style.transform  = `rotate(${raw}deg)`;
+      // highlight nearest theme without switching yet
+      const [nearest] = closestDetent(raw);
+      pendingTheme = nearest;
+    }
+
+    function onEnd(){
+      if(!dragging) return;
+      dragging = false;
+      knobTune.style.cursor = '';
+      if(pendingTheme && pendingTheme !== theme){
+        setTheme(pendingTheme);   // setTheme calls snapTuneToTheme internally
+      } else {
+        snapTuneToTheme(theme);   // snap back to current
+      }
+    }
+
+    knobTune.addEventListener('mousedown', e=>{
+      dragging=true; startY=e.clientY; startAngle=tuneAngle;
+      knobTune.style.cursor='grabbing'; e.preventDefault();
+    });
+    knobTune.addEventListener('touchstart', e=>{
+      dragging=true; startY=e.touches[0].clientY; startAngle=tuneAngle; e.preventDefault();
+    },{passive:false});
+    window.addEventListener('mousemove',  e=>onMove(e.clientY));
+    window.addEventListener('touchmove',  e=>onMove(e.touches[0].clientY),{passive:false});
+    window.addEventListener('mouseup',  onEnd);
+    window.addEventListener('touchend', onEnd);
+  })();
+
+  // ── CURATORS ──
+  (async function loadCurators(){
+    const strip = document.getElementById('curatorStrip');
+    const modalBg   = document.getElementById('curatorModalBg');
+    const modalClose = document.getElementById('curatorModalClose');
+    const modalName  = document.getElementById('curatorModalName');
+    const modalBio   = document.getElementById('curatorModalBio');
+    const modalImg   = document.getElementById('curatorModalImgWrap');
+
+    function openModal(c){
+      modalName.textContent = c.name || '';
+      modalBio.textContent  = c.bio  || 'No bio yet.';
+      const igEl2 = document.getElementById('curatorModalIg');
+      if (igEl2) {
+        igEl2.innerHTML = c.instagram
+          ? `<a href="https://instagram.com/${c.instagram.replace('@','')}" target="_blank" class="uht-ig-icon" title="@${c.instagram}"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg></a>`
+          : '';
+      }
+      const existingIg = document.getElementById('modalIgLink');
+      if(existingIg) existingIg.remove();
+      if(c.image_url){
+        modalImg.innerHTML = `<img class="curator-modal-img" src="${c.image_url}" alt="${c.name}" onerror="this.parentNode.innerHTML='<div class=curator-modal-img-placeholder>${initials(c.name)}</div>'"/>`;
+      } else {
+        modalImg.innerHTML = `<div class="curator-modal-img-placeholder">${initials(c.name)}</div>`;
+      }
+      // ── Scorecard
+      const scorecardEl = document.getElementById('curatorScorecard');
+      if (scorecardEl) {
+        scorecardEl.innerHTML = '<div style="opacity:0.4;font-size:11px;letter-spacing:2px;font-family:var(--mono);margin-bottom:8px">LOADING PICKS…</div>';
+        fetch('/api/curators/' + c.id + '/scorecard')
+          .then(r => r.json())
+          .then(data => {
+            const st = data.stats || {};
+            const subs = data.submissions || [];
+            const hitRate = st.hit_rate ? parseFloat(st.hit_rate) : 0;
+            const rateColor = hitRate >= 70 ? '#4ade80' : hitRate >= 40 ? '#facc15' : '#f87171';
+            const rateEmoji = hitRate >= 70 ? '🔥' : hitRate >= 40 ? '🔥' : '💀';
+
+            // ── Tier calculation
+            const songCount = subs.length;
+            let tier = { emoji: '🌙', label: 'Rising Curator' };
+            if (songCount >= 20 && hitRate >= 70)      tier = { emoji: '👑', label: 'Legend' };
+            else if (songCount >= 10 && hitRate >= 60) tier = { emoji: '🎧', label: 'Taste Maker' };
+            else if (songCount >= 5  && hitRate >= 50) tier = { emoji: '🔥', label: 'Hit Hunter' };
+
+            // Inject tier under name
+            const nameEl2 = document.getElementById('curatorModalName');
+            if (nameEl2 && !nameEl2.querySelector('.uht-tier')) {
+              const tierDiv = document.createElement('div');
+              tierDiv.className = 'uht-tier';
+              tierDiv.style.cssText = 'font-family:var(--mono);font-size:13px;letter-spacing:2px;opacity:0.6;margin-top:4px;margin-bottom:2px;text-transform:uppercase';
+              tierDiv.textContent = tier.emoji + ' ' + tier.label;
+              nameEl2.appendChild(tierDiv);
+            }
+            let html = '';
+            if (parseInt(st.total) > 0) {
+              html += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:14px 16px;border-radius:10px;background:rgba(255,255,255,0.07)">'
+                + '<div style="font-size:42px;font-weight:900;color:' + rateColor + ';font-family:var(--display)">' + hitRate + '%</div>'
+                + '<div><div style="font-size:13px;letter-spacing:2px;font-family:var(--mono);color:rgba(255,255,255,0.5);text-transform:uppercase">Hit Rate</div>'
+                + '<div style="font-size:16px;color:rgba(255,255,255,0.8)">🔥 ' + (st.ultra_hits||0) + ' Mega Hit · 🎯 ' + (st.hits||0) + ' Hit · 💀 ' + (st.denies||0) + ' Denied</div></div></div>';
+            }
+            if (subs.length) {
+              html += '<div style="font-size:13px;letter-spacing:2px;font-family:var(--mono);color:rgba(255,255,255,0.4);margin-bottom:12px;text-transform:uppercase">Archive</div>';
+              subs.forEach(function(s) {
+                const total = (parseInt(s.ultra_hits)||0) + (parseInt(s.hits)||0) + (parseInt(s.denies)||0);
+                const votesHtml = total > 0
+                  ? '<div style="display:flex;gap:12px;margin-top:8px;font-size:15px;color:rgba(255,255,255,0.7);font-family:var(--mono)"><span>🔥 ' + (s.ultra_hits||0) + ' Mega Hit</span><span>🎯 ' + (s.hits||0) + ' Hit</span><span>💀 ' + (s.denies||0) + ' Denied</span></div>'
+                  : '<div style="font-size:13px;color:rgba(255,255,255,0.35);margin-top:4px;font-family:var(--mono)">no votes yet</div>';
+                const playInline2 = (s.spotify_url || s.youtube_url || s.apple_music_url || s.tidal_url || s.bandcamp_url)
+                  ? '<span onclick=\'openPlayModal(' + JSON.stringify({title:s.title,artist:s.artist,spotifyUrl:s.spotify_url,youtubeUrl:s.youtube_url,appleMusicUrl:s.apple_music_url,tidalUrl:s.tidal_url,bandcampUrl:s.bandcamp_url}).replace(/'/g,"&#39;") + ')\' style="font-size:16px;color:rgba(255,255,255,0.45);font-family:var(--mono);text-decoration:none;margin-left:6px;vertical-align:middle;cursor:pointer">▶</span>'
+                  : '';
+                html += '<div style="padding:14px 16px;border-radius:10px;background:rgba(255,255,255,0.06);margin-bottom:10px">'
+                  + (s.theme ? '<div style="font-size:11px;letter-spacing:2px;font-family:var(--mono);color:rgba(255,255,255,0.6);text-transform:uppercase;margin-bottom:2px">' + s.theme + '</div>' : '')
+                  + '<div style="font-size:11px;letter-spacing:2px;font-family:var(--mono);color:rgba(255,255,255,0.35);text-transform:uppercase">Week ' + (s.week_number||'?') + ' Pick</div>'
+                  + '<div style="font-size:20px;font-weight:700;margin-top:4px;color:rgba(255,255,255,0.95)">' + s.title + playInline2 + '</div>'
+                  + '<div style="font-size:16px;color:rgba(255,255,255,0.65);margin-top:2px">' + s.artist + '</div>'
+                  + (s.curator_note ? '<div style="font-size:14px;color:rgba(255,255,255,0.5);margin-top:6px;font-style:italic">&ldquo;' + s.curator_note + '&rdquo;</div>' : '')
+                  + votesHtml + '</div>';
+              });
+            } else {
+              html += '<div style="font-size:13px;color:rgba(255,255,255,0.35);font-family:var(--mono);text-align:center;padding:16px 0">No picks yet.</div>';
+            }
+            scorecardEl.innerHTML = html;
+          })
+          .catch(function() { scorecardEl.innerHTML = ''; });
+      }
+      modalBg.classList.add('open');
+    }
+    function closeModal(){ modalBg.classList.remove('open'); }
+    modalClose?.addEventListener('click', closeModal);
+    modalBg?.addEventListener('click', e=>{ if(e.target===modalBg) closeModal(); });
+    document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
+
+    function initials(name=''){
+      return name.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase() || '?';
+    }
+
+    try {
+      const r = await fetch('/api/curators');
+      const d = await r.json();
+      const curators = d.curators || [];
+      if(!curators.length){
+        strip.innerHTML = ''; // hide strip entirely if no curators
+        return;
+      }
+      // keep the label, add avatars
+      curators.forEach(c=>{
+        const el = document.createElement('div');
+        el.className = 'curator-avatar';
+        el.title = c.name;
+        el.innerHTML = `
+          <div class="curator-ring">
+            ${c.image_url
+              ? `<img src="${c.image_url}" alt="${c.name}" onerror="this.parentNode.innerHTML='<span class=curator-initials>${initials(c.name)}</span>'">`
+              : `<span class="curator-initials">${initials(c.name)}</span>`}
+          </div>
+          <div class="curator-name-tag">${c.name.split(' ')[0]}</div>
+          ${c.instagram ? `<a class="curator-ig" href="https://instagram.com/${c.instagram.replace('@','')}" target="_blank" onclick="event.stopPropagation()">@${c.instagram.replace('@','')}</a>` : ''}
+        `;
+        el.addEventListener('click', ()=>openModal(c));
+        strip.appendChild(el);
+      });
+    } catch(e) {
+      strip.innerHTML = ''; // hide on error
+    }
+  })();
+
+  // ── GENRES ──
+  let pA=null,pB=null,rA=false,rB=false,activeP='A',muted=true,queued=null;
+  const updA=()=>{
+    const pct = Math.round((knobAngle-KNOB_MIN)/(KNOB_MAX-KNOB_MIN)*100);
+    abtn.textContent = muted||pct===0 ? '♪ audio off' : `♪ vol ${pct}%`;
+  };
+  const tryP=fn=>{try{fn();}catch(_){}};
+  const setVol=(p,v)=>tryP(()=>p?.setVolume?.(v));
+  const muteP=(p,m)=>tryP(()=>m?p?.mute():p?.unMute());
+  const playP=p=>tryP(()=>p?.playVideo?.());
+  const pauseP=p=>tryP(()=>p?.pauseVideo?.());
+  const loadP=(p,id)=>tryP(()=>p?.loadVideoById?.({videoId:id,startSeconds:0}));
+
+  function crossfade(id){
+    if(!id)return; if(!(rA&&rB)){queued=id;return;}
+    const from=activeP==='A'?pA:pB, to=activeP==='A'?pB:pA;
+    loadP(to,id); playP(to); muteP(to,muted); setVol(to,0); let t0=null;
+    (function step(ts){
+      if(!t0)t0=ts; const k=Math.min(1,(ts-t0)/800);
+      if(!muted){ setVol(to,Math.round(volLevel*k)); setVol(from,Math.round(volLevel*(1-k))); }
+      k<1?requestAnimationFrame(step):(muted||(setVol(to,volLevel),setVol(from,0)),pauseP(from),activeP=activeP==='A'?'B':'A');
+    })(performance.now());
+  }
+
+  window.onYouTubeIframeAPIReady=function(){
+    const base={width:'100%',height:'100%',videoId:TTRACKS.dark,playerVars:{autoplay:1,controls:0,disablekb:1,fs:0,rel:0,modestbranding:1,playsinline:1,mute:1}};
+    pA=new YT.Player('ytA',{...base,events:{
+      onReady:e=>{ rA=true; playP(e.target); abtn.classList.add('on'); if(rA&&rB&&queued){crossfade(queued);queued=null;} },
+      onStateChange:e=>{ if(e.data===YT.PlayerState.ENDED){tryP(()=>e.target.seekTo(0));playP(e.target);} }
+    }});
+    pB=new YT.Player('ytB',{...base,playerVars:{...base.playerVars,autoplay:0},events:{
+      onReady:e=>{ rB=true; if(rA&&rB&&queued){crossfade(queued);queued=null;} },
+      onStateChange:e=>{ if(e.data===YT.PlayerState.ENDED){tryP(()=>e.target.seekTo(0));playP(e.target);} }
+    }});
+  };
+  if(window.YT&&typeof YT.Player==='function')window.onYouTubeIframeAPIReady();
+
+  // audio toggle button still works as a mute toggle
+  abtn?.addEventListener('click',()=>{
+    if(volLevel===0){ // knob at zero — nudge it up a bit
+      applyVolKnob(0);
+    } else {
+      muted=!muted; muteP(pA,muted); muteP(pB,muted);
+      if(!muted){ playP(pA); playP(pB); setVol(activeP==='A'?pA:pB, volLevel); }
+    }
+    updA();
+  });
+
+  let saved;try{saved=localStorage.getItem('uht_t');}catch(_){}
+  setTheme(saved||'dark');
+  start();updA();
+})();
+</script>
+
+<!-- ═══════════════════════════════════════════════════════
+     UHT SHARE SYSTEM
+════════════════════════════════════════════════════════ -->
+<style>
+/* Share button */
+.uht-follow-btn {
+  display:inline-flex;align-items:center;gap:5px;
+  padding:5px 12px;border-radius:999px;
+  border:1px solid rgba(255,255,255,0.15);
+  background:rgba(255,255,255,0.04);
+  color:rgba(255,255,255,0.55);font-family:var(--mono);
+  font-size:11px;letter-spacing:1px;cursor:pointer;
+  transition:all 0.2s;
+}
+.uht-follow-btn:hover{background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.8);}
+.uht-follow-btn.following{
+  background:rgba(100,220,120,0.1);border-color:rgba(100,220,120,0.3);
+  color:rgba(100,220,120,0.9);
+}
+.uht-ig-icon {
+  display:inline-flex;align-items:center;justify-content:center;
+  width:28px;height:28px;border-radius:8px;
+  border:1px solid rgba(255,255,255,0.12);
+  background:rgba(255,255,255,0.04);
+  color:rgba(255,255,255,0.45);font-size:14px;
+  text-decoration:none;transition:all 0.2s;
+}
+.uht-ig-icon:hover{background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.8);}
+
+.uht-share-btn {
+  display:inline-flex;align-items:center;gap:6px;
+  padding:7px 14px;border-radius:999px;
+  border:1px solid rgba(255,255,255,0.2);
+  background:rgba(255,255,255,0.07);
+  color:rgba(255,255,255,0.8);font-family:var(--mono);
+  font-size:13px;letter-spacing:1px;cursor:pointer;
+  transition:background 0.2s,border-color 0.2s;
+}
+.uht-share-btn:hover{background:rgba(255,255,255,0.14);border-color:rgba(255,255,255,0.35);}
+.uht-share-pick-btn {
+  display:inline-flex;align-items:center;gap:5px;
+  padding:4px 10px;border-radius:999px;
+  border:1px solid rgba(255,255,255,0.15);
+  background:rgba(255,255,255,0.05);
+  color:rgba(255,255,255,0.6);font-family:var(--mono);
+  font-size:11px;letter-spacing:1px;cursor:pointer;
+  transition:background 0.2s;margin-top:8px;
+}
+.uht-share-pick-btn:hover{background:rgba(255,255,255,0.12);}
+
+/* Share menu */
+.uht-share-menu-bg {
+  position:fixed;inset:0;z-index:9000;
+  background:rgba(0,0,0,0.7);
+  display:flex;align-items:flex-end;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity 0.2s;
+}
+.uht-share-menu-bg.open{opacity:1;pointer-events:all;}
+.uht-share-menu {
+  background:#1a1a1a;border:1px solid rgba(255,255,255,0.1);
+  border-radius:18px 18px 0 0;padding:24px 20px 36px;
+  width:100%;max-width:480px;
+  transform:translateY(40px);transition:transform 0.25s;
+}
+.uht-share-menu-bg.open .uht-share-menu{transform:translateY(0);}
+.uht-share-menu-title{font-family:var(--mono);font-size:11px;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,0.35);text-align:center;margin-bottom:20px;}
+.uht-share-options{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.uht-share-opt {
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  padding:16px 10px;border-radius:12px;
+  background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);
+  cursor:pointer;transition:background 0.15s;
+  font-family:var(--mono);font-size:12px;color:rgba(255,255,255,0.7);
+  letter-spacing:1px;
+}
+.uht-share-opt:hover{background:rgba(255,255,255,0.12);}
+.uht-share-opt .icon{font-size:24px;}
+.uht-share-cancel{display:block;width:100%;margin-top:14px;padding:12px;
+  background:none;border:1px solid rgba(255,255,255,0.1);border-radius:10px;
+  color:rgba(255,255,255,0.4);font-family:var(--mono);font-size:12px;
+  letter-spacing:2px;cursor:pointer;text-transform:uppercase;
+  transition:background 0.15s;}
+.uht-share-cancel:hover{background:rgba(255,255,255,0.05);}
+
+/* Hidden canvas for card generation */
+#uhtShareCanvas{display:none;}
+</style>
+
+<!-- Share menu overlay -->
+<div class="uht-share-menu-bg" id="uhtShareMenuBg">
+  <div class="uht-share-menu">
+    <div class="uht-share-menu-title" id="uhtShareMenuTitle">Share</div>
+    <div class="uht-share-options">
+      <div class="uht-share-opt" onclick="uhtShareAction('copy')">
+        <span class="icon">🔗</span>Copy Link
+      </div>
+      <div class="uht-share-opt" onclick="uhtShareAction('twitter')">
+        <span class="icon">𝕏</span>Share to X
+      </div>
+      <div class="uht-share-opt" onclick="uhtShareAction('instagram')">
+        <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg></span>Instagram
+      </div>
+      <div class="uht-share-opt" onclick="uhtShareAction('download')">
+        <span class="icon">⬇</span>Download Card
+      </div>
+    </div>
+    <button class="uht-share-cancel" onclick="closeShareMenu()">Cancel</button>
+  </div>
+</div>
+
+<canvas id="uhtShareCanvas"></canvas>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  UHT SHARE SYSTEM
+// ═══════════════════════════════════════════════════════
+let _shareCtx = null; // current share context: {type, curator, pick}
+
+function openShareMenu(title) {
+  document.getElementById('uhtShareMenuTitle').textContent = title || 'Share';
+  document.getElementById('uhtShareMenuBg').classList.add('open');
+}
+function closeShareMenu() {
+  document.getElementById('uhtShareMenuBg').classList.remove('open');
+}
+document.getElementById('uhtShareMenuBg').addEventListener('click', function(e){
+  if(e.target === this) closeShareMenu();
+});
+
+// ── Curator profile share ─────────────────────────────
+// ── Playback Modal ────────────────────────────────────
+function openPlayModal(track) {
+  const modal = document.getElementById('uhtPlayModal');
+  document.getElementById('uhtPlayTitle').textContent = track.title || '';
+  document.getElementById('uhtPlayArtist').textContent = track.artist || '';
+
+  const ytWrap = document.getElementById('uhtPlayYT');
+  const btns = document.getElementById('uhtPlayButtons');
+  ytWrap.style.display = 'none';
+  ytWrap.innerHTML = '';
+  btns.innerHTML = '';
+
+  if (track.youtubeUrl) {
+    // Extract video ID and embed
+    const match = track.youtubeUrl.match(/(?:v=|youtu\.be\/)([^&?/]+)/);
+    const vid = match ? match[1] : null;
+    if (vid) {
+      ytWrap.style.display = 'block';
+      ytWrap.innerHTML = `<iframe width="100%" height="100%" src="https://www.youtube.com/embed/${vid}?autoplay=1" frameborder="0" allow="autoplay;encrypted-media" allowfullscreen></iframe>`;
+    }
+  } else if (track.spotifyUrl) {
+    btns.innerHTML = playBtn('🎵 Play on Spotify', track.spotifyUrl, '#1DB954');
+  } else if (track.appleMusicUrl) {
+    btns.innerHTML = playBtn('🎵 Play on Apple Music', track.appleMusicUrl, '#fc3c44');
+  } else if (track.tidalUrl) {
+    btns.innerHTML = playBtn('🎵 Play on TIDAL', track.tidalUrl, '#00ffff', '#000');
+  } else if (track.bandcampUrl) {
+    btns.innerHTML = playBtn('🎵 Support on Bandcamp', track.bandcampUrl, '#1da0c3');
+  } else {
+    btns.innerHTML = '<div style="font-family:var(--mono);font-size:14px;color:rgba(255,255,255,0.35);text-align:center;padding:8px 0">No playback source available.</div>';
+  }
+
+  modal.style.display = 'flex';
+}
+
+function playBtn(label, url, bg, color) {
+  return `<a href="${url}" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:14px;border-radius:12px;background:${bg};color:${color||'#fff'};font-family:var(--mono);font-size:15px;font-weight:600;text-decoration:none;letter-spacing:1px;transition:opacity 0.2s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">${label}</a>`;
+}
+
+function closePlayModal() {
+  const modal = document.getElementById('uhtPlayModal');
+  modal.style.display = 'none';
+  document.getElementById('uhtPlayYT').innerHTML = ''; // stop video
+}
+
+document.getElementById('uhtPlayModal').addEventListener('click', function(e) {
+  if (e.target === this) closePlayModal();
+});
+
+
+let _followCuratorId = null;
+
+function handleFollowClick() {
+  const input = document.getElementById('curatorPhoneInput');
+  const btn = document.getElementById('curatorFollowBtn');
+  if (input.style.display === 'none' || input.style.display === '') {
+    input.style.display = 'block';
+    document.getElementById('followPhoneField').value = '';
+    document.getElementById('followPhoneField').focus();
+    btn.style.display = 'none';
+  } else {
+    input.style.display = 'none';
+    btn.style.display = 'inline-flex';
+  }
+}
+
+async function confirmFollow() {
+  const raw = document.getElementById('followPhoneField').value.trim();
+  if (!raw) return showShareToast('Enter your phone number');
+
+  // Normalize — add +1 if no country code
+  let phone = raw.replace(/\D/g, '');
+  if (phone.length === 10) phone = '+1' + phone;
+  else if (phone.length === 11 && phone[0] === '1') phone = '+' + phone;
+  else phone = '+' + phone;
+
+  try {
+    // Check if already following
+    const checkRes = await fetch(`/api/follows/check?phone=${encodeURIComponent(phone)}&curator_id=${_followCuratorId}`);
+    const checkData = await checkRes.json();
+
+    if (checkData.following) {
+      localStorage.setItem('uht_phone', phone);
+      showFollowingState();
+      showShareToast('You\'re already following! 🔥');
+      return;
+    }
+
+    // Save follow
+    const r = await fetch('/api/follows', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ phone, curator_id: _followCuratorId })
+    });
+
+    if (r.ok) {
+      localStorage.setItem('uht_phone', phone);
+      showFollowingState();
+      const curatorName = document.getElementById('curatorModalName')?.querySelector('div')?.textContent
+        || document.getElementById('curatorModalName')?.textContent || '';
+      document.getElementById('followConfirmName').textContent = curatorName;
+      document.getElementById('followConfirmModal').style.display = 'flex';
+    } else {
+      showShareToast('Something went wrong. Try again.');
+    }
+  } catch(e) { showShareToast('Could not connect. Check your connection.'); }
+}
+
+function showFollowingState() {
+  document.getElementById('curatorPhoneInput').style.display = 'none';
+  document.getElementById('curatorFollowBtn').style.display = 'none';
+  document.getElementById('curatorFollowPerks').style.display = 'block';
+}
+
+async function handleUnfollow() {
+  const phone = localStorage.getItem('uht_phone');
+  try {
+    if (phone) {
+      await fetch('/api/follows', {
+        method: 'DELETE',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ phone, curator_id: _followCuratorId })
+      });
+    }
+  } catch(e) {}
+  document.getElementById('curatorFollowPerks').style.display = 'none';
+  document.getElementById('curatorFollowBtn').style.display = 'inline-flex';
+  document.getElementById('curatorFollowBtn').textContent = '+ Follow';
+  showShareToast('Unfollowed');
+}
+
+function closeFollowConfirm() {
+  document.getElementById('followConfirmModal').style.display = 'none';
+}
+
+async function checkFollowStatus(curatorId, phone) {
+  if (!phone) return false;
+  try {
+    const r = await fetch(`/api/follows/check?phone=${encodeURIComponent(phone)}&curator_id=${curatorId}`);
+    const data = await r.json();
+    return data.following;
+  } catch(e) { return false; }
+}
+
+function openCuratorShare() {
+  const name = document.getElementById('curatorModalName').textContent;
+  _shareCtx = { type: 'profile', curatorName: name };
+  openShareMenu('Share ' + name);
+}
+
+// ── Pick share (injected into each card) ─────────────
+function openPickShare(data) {
+  _shareCtx = { type: 'pick', ...data };
+  openShareMenu('Share Pick');
+}
+
+// ── Action dispatcher ─────────────────────────────────
+async function uhtShareAction(action) {
+  const ctx = _shareCtx;
+  if (!ctx) return;
+
+  const baseUrl = window.location.origin;
+  const profileUrl = baseUrl + '/uht-radio.html';
+
+  if (action === 'copy') {
+    await navigator.clipboard.writeText(profileUrl).catch(()=>{});
+    showShareToast('Link copied!');
+    closeShareMenu();
+    return;
+  }
+
+  if (action === 'twitter') {
+    let text = '';
+    if (ctx.type === 'profile') {
+      text = '🎧 Check out ' + ctx.curatorName + "'s picks on Undeniable Hit Theory";
+    } else {
+      text = '🔥 ' + ctx.title + ' by ' + ctx.artist + ' — curated by ' + ctx.curatorName + ' on Undeniable Hit Theory';
+    }
+    window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent(profileUrl), '_blank');
+    closeShareMenu();
+    return;
+  }
+
+  if (action === 'instagram') {
+    // Generate card, copy to clipboard prompt
+    const dataUrl = await generateShareCard(ctx);
+    showShareToast('Image ready — save it then post to Instagram!');
+    triggerDownload(dataUrl, 'uht-share.png');
+    closeShareMenu();
+    return;
+  }
+
+  if (action === 'download') {
+    const dataUrl = await generateShareCard(ctx);
+    const name = ctx.type === 'pick'
+      ? (ctx.title || 'pick').replace(/\s+/g,'-').toLowerCase()
+      : (ctx.curatorName || 'curator').replace(/\s+/g,'-').toLowerCase();
+    triggerDownload(dataUrl, 'uht-' + name + '.png');
+    closeShareMenu();
+    return;
+  }
+}
+
+function triggerDownload(dataUrl, filename) {
+  const a = document.createElement('a');
+  a.href = dataUrl; a.download = filename;
+  a.click();
+}
+
+// ── Toast ──────────────────────────────────────────────
+function showShareToast(msg) {
+  let t = document.getElementById('uhtToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'uhtToast';
+    t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#222;color:#fff;font-family:monospace;font-size:13px;padding:10px 20px;border-radius:999px;z-index:9999;letter-spacing:1px;transition:opacity 0.3s;pointer-events:none;';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => t.style.opacity = '0', 2500);
+}
+
+// ── Card generator ─────────────────────────────────────
+async function generateShareCard(ctx) {
+  const canvas = document.getElementById('uhtShareCanvas');
+  const modal = document.getElementById('curatorModal');
+  const W = modal ? modal.offsetWidth : 400;
+  const H = modal ? modal.offsetHeight : 600;
+  canvas.width = W; canvas.height = H;
+  const c = canvas.getContext('2d');
+
+  // Background
+  c.fillStyle = '#0d0d0d';
+  c.fillRect(0, 0, W, H);
+
+  // Subtle grid
+  c.strokeStyle = 'rgba(255,255,255,0.03)';
+  c.lineWidth = 1;
+  for(let x=0;x<W;x+=60){c.beginPath();c.moveTo(x,0);c.lineTo(x,H);c.stroke();}
+  for(let y=0;y<H;y+=60){c.beginPath();c.moveTo(0,y);c.lineTo(W,y);c.stroke();}
+
+  // Top accent bar
+  c.fillStyle = '#c0392b';
+  c.fillRect(0, 0, W, 8);
+
+  if (ctx.type === 'profile') {
+    await drawProfileCard(c, ctx, W, H);
+  } else {
+    await drawPickCard(c, ctx, W, H);
+  }
+
+  // Bottom branding
+  c.fillStyle = 'rgba(255,255,255,0.2)';
+  c.font = '500 13px monospace';
+  c.textAlign = 'center';
+  c.fillText('UNDENIABLE HIT THEORY', W/2, H - 22);
+  c.fillStyle = 'rgba(255,255,255,0.1)';
+  c.font = '11px monospace';
+  c.fillText('undeniablehittheory.com', W/2, H - 8);
+
+  return canvas.toDataURL('image/png');
+}
+
+async function drawProfileCard(c, ctx, W, H) {
+  // Try to load profile image
+  const imgEl = document.querySelector('#curatorModalImgWrap img');
+  if (imgEl) {
+    try {
+      const img = await loadImg(imgEl.src);
+      // Draw image top half
+      c.save();
+      roundRect(c, 60, 60, W-120, 420, 20);
+      c.clip();
+      c.drawImage(img, 60, 60, W-120, 420);
+      c.restore();
+      // Gradient overlay
+      const grad = c.createLinearGradient(0, 300, 0, 480);
+      grad.addColorStop(0, 'rgba(13,13,13,0)');
+      grad.addColorStop(1, 'rgba(13,13,13,1)');
+      c.fillStyle = grad;
+      c.fillRect(60, 300, W-120, 180);
+    } catch(e){}
+  }
+
+  // Curator name
+  c.fillStyle = '#ffffff';
+  c.font = 'bold 32px serif';
+  c.textAlign = 'center';
+  c.fillText((ctx.curatorName||'').toUpperCase(), W/2, H*0.52);
+
+  // Hit rate from DOM
+  const rateEl = document.querySelector('#curatorScorecard [style*="font-size:42px"]');
+  const rate = rateEl ? rateEl.textContent : '';
+  if (rate) {
+    c.fillStyle = '#4ade80';
+    c.font = 'bold 56px monospace';
+    c.textAlign = 'center';
+    c.fillText(rate, W/2, H*0.67);
+    c.fillStyle = 'rgba(255,255,255,0.4)';
+    c.font = '14px monospace';
+    c.fillText('HIT RATE', W/2, H*0.72);
+  }
+}
+
+async function drawPickCard(c, ctx, W, H) {
+  c.fillStyle = 'rgba(255,255,255,0.15)';
+  c.font = 'bold 64px serif';
+  c.textAlign = 'center';
+  c.fillText('🎵', W/2, H*0.22);
+
+  c.fillStyle = '#ffffff';
+  c.font = 'bold 28px serif';
+  c.textAlign = 'center';
+  wrapText(c, ctx.title || '', W/2, H*0.36, W - 60, 34);
+
+  c.fillStyle = 'rgba(255,255,255,0.55)';
+  c.font = '20px monospace';
+  c.textAlign = 'center';
+  c.fillText(ctx.artist || '', W/2, H*0.48);
+
+  if (ctx.note) {
+    c.fillStyle = 'rgba(255,255,255,0.35)';
+    c.font = 'italic 16px serif';
+    c.textAlign = 'center';
+    wrapText(c, '"' + ctx.note + '"', W/2, H*0.57, W - 80, 22);
+  }
+
+  c.fillStyle = 'rgba(255,255,255,0.25)';
+  c.font = '13px monospace';
+  c.textAlign = 'center';
+  c.fillText('curated by ' + (ctx.curatorName||'').toUpperCase(), W/2, H*0.68);
+
+  const votes = '🔥 ' + (ctx.ultraHits||0) + ' Mega Hit   🎯 ' + (ctx.hits||0) + ' Hit   💀 ' + (ctx.denies||0) + ' Denied';
+  c.fillStyle = 'rgba(255,255,255,0.5)';
+  c.font = '18px monospace';
+  c.textAlign = 'center';
+  c.fillText(votes, W/2, H*0.76);
+}
+
+// ── Helpers ───────────────────────────────────────────
+function loadImg(src) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => res(img);
+    img.onerror = rej;
+    img.src = src;
+  });
+}
+function roundRect(c, x, y, w, h, r) {
+  c.beginPath();
+  c.moveTo(x+r, y);
+  c.lineTo(x+w-r, y); c.arcTo(x+w,y,x+w,y+r,r);
+  c.lineTo(x+w,y+h-r); c.arcTo(x+w,y+h,x+w-r,y+h,r);
+  c.lineTo(x+r,y+h); c.arcTo(x,y+h,x,y+h-r,r);
+  c.lineTo(x,y+r); c.arcTo(x,y,x+r,y,r);
+  c.closePath();
+}
+function wrapText(c, text, x, y, maxW, lineH) {
+  const words = text.split(' ');
+  let line = '';
+  for (let n=0; n<words.length; n++) {
+    const test = line + words[n] + ' ';
+    if (c.measureText(test).width > maxW && n > 0) {
+      c.fillText(line, x, y); line = words[n] + ' '; y += lineH;
+    } else { line = test; }
+  }
+  c.fillText(line, x, y);
+}
+
+// ── Inject "Share Pick" into each song card ────────────
+// Called after scorecard renders
+function injectPickShareButtons() {
+  const curatorName = document.getElementById('curatorModalName').textContent;
+  const scorecard = document.getElementById('curatorScorecard');
+  if (!scorecard) return;
+
+  // Find all song cards by their structure
+  const cards = scorecard.querySelectorAll('div[style*="border-radius:10px"][style*="background"]');
+  cards.forEach(card => {
+    if (card.querySelector('.uht-share-pick-btn')) return; // already added
+    // Extract data from card DOM
+    const titleEl = card.querySelector('[style*="font-size:20px"]');
+    const artistEl = card.querySelector('[style*="font-size:16px"]');
+    const noteEl = card.querySelector('[style*="font-style:italic"]');
+    const voteEls = card.querySelectorAll('[style*="font-size:15px"] span');
+
+    if (!titleEl) return;
+
+    const data = {
+      curatorName,
+      title: titleEl.textContent,
+      artist: artistEl ? artistEl.textContent : '',
+      note: noteEl ? noteEl.textContent.replace(/[""]/g,'') : '',
+      ultraHits: voteEls[0] ? voteEls[0].textContent.replace(/[^0-9]/g,'') : 0,
+      hits: voteEls[1] ? voteEls[1].textContent.replace(/[^0-9]/g,'') : 0,
+      denies: voteEls[2] ? voteEls[2].textContent.replace(/[^0-9]/g,'') : 0,
+    };
+
+    const btn = document.createElement('button');
+    btn.className = 'uht-share-pick-btn';
+    btn.textContent = '⤴ Share Pick';
+    btn.onclick = () => openPickShare(data);
+    card.appendChild(btn);
+  });
+}
+
+// Hook into scorecard render — observe DOM changes
+const _scObserver = new MutationObserver(() => injectPickShareButtons());
+const _sc = document.getElementById('curatorScorecard');
+if (_sc) _scObserver.observe(_sc, { childList: true, subtree: true });
+</script>
+</body>
+</html>
