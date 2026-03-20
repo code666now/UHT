@@ -1,2 +1,6 @@
 node_modules
 .env
+patch-*.js
+.env.save
+server.log
+data-dump.sql
