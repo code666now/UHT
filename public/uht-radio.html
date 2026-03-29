@@ -1452,9 +1452,7 @@
           // ── Tier calculation
           const songCount = subs.length;
           let tier = { emoji: '🌙', label: 'Rising Curator' };
-          if (songCount >= 20 && hitRate >= 70)      tier = { emoji: '👑', label: 'Legend' };
-          else if (songCount >= 10 && hitRate >= 60) tier = { emoji: '🎧', label: 'Taste Maker' };
-          else if (songCount >= 5  && hitRate >= 50) tier = { emoji: '🔥', label: 'Hit Hunter' };
+          if (data.tier) tier = { emoji: data.tier.split(' ')[0], label: data.tier.split(' ').slice(1).join(' ') };
 
           // Inject tier under name
           const nameEl = document.getElementById('curatorModalName');
@@ -1878,9 +1876,7 @@
             // ── Tier calculation
             const songCount = subs.length;
             let tier = { emoji: '🌙', label: 'Rising Curator' };
-            if (songCount >= 20 && hitRate >= 70)      tier = { emoji: '👑', label: 'Legend' };
-            else if (songCount >= 10 && hitRate >= 60) tier = { emoji: '🎧', label: 'Taste Maker' };
-            else if (songCount >= 5  && hitRate >= 50) tier = { emoji: '🔥', label: 'Hit Hunter' };
+            if (data.tier) tier = { emoji: data.tier.split(' ')[0], label: data.tier.split(' ').slice(1).join(' ') };
 
             // Inject tier under name
             const nameEl2 = document.getElementById('curatorModalName');

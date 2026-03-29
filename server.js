@@ -1802,7 +1802,30 @@ app.get('/api/curators/:id/scorecard', async (req, res) => {
       GROUP BY cs.id
       ORDER BY cs.week_number DESC, cs.submitted_at DESC`, [id]);
 
-    res.json({ stats: stats.rows[0], submissions: submissions.rows });
+    // Combined lifetime hits from both SMS votes and web votes
+    const combinedHits = await db.query(`
+      SELECT
+        COALESCE((
+          SELECT COUNT(*) FROM song_votes
+          WHERE curator_id=$1 AND vote_type IN ('hit','mega_hit','ultra_hit')
+        ),0)
+        +
+        COALESCE((
+          SELECT COUNT(*) FROM curator_submission_votes
+          WHERE submission_id IN (
+            SELECT id FROM curator_submissions WHERE curator_id=$1
+          ) AND vote='hit'
+        ),0) AS total_hits
+    `, [id]);
+
+    const totalHits = parseInt(combinedHits.rows[0].total_hits, 10);
+    const tier =
+      totalHits >= 28 ? '🏆 Legend' :
+      totalHits >= 18 ? '👑 Tastemaker' :
+      totalHits >= 8  ? '🎯 Hit Hunter' :
+                        '🌙 Rising Curator';
+
+    res.json({ stats: stats.rows[0], submissions: submissions.rows, totalHits, tier });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
