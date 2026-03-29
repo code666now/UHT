@@ -1429,14 +1429,27 @@ function castVote(type){
 });
 
 
-// ── POST /api/genre-vote (temporary: log only, no DB write) ──
+// ── POST /api/genre-vote ─────────────────────────────────────
 app.post('/api/genre-vote', async (req, res) => {
   const { submission_id, vote } = req.body;
-  console.log('[genre-vote]', { submission_id, vote });
   if (!submission_id || !vote) {
     return res.status(400).json({ error: 'submission_id and vote are required.' });
   }
-  res.json({ ok: true });
+  const dbVote = vote === 'mega_hit' ? 'hit' : vote === 'deny' ? 'denied' : vote;
+  if (!['hit', 'denied'].includes(dbVote)) {
+    return res.status(400).json({ error: 'vote must be hit, denied, mega_hit, or deny.' });
+  }
+  try {
+    const { rows } = await db.query(
+      `INSERT INTO curator_submission_votes (submission_id, vote)
+       VALUES ($1, $2) RETURNING *`,
+      [submission_id, dbVote]
+    );
+    res.json({ ok: true, vote: rows[0] });
+  } catch (e) {
+    console.error('[genre-vote error]', e.message);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 app.listen(PORT, () => {
