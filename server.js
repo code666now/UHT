@@ -757,19 +757,33 @@ function check(){if(!player||shown)return;var c=player.getCurrentTime(),d=player
 if(new URLSearchParams(window.location.search).get('ref')==='share'){
   document.getElementById('joinCta').style.display='block';
 }
-function vote(type){
+function lockVote(msg){
   document.getElementById('vMega').disabled=true;
   document.getElementById('vHit').disabled=true;
   document.getElementById('vDenied').disabled=true;
-  var msg=type==='mega_hit'?'🔥 Mega Hit recorded!':type==='hit'?'🎯 Hit recorded!':'💀 Denied recorded!';
   document.getElementById('voteMsg').textContent=msg;
+}
+// Check localStorage on load
+(function(){
+  var key='uht_voted_${d.id}';
+  var prior=localStorage.getItem(key);
+  if(prior){
+    lockVote(prior==='mega_hit'?'🔥 Mega Hit recorded!':prior==='hit'?'🎯 Hit recorded!':'💀 Denied recorded!');
+  }
+})();
+function vote(type){
+  var key='uht_voted_${d.id}';
+  if(localStorage.getItem(key)) return;
+  var msg=type==='mega_hit'?'🔥 Mega Hit recorded!':type==='hit'?'🎯 Hit recorded!':'💀 Denied recorded!';
+  lockVote(msg);
+  localStorage.setItem(key,type);
   fetch('/api/genre-vote',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({submission_id:${d.id},vote:type,type:'curator'})})
     .then(function(r){if(!r.ok)r.json().then(function(e){console.error('[vote error]',e);});})
     .catch(function(e){console.error('[vote network error]',e);});
 }
 function sharePick(){
   var url=window.location.origin+'${pageUrl}?ref=share';
-  var text='${curator.name}\'s pick: ${d.title} by ${d.artist}\nListen & vote: ';
+  var text="${curator.name}'s pick: ${d.title} by ${d.artist}\\nListen & vote: ";
   if(navigator.share){navigator.share({title:'UHT',text:text,url:url}).catch(()=>{});return;}
   if(navigator.clipboard&&window.isSecureContext){
     navigator.clipboard.writeText(text+url).then(function(){var b=document.getElementById('shareBtn');var o=b.innerText;b.innerText='Copied!';setTimeout(function(){b.innerText=o;},1500);});
@@ -1535,12 +1549,21 @@ app.post('/api/genre-vote', async (req, res) => {
   if (!['hit', 'denied'].includes(dbVote)) {
     return res.status(400).json({ error: 'vote must be hit, denied, mega_hit, or deny.' });
   }
+  // Compute voter fingerprint from IP + user agent
+  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+  const ua = req.headers['user-agent'] || '';
+  const voterHash = require('crypto').createHash('sha256').update(ip + ua).digest('hex');
   try {
     const { rows } = await db.query(
-      `INSERT INTO curator_submission_votes (submission_id, vote)
-       VALUES ($1, $2) RETURNING *`,
-      [submission_id, dbVote]
+      `INSERT INTO curator_submission_votes (submission_id, vote, voter_hash)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (submission_id, voter_hash) WHERE voter_hash IS NOT NULL
+       DO NOTHING RETURNING *`,
+      [submission_id, dbVote, voterHash]
     );
+    if (rows.length === 0) {
+      return res.json({ ok: true, duplicate: true });
+    }
     res.json({ ok: true, vote: rows[0] });
   } catch (e) {
     console.error('[genre-vote error]', e.message);
