@@ -778,9 +778,90 @@ function sharePick(){
   window.location.href='sms:?&body='+encodeURIComponent(text+url);
 }
 </script>
+
+<style>
+.archive{padding:0 20px;margin-top:40px;border-top:1px solid rgba(255,255,255,.06);padding-top:32px}
+.archive-label{font-size:10px;letter-spacing:.3em;opacity:.4;text-transform:uppercase;margin-bottom:16px;text-align:center}
+.archive-item{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.06);cursor:pointer;transition:opacity .2s}
+.archive-item:hover{opacity:.7}
+.archive-item:last-child{border-bottom:none}
+.archive-meta{flex:1}
+.archive-title{font-size:16px;font-weight:600;margin:0 0 2px}
+.archive-artist{font-size:13px;opacity:.5;margin:0}
+.archive-week{font-size:10px;letter-spacing:.2em;opacity:.35;text-transform:uppercase;margin-top:4px}
+.archive-play{font-size:20px;opacity:.4;margin-left:12px}
+.archive-player{display:none;width:100%;aspect-ratio:16/9;margin-top:12px}
+.archive-player.show{display:block}
+</style>
+
+<div class="archive" id="archiveSection" style="display:none">
+  <div class="archive-label">Past Picks</div>
+  <div id="archiveList"></div>
+</div>
+
+<script>
+(function(){
+  fetch('/api/curators/${slug}/submissions')
+    .then(function(r){return r.json();})
+    .then(function(data){
+      if(!data.submissions||data.submissions.length<=1) return;
+      var list=document.getElementById('archiveList');
+      var section=document.getElementById('archiveSection');
+      var past=data.submissions.slice(1);
+      past.forEach(function(sub,i){
+        var ytId=sub.youtube_url?(sub.youtube_url.match(/(?:v=|youtu\.be\/)([^&?/]+)/)||[])[1]:null;
+        var item=document.createElement('div');
+        item.className='archive-item';
+        item.innerHTML=
+          '<div class="archive-meta">'+
+            '<div class="archive-title">'+sub.title+'</div>'+
+            '<div class="archive-artist">'+sub.artist+'</div>'+
+            '<div class="archive-week">'+(sub.theme?sub.theme.toUpperCase()+' · ':'')+'Week '+sub.week_number+'</div>'+
+          '</div>'+
+          (ytId?'<div class="archive-play">&#9654;</div>':'');
+        var playerDiv=document.createElement('div');
+        playerDiv.className='archive-player';
+        playerDiv.id='ap-'+i;
+        if(ytId){
+          item.addEventListener('click',function(){
+            var p=document.getElementById('ap-'+i);
+            if(p.classList.contains('show')){p.classList.remove('show');p.innerHTML='';return;}
+            document.querySelectorAll('.archive-player.show').forEach(function(x){x.classList.remove('show');x.innerHTML='';});
+            p.innerHTML='<iframe width="100%" height="100%" src="https://www.youtube.com/embed/'+ytId+'?autoplay=1" frameborder="0" allow="autoplay;encrypted-media" allowfullscreen></iframe>';
+            p.classList.add('show');
+          });
+        }
+        list.appendChild(item);
+        list.appendChild(playerDiv);
+      });
+      section.style.display='block';
+    })
+    .catch(function(e){console.error('[archive error]',e);});
+})();
+</script>
 </body>
 </html>`);
   } catch(e) { res.status(500).send('<h1>Error: '+e.message+'</h1>'); }
+});
+
+
+// ── GET /api/curators/:slug/submissions ──────────────────────────────────────
+app.get('/api/curators/:slug/submissions', async (req, res) => {
+  try {
+    const slug = req.params.slug.toLowerCase();
+    const curatorRes = await db.query(
+      `SELECT id FROM curators WHERE LOWER(REPLACE(name,' ','-'))=$1 LIMIT 1`,
+      [slug]
+    );
+    if (!curatorRes.rows.length) return res.status(404).json({ error: 'Curator not found.' });
+    const curatorId = curatorRes.rows[0].id;
+    const { rows } = await db.query(
+      `SELECT * FROM curator_submissions WHERE curator_id=$1
+       ORDER BY week_number DESC, submitted_at DESC`,
+      [curatorId]
+    );
+    res.json({ submissions: rows });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 // ── GET /drop/:genre ─────────────────────────────────────────────────────────
