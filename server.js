@@ -635,6 +635,21 @@ app.get('/drop/curator/:slug', async (req, res) => {
     if (!subRes.rows.length) return res.status(404).send('<h1>No picks yet.</h1>');
     const d = subRes.rows[0];
 
+    // Compute curator tier from lifetime hit votes
+    const hitRes = await db.query(
+      `SELECT COUNT(*) AS hits FROM curator_submission_votes
+        WHERE submission_id IN (
+          SELECT id FROM curator_submissions WHERE curator_id = $1
+        ) AND vote = 'hit'`,
+      [curator.id]
+    );
+    const totalHits = parseInt(hitRes.rows[0].hits, 10);
+    const curatorTier =
+      totalHits >= 28 ? '🏆 Legend' :
+      totalHits >= 18 ? '👑 Tastemaker' :
+      totalHits >= 8  ? '🎯 Hit Hunter' :
+                        '🌙 Rising Curator';
+
     const ytId = d.youtube_url ? (d.youtube_url.match(/(?:v=|youtu\.be\/)([^&?/]+)/) || [])[1] : null;
     const pageUrl = '/drop/curator/' + slug;
     const firstName = curator.name.split(' ')[0];
@@ -696,7 +711,7 @@ html,body{background:#000;margin:0;padding:0;overflow-x:hidden;font-family:Georg
   <div class="header">
     <div class="c-label">${curator.curator_month ? 'Curator of the Month — ' + curator.curator_month : 'Curator Pick'}</div>
     <h1 class="c-name">${curator.name}</h1>
-    <div style="font-size:11px;letter-spacing:.2em;opacity:.5;margin-top:6px;text-transform:uppercase">🌙 Rising Curator</div>
+    <div style="font-size:11px;letter-spacing:.2em;opacity:.5;margin-top:6px;text-transform:uppercase">${curatorTier}</div>
     ${curator.bio ? `<div class="c-bio">${curator.bio}</div>` : ''}
     <div class="pick-label">${d.theme ? d.theme.toUpperCase() + ' · ' : ''}Week ${d.week_number}</div>
     <div class="song-title">${d.title}</div>
