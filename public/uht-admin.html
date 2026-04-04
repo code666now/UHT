@@ -322,9 +322,9 @@ tr:hover td{background:rgba(255,255,255,.025)}
       </table></div>
     </div>
 
+    <!-- Messages -->
     <div class="panel" id="panel-messages">
       <div class="section-header"><div class="section-title">Messages</div></div>
-      
       <div style="margin-bottom:28px;padding:20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)">
         <div style="font-size:13px;font-weight:600;margin-bottom:10px">Send Test Message</div>
         <p style="font-size:12px;color:var(--muted);margin-bottom:14px">Send a one-off SMS to a single number to test your Twilio setup.</p>
@@ -351,23 +351,22 @@ tr:hover td{background:rgba(255,255,255,.025)}
       </table></div>
     </div>
 
-    <!-- Curator Submissions Panel -->
+    <!-- Curator Submissions Panel — FIXED -->
     <div class="panel" id="panel-submissions">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+      <div class="section-header">
         <div class="section-title">Curator Submissions</div>
-        <button class="btn btn-primary" onclick="openModal('submission-add')">+ ADD SUBMISSION</button>
+        <button class="btn btn-primary" onclick="openModal('submission-add')">+ Add Submission</button>
       </div>
-      <table class="data-table">
-        <thead><tr><th>#</th><th>Curator</th><th>Title</th><th>Artist</th><th>Theme</th><th>Week</th><th>Note</th><th>Spotify</th><th></th></tr></thead>
+      <div class="table-wrap"><table>
+        <thead><tr><th>#</th><th>Curator</th><th>Title</th><th>Artist</th><th>Theme</th><th>Week</th><th>Note</th><th>Links</th><th></th></tr></thead>
         <tbody id="submissions-tbody"><tr class="empty-row"><td colspan="9">Loading…</td></tr></tbody>
-      </table>
+      </table></div>
     </div>
 
   </div>
 
   <!-- ══ AI Agent Sidebar ═════════════════════════════════════ -->
   <aside class="agent-sidebar" id="agent-sidebar">
-
     <div class="agent-header">
       <div class="agent-title">
         <div class="agent-orb" id="agent-orb"></div>
@@ -375,8 +374,6 @@ tr:hover td{background:rgba(255,255,255,.025)}
       </div>
       <button class="agent-close" onclick="toggleAgent()">×</button>
     </div>
-
-    <!-- Anthropic API Key -->
     <div class="agent-key-wrap">
       <label>Anthropic API Key</label>
       <div class="agent-key-row">
@@ -384,15 +381,11 @@ tr:hover td{background:rgba(255,255,255,.025)}
         <button class="key-save" onclick="saveKey()">Save</button>
       </div>
     </div>
-
-    <!-- Message thread -->
     <div class="agent-messages" id="agent-messages">
       <div class="msg system-msg">
         <div class="msg-body">Hey — I'm your UHT agent. I can read your platform data and take actions. Try asking me something.</div>
       </div>
     </div>
-
-    <!-- Quick prompts -->
     <div class="agent-prompts">
       <button class="quick-prompt" onclick="sendPrompt(this)">Which genres are low on songs?</button>
       <button class="quick-prompt" onclick="sendPrompt(this)">Write this Friday's SMS drops</button>
@@ -400,8 +393,6 @@ tr:hover td{background:rgba(255,255,255,.025)}
       <button class="quick-prompt" onclick="sendPrompt(this)">How many active subscribers?</button>
       <button class="quick-prompt" onclick="sendPrompt(this)">Add a Hip-Hop song for me</button>
     </div>
-
-    <!-- Input -->
     <div class="agent-input-wrap">
       <div class="agent-input-row">
         <textarea class="agent-input" id="agent-input" placeholder="Ask the agent anything…" rows="1"
@@ -410,7 +401,6 @@ tr:hover td{background:rgba(255,255,255,.025)}
         <button class="agent-send" id="agent-send" onclick="sendAgent()">↑</button>
       </div>
     </div>
-
   </aside>
 </div><!-- /shell -->
 
@@ -454,14 +444,10 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <div class="field"><label>Name *</label><input type="text" id="curator-name" placeholder="DJ Undeniable"></div>
     <div class="field"><label>Bio</label><textarea id="curator-bio" placeholder="Straight heat every Friday…"></textarea></div>
     <div class="field"><label>Instagram</label><input type="text" id="curator-instagram" placeholder="@handle"></div>
-
-    <!-- Image section -->
     <div class="field">
       <label>Photo</label>
       <div class="img-upload-wrap" id="img-upload-wrap">
-        <div class="img-preview" id="img-preview">
-          <span class="img-placeholder">🎧</span>
-        </div>
+        <div class="img-preview" id="img-preview"><span class="img-placeholder">🎧</span></div>
         <div class="img-controls">
           <div class="img-url-row">
             <input type="url" id="curator-img-url" placeholder="Paste image URL…" oninput="previewFromUrl(this.value)">
@@ -475,7 +461,6 @@ tr:hover td{background:rgba(255,255,255,.025)}
         </div>
       </div>
     </div>
-
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('curator')">Cancel</button>
       <button class="btn btn-primary" onclick="submitCurator()">Save Curator</button>
@@ -483,7 +468,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
   </div>
 </div>
 
-<!-- Add Submission Modal -->
+<!-- Add Submission Modal — FIXED -->
 <div class="modal-overlay" id="modal-submission-add">
   <div class="modal">
     <div class="modal-title">Add Curator Submission</div>
@@ -491,15 +476,20 @@ tr:hover td{background:rgba(255,255,255,.025)}
       <label>Curator *</label>
       <select id="sub-curator-id"></select>
     </div>
-    <div class="field"><label>Title *</label><input type="text" id="sub-title" placeholder="The Chain"></div>
-    <div class="field"><label>Artist *</label><input type="text" id="sub-artist" placeholder="Fleetwood Mac"></div>
+    <div class="field-row">
+      <div class="field"><label>Title *</label><input type="text" id="sub-title" placeholder="The Chain"></div>
+      <div class="field"><label>Artist *</label><input type="text" id="sub-artist" placeholder="Fleetwood Mac"></div>
+    </div>
     <div class="field"><label>Spotify URL</label><input type="text" id="sub-spotify" placeholder="https://open.spotify.com/track/..."></div>
-    <div class="field"><label>Theme</label><input type="text" id="sub-theme" placeholder="Late Night Drives"></div>
-    <div class="field"><label>Week</label><input type="number" id="sub-week" value="1" min="1" max="4"></div>
+    <div class="field"><label>YouTube URL</label><input type="text" id="sub-youtube" placeholder="https://youtube.com/watch?v=..."></div>
+    <div class="field-row">
+      <div class="field"><label>Theme</label><input type="text" id="sub-theme" placeholder="Late Night Drives"></div>
+      <div class="field"><label>Week</label><input type="number" id="sub-week" value="1" min="1" max="4"></div>
+    </div>
     <div class="field"><label>Curator Note</label><textarea id="sub-note" placeholder="Perfect song for the ride home."></textarea></div>
-    <div class="modal-actions">
-      <button class="btn-secondary" onclick="closeModal('submission-add')">Cancel</button>
-      <button class="btn-primary" onclick="submitSubmission()">Save</button>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('submission-add')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitSubmission()">Save Submission</button>
     </div>
   </div>
 </div>
@@ -512,6 +502,10 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <div class="field"><label>Name *</label><input type="text" id="edit-curator-name" placeholder="DJ Undeniable"></div>
     <div class="field"><label>Bio</label><textarea id="edit-curator-bio" placeholder="Straight heat every Friday…"></textarea></div>
     <div class="field"><label>Instagram</label><input type="text" id="edit-curator-instagram" placeholder="@handle"></div>
+    <div class="field-row">
+      <div class="field"><label>Curator Month</label><input type="text" id="edit-curator-month" placeholder="April 2026"></div>
+      <div class="field"><label>Monthly Theme</label><input type="text" id="edit-monthly-theme" placeholder="Late Night Drives"></div>
+    </div>
     <div class="field">
       <label>Photo</label>
       <div class="img-upload-wrap">
@@ -554,7 +548,9 @@ tr:hover td{background:rgba(255,255,255,.025)}
 <div class="modal-overlay" id="modal-subscriber">
   <div class="modal">
     <div class="modal-title">Add Subscriber</div>
-    <div class="field"><label>Name</label><input type="text" id="sub-name" placeholder="Jane Smith"></div><div class="field"><label>Email</label><input type="email" id="sub-email" placeholder="jane@example.com"></div><div class="field"><label>Phone *</label><input type="tel" id="sub-phone" placeholder="4152053302" oninput="autoFormatPhone(this)"></div>
+    <div class="field"><label>Name</label><input type="text" id="sub-name" placeholder="Jane Smith"></div>
+    <div class="field"><label>Email</label><input type="email" id="sub-email" placeholder="jane@example.com"></div>
+    <div class="field"><label>Phone *</label><input type="tel" id="sub-phone" placeholder="4152053302" oninput="autoFormatPhone(this)"></div>
     <div class="field-row">
       <div class="field"><label>Genre</label><select id="sub-genre"><option value="">— None —</option></select></div>
       <div class="field"><label>Curator</label><select id="sub-curator"><option value="">— None —</option></select></div>
@@ -575,7 +571,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 let API  = localStorage.getItem('uht_api_url') || 'http://localhost:3000';
 let AKEY = localStorage.getItem('uht_anthropic_key') || '';
 let GENRES = [], CURATORS = [];
-let agentHistory = []; // Claude conversation history
+let agentHistory = [];
 let agentBusy = false;
 
 // ── API helpers ───────────────────────────────────────────────
@@ -733,12 +729,14 @@ async function submitSong() {
   try { await api('POST','/api/songs',{title,artist,url,genre_id,curator_id}); toast('Song added!','ok'); closeModal('song'); loadSongs(); loadDashboard(); }
   catch(e) { toast(e.message,'err'); }
 }
+
 async function submitGenre() {
   const name=document.getElementById('genre-name').value.trim();
   if(!name) return toast('Name required.','err');
   try { await api('POST','/api/genres',{name}); toast('Genre created!','ok'); closeModal('genre'); loadGenres(); }
   catch(e) { toast(e.message,'err'); }
 }
+
 // ── Image preview helpers ─────────────────────────────────────
 let _curatorImgBase64 = null;
 
@@ -797,8 +795,11 @@ function openCuratorProfile(id) {
   document.getElementById('profile-bio').textContent = c.bio || 'No bio yet.';
   openModal('curator-profile');
 }
+
 async function submitSubscriber() {
-  const name=document.getElementById('sub-name')?.value.trim()||''; const email=document.getElementById('sub-email')?.value.trim()||''; const phone=normalizePhone(document.getElementById('sub-phone').value.trim());
+  const name=document.getElementById('sub-name')?.value.trim()||'';
+  const email=document.getElementById('sub-email')?.value.trim()||'';
+  const phone=normalizePhone(document.getElementById('sub-phone').value.trim());
   const genre_id=document.getElementById('sub-genre').value||null;
   const curator_id=document.getElementById('sub-curator').value||null;
   if(!phone) return toast('Phone required.','err');
@@ -822,6 +823,8 @@ function openEditCurator(id) {
   document.getElementById('edit-curator-name').value = c.name || '';
   document.getElementById('edit-curator-bio').value = c.bio || '';
   document.getElementById('edit-curator-instagram').value = c.instagram || '';
+  document.getElementById('edit-curator-month').value = c.curator_month || '';
+  document.getElementById('edit-monthly-theme').value = c.monthly_theme || '';
   document.getElementById('edit-curator-img-url').value = c.image_url || '';
   _editCuratorImgBase64 = null;
   const p = document.getElementById('edit-img-preview');
@@ -862,13 +865,16 @@ async function submitEditCurator() {
   const image_url = _editCuratorImgBase64 || document.getElementById('edit-curator-img-url').value.trim() || null;
   try {
     const instagram = document.getElementById('edit-curator-instagram').value.trim();
-    await api('PATCH', `/api/curators/${id}`, { name, bio, image_url, instagram });
+    const curator_month = document.getElementById('edit-curator-month').value.trim() || null;
+    const monthly_theme = document.getElementById('edit-monthly-theme').value.trim() || null;
+    await api('PATCH', `/api/curators/${id}`, { name, bio, image_url, instagram, curator_month, monthly_theme });
     toast('Curator updated!', 'ok');
     closeModal('curator-edit');
     _editCuratorImgBase64 = null;
     loadCurators();
   } catch(e) { toast(e.message, 'err'); }
 }
+
 async function deleteSub(id) { if(!confirm('Remove?')) return; try { await api('DELETE',`/api/subscribers/${id}`); toast('Removed.','ok'); loadSubscribers(); loadDashboard(); } catch(e){toast(e.message,'err');} }
 async function toggleSub(id, active) { try { await api('PATCH',`/api/subscribers/${id}`,{is_active:!active}); toast(active?'Paused.':'Resumed.','ok'); loadSubscribers(); } catch(e){toast(e.message,'err');} }
 
@@ -930,7 +936,6 @@ function removeTyping() {
 }
 
 async function gatherContext() {
-  // Snapshot of current platform data to give Claude full context
   try {
     const [songs, subs, deliveries, votes, genres, curators] = await Promise.all([
       api('GET','/api/songs').catch(()=>({songs:[]})),
@@ -950,22 +955,16 @@ async function sendAgent() {
   const input = document.getElementById('agent-input');
   const userMsg = input.value.trim();
   if (!userMsg || agentBusy) return;
-
-  if (!AKEY) {
-    toast('Enter your Anthropic API key first.', 'err');
-    return;
-  }
+  if (!AKEY) { toast('Enter your Anthropic API key first.', 'err'); return; }
 
   input.value = '';
   input.style.height = 'auto';
   agentBusy = true;
   document.getElementById('agent-send').disabled = true;
   setOrb('thinking');
-
   appendMsg('user', esc(userMsg));
   showTyping();
 
-  // Gather live data to give Claude full context
   const ctx = await gatherContext();
 
   const systemPrompt = `You are the AI agent for Undeniable Hit Theory (UHT), an SMS music discovery platform.
@@ -973,34 +972,23 @@ async function sendAgent() {
 You have access to live platform data. Here is the current state:
 
 GENRES (${ctx.genres?.length ?? 0}): ${JSON.stringify(ctx.genres?.map(g=>({id:g.id,name:g.name,songs:g.song_count,subs:g.sub_count})))}
-
 CURATORS (${ctx.curators?.length ?? 0}): ${JSON.stringify(ctx.curators?.map(c=>({id:c.id,name:c.name,songs:c.song_count,subs:c.sub_count})))}
-
 SONGS (${ctx.songs?.length ?? 0}): ${JSON.stringify(ctx.songs?.slice(0,30).map(s=>({id:s.id,title:s.title,artist:s.artist,target:s.target_name})))}
-
 SUBSCRIBERS (${ctx.subscribers?.length ?? 0} total, ${ctx.subscribers?.filter(s=>s.is_active).length ?? 0} active)
-
 VOTES (${ctx.votes?.length ?? 0} total): ${JSON.stringify(ctx.votes?.slice(0,20).map(v=>({vote:v.vote,song:v.title,genre:v.genre_name})))}
 
-RECENT DROPS (${ctx.deliveries?.length ?? 0}): last 5 shown.
-
 You can:
-1. ANSWER questions about the data (hit rates, inventory, subscriber counts, trends)
-2. WRITE SMS copy for upcoming drops — make it feel like a real music tastemaker, not a bot
-3. RECOMMEND actions (e.g. "You need more Hip-Hop songs — you'll run out in 2 weeks")
-4. TAKE ACTIONS by outputting a JSON block like this when the user asks you to add/create something:
-
-When taking action, end your message with a JSON block in this exact format:
+1. ANSWER questions about the data
+2. WRITE SMS copy for upcoming drops
+3. RECOMMEND actions
+4. TAKE ACTIONS by outputting JSON like:
 <action>{"type":"add_song","title":"Song Title","artist":"Artist Name","url":"https://...","genre_id":1}</action>
 <action>{"type":"add_genre","name":"Genre Name"}</action>
 <action>{"type":"add_curator","name":"Name","bio":"Bio text"}</action>
 <action>{"type":"pause_subscriber","id":5}</action>
 
-Only include an action block when the user explicitly asks you to DO something. For questions and analysis, just reply in plain text.
+Only include action blocks when user explicitly asks to DO something. Be concise. Sound like a music insider.`;
 
-Be concise, direct, and knowledgeable. You sound like a music insider, not a customer service bot.`;
-
-  // Add to history
   agentHistory.push({ role: 'user', content: userMsg });
 
   try {
@@ -1025,27 +1013,18 @@ Be concise, direct, and knowledgeable. You sound like a music insider, not a cus
 
     const fullText = data.content.map(b => b.text || '').join('');
     agentHistory.push({ role: 'assistant', content: fullText });
-
     removeTyping();
     setOrb('ready');
 
-    // Split out action blocks
     const actionRegex = /<action>([\s\S]*?)<\/action>/g;
     const cleanText = fullText.replace(actionRegex, '').trim();
-
     if (cleanText) appendMsg('assistant', esc(cleanText).replace(/\n/g,'<br>'));
 
-    // Execute any actions
     let match;
     while ((match = actionRegex.exec(fullText)) !== null) {
-      try {
-        const action = JSON.parse(match[1]);
-        await executeAction(action);
-      } catch(e) {
-        appendMsg('action-msg', `⚠ Could not parse action: ${esc(e.message)}`, 'action-msg');
-      }
+      try { const action = JSON.parse(match[1]); await executeAction(action); }
+      catch(e) { appendMsg('action-msg', `⚠ Could not parse action: ${esc(e.message)}`, 'action-msg'); }
     }
-
   } catch (e) {
     removeTyping();
     setOrb('');
@@ -1060,12 +1039,7 @@ async function executeAction(action) {
   try {
     let result = '';
     if (action.type === 'add_song') {
-      await api('POST', '/api/songs', {
-        title: action.title, artist: action.artist,
-        url: action.url || null,
-        genre_id: action.genre_id || null,
-        curator_id: action.curator_id || null,
-      });
+      await api('POST', '/api/songs', { title: action.title, artist: action.artist, url: action.url || null, genre_id: action.genre_id || null, curator_id: action.curator_id || null });
       result = `✓ Added "${action.title}" by ${action.artist}`;
       loadSongs(); loadDashboard();
     } else if (action.type === 'add_genre') {
@@ -1089,6 +1063,88 @@ async function executeAction(action) {
     appendMsg('action-msg', `✗ Action failed: ${esc(e.message)}`, 'action-msg');
     toast(e.message, 'err');
   }
+}
+
+// ── Curator Submissions ───────────────────────────────────────
+async function loadSubmissions() {
+  const tbody = document.getElementById('submissions-tbody');
+  try {
+    const data = await api('GET', '/api/curator-submissions');
+    if (!data.submissions || !data.submissions.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="9">No submissions yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.submissions.map((s,i) => `
+      <tr>
+        <td style="color:var(--muted)">#${i+1}</td>
+        <td>${esc(s.curator_name||'—')}</td>
+        <td><strong>${esc(s.title)}</strong></td>
+        <td>${esc(s.artist)}</td>
+        <td>${esc(s.theme||'—')}</td>
+        <td style="color:var(--muted)">Wk ${s.week_number||1}</td>
+        <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)">${esc(s.curator_note||'—')}</td>
+        <td style="display:flex;gap:8px">
+          ${s.spotify_url ? `<a href="${esc(s.spotify_url)}" target="_blank" style="color:var(--green);font-size:11px">♫ Spotify</a>` : ''}
+          ${s.youtube_url ? `<a href="${esc(s.youtube_url)}" target="_blank" style="color:var(--accent);font-size:11px">▶ YT</a>` : ''}
+          ${!s.spotify_url && !s.youtube_url ? '<span style="color:var(--muted)">—</span>' : ''}
+        </td>
+        <td><button class="btn btn-danger" onclick="deleteSubmission(${s.id})">Delete</button></td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="9">${esc(e.message)}</td></tr>`;
+    toast(e.message, 'err');
+  }
+}
+
+async function submitSubmission() {
+  const curator_id  = document.getElementById('sub-curator-id').value;
+  const title       = document.getElementById('sub-title').value.trim();
+  const artist      = document.getElementById('sub-artist').value.trim();
+  const spotify_url = document.getElementById('sub-spotify').value.trim();
+  const youtube_url = document.getElementById('sub-youtube').value.trim();
+  const theme       = document.getElementById('sub-theme').value.trim();
+  const week_number = document.getElementById('sub-week').value;
+  const curator_note= document.getElementById('sub-note').value.trim();
+  if (!curator_id || !title || !artist) return toast('Curator, title and artist required.', 'err');
+  try {
+    await api('POST', '/api/curator-submissions', {
+      curator_id: parseInt(curator_id), title, artist,
+      spotify_url, youtube_url, theme,
+      week_number: parseInt(week_number), curator_note
+    });
+    toast('Submission added!', 'ok');
+    closeModal('submission-add');
+    // clear form
+    ['sub-title','sub-artist','sub-spotify','sub-youtube','sub-theme','sub-note'].forEach(id => {
+      const el = document.getElementById(id); if(el) el.value = '';
+    });
+    document.getElementById('sub-week').value = '1';
+    loadSubmissions();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+async function deleteSubmission(id) {
+  if (!confirm('Delete this submission?')) return;
+  try {
+    await api('DELETE', `/api/curator-submissions/${id}`);
+    toast('Deleted.', 'ok');
+    loadSubmissions();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+async function populateCuratorDropdown() {
+  try {
+    const data = await api('GET', '/api/curators');
+    const sel = document.getElementById('sub-curator-id');
+    sel.innerHTML = '<option value="">— Select Curator —</option>' +
+      data.curators.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  } catch(e) {}
+}
+
+async function loadSubmissionsPanel() {
+  loadSubmissions();
+  populateCuratorDropdown();
 }
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -1138,72 +1194,7 @@ document.querySelectorAll('.nav-item').forEach(item=>{
   });
 });
 
-// ── Curator Submissions ──────────────────────────────────────
-async function loadSubmissions() {
-  try {
-    const data = await api('GET', '/api/curator-submissions');
-    const tbody = document.getElementById('submissions-tbody');
-    if (!data.submissions.length) {
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="9">No submissions yet.</td></tr>';
-      return;
-    }
-    tbody.innerHTML = data.submissions.map((s,i) => `
-      <tr>
-        <td>#${i+1}</td>
-        <td>${esc(s.curator_name||'—')}</td>
-        <td><strong>${esc(s.title)}</strong></td>
-        <td>${esc(s.artist)}</td>
-        <td>${esc(s.theme||'—')}</td>
-        <td>Week ${s.week_number||1}</td>
-        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.curator_note||'—')}</td>
-        <td>${s.spotify_url ? `<a href="${esc(s.spotify_url)}" target="_blank" style="color:var(--accent)">▶ Play</a>` : '—'}</td>
-        <td><button class="btn-danger btn-sm" onclick="deleteSubmission(${s.id})">DELETE</button></td>
-      </tr>
-    `).join('');
-  } catch(e) { toast(e.message, 'err'); }
-}
-
-async function submitSubmission() {
-  const curator_id = document.getElementById('sub-curator-id').value;
-  const title      = document.getElementById('sub-title').value.trim();
-  const artist     = document.getElementById('sub-artist').value.trim();
-  const spotify_url= document.getElementById('sub-spotify').value.trim();
-  const theme      = document.getElementById('sub-theme').value.trim();
-  const week_number= document.getElementById('sub-week').value;
-  const curator_note=document.getElementById('sub-note').value.trim();
-  if (!curator_id || !title || !artist) return toast('Curator, title and artist required.', 'err');
-  try {
-    await api('POST', '/api/curator-submissions', { curator_id: parseInt(curator_id), title, artist, spotify_url, theme, week_number: parseInt(week_number), curator_note });
-    toast('Submission added!', 'ok');
-    closeModal('submission-add');
-    loadSubmissions();
-  } catch(e) { toast(e.message, 'err'); }
-}
-
-async function deleteSubmission(id) {
-  if (!confirm('Delete this submission?')) return;
-  try {
-    await api('DELETE', `/api/curator-submissions/${id}`);
-    toast('Deleted.', 'ok');
-    loadSubmissions();
-  } catch(e) { toast(e.message, 'err'); }
-}
-
-async function populateCuratorDropdown() {
-  try {
-    const data = await api('GET', '/api/curators');
-    const sel = document.getElementById('sub-curator-id');
-    sel.innerHTML = data.curators.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
-  } catch(e) {}
-}
-
-// ── Boot ──────────────────────────────────────────────────────
-document.getElementById('api-url-input').value = API;
-if (AKEY) { document.getElementById('anthropic-key').value = AKEY.slice(0,12)+'…'; setOrb('ready'); }
-checkHealth();
-loadAll();
-setInterval(checkHealth, 30000);
-
+// ── Messages ──────────────────────────────────────────────────
 function saveDropMessage(){
   var t=document.getElementById('drop-msg-text').value.trim();
   if(!t){alert('Message is empty.');return;}
@@ -1219,16 +1210,10 @@ async function sendDropMessage(){
   var s=document.getElementById('drop-msg-status');
   s.textContent='Sending...';
   try{
-    var base=document.getElementById('api-url-input').value;
-    var r=await fetch(base+'/api/messages/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:t})});
+    var r=await fetch(API+'/api/messages/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:t})});
     s.textContent='Sent!';
     loadMessages();
   }catch(e){s.textContent='Failed: '+e.message;}
-}
-
-async function loadSubmissionsPanel(){
-  loadSubmissions();
-  populateCuratorDropdown();
 }
 async function loadMessages(){
   var saved=localStorage.getItem('uht_drop_draft');
@@ -1237,14 +1222,12 @@ async function loadMessages(){
   var tbody=document.getElementById('messages-tbody');
   if(!tbody)return;
   try{
-    var base=document.getElementById('api-url-input').value;
-    var r=await fetch(base+'/api/messages');
+    var r=await fetch(API+'/api/messages');
     var data=await r.json();
     if(!data||!data.length){tbody.innerHTML='<tr class="empty-row"><td colspan="4">No messages sent yet.</td></tr>';return;}
     tbody.innerHTML=data.map(function(m){return '<tr><td>'+(m.to||'')+'</td><td style="font-size:11px;max-width:300px">'+(m.body||'')+'</td><td>'+(m.status||'')+'</td><td>'+(m.sent_at||m.created_at||'')+'</td></tr>';}).join('');
   }catch(e){tbody.innerHTML='<tr class="empty-row"><td colspan="4">No /api/messages endpoint yet.</td></tr>';}
 }
-
 async function sendTestMessage(){
   var phone=document.getElementById('test-phone').value.trim();
   var msg=document.getElementById('test-msg-text').value.trim();
@@ -1252,20 +1235,18 @@ async function sendTestMessage(){
   if(!phone||!msg){s.textContent='Enter a phone number and message.';return;}
   s.textContent='Sending...';
   try{
-    var base=document.getElementById('api-url-input').value;
-    var r=await fetch(base+'/api/messages/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:phone,message:msg})});
-    var d=await r.json();
+    var r=await fetch(API+'/api/messages/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:phone,message:msg})});
     s.textContent='Sent to '+phone+'!';
     setTimeout(function(){s.textContent='';},4000);
   }catch(e){s.textContent='Failed: '+e.message;}
 }
 
+// ── Phone helpers ─────────────────────────────────────────────
 function autoFormatPhone(input) {
   let v = input.value.replace(/[^\d]/g, '');
   if (v.startsWith('1') && v.length > 10) v = v.slice(1);
   input.value = v;
 }
-
 function normalizePhone(raw) {
   const digits = raw.replace(/[^\d]/g, '');
   if (digits.length === 10) return '+1' + digits;
@@ -1273,6 +1254,12 @@ function normalizePhone(raw) {
   return '+' + digits;
 }
 
+// ── Boot ──────────────────────────────────────────────────────
+document.getElementById('api-url-input').value = API;
+if (AKEY) { document.getElementById('anthropic-key').value = AKEY.slice(0,12)+'…'; setOrb('ready'); }
+checkHealth();
+loadAll();
+setInterval(checkHealth, 30000);
 </script>
 </body>
 </html>

@@ -1785,12 +1785,12 @@ app.get('/api/votes', async (req, res) => {
 // ── PATCH /api/curators/:id ───────────────────────────────────────────────────
 app.patch('/api/curators/:id', async (req, res) => {
   console.log('PATCH body:', req.body);
-  const { name, bio, image_url, instagram } = req.body;
+  const { name, bio, image_url, instagram, curator_month, monthly_theme } = req.body;
   if (!name) return res.status(400).json({ error: 'name required.' });
   try {
     const { rows } = await db.query(
-      `UPDATE curators SET name=$1, bio=$2, image_url=$3, instagram=$4 WHERE id=$5 RETURNING *`,
-      [name, bio || null, image_url || null, instagram || null, req.params.id]
+      `UPDATE curators SET name=$1, bio=$2, image_url=$3, instagram=$4, curator_month=$5, monthly_theme=$6 WHERE id=$7 RETURNING *`,
+      [name, bio || null, image_url || null, instagram || null, curator_month || null, monthly_theme || null, req.params.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Curator not found.' });
     res.json({ curator: rows[0] });
