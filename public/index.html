@@ -333,16 +333,17 @@
       <div class="uht-modal-name" id="uhtModalName"></div>
       <div class="uht-modal-bio" id="uhtModalBio"></div>
       <div style="display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap">
+        <button class="uht-follow-btn" id="uhtShareCuratorBtn" onclick="uhtShareCurator()">⤴ Share Curator</button>
         <button class="uht-follow-btn" id="uhtFollowBtn" onclick="uhtFollowClick()">+ Follow</button>
         <div id="uhtModalIg"></div>
       </div>
       <div id="uhtFollowInput" style="display:none;margin-top:12px">
         <div style="font-size:12px;color:rgba(255,255,255,0.5);font-family:'Courier Prime',monospace;letter-spacing:1px;margin-bottom:8px;text-transform:uppercase">Enter your number to follow</div>
-        <div style="display:flex;gap:8px;align-items:center">
+        <div style="display:flex;flex-direction:column;gap:8px">
           <input type="tel" id="uhtFollowPhone" placeholder="+1 (212) 555-1234"
-            style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:10px 14px;color:#fff;font-family:'Courier Prime',monospace;font-size:14px;outline:none;flex:1"
+            style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:10px 14px;color:#fff;font-family:'Courier Prime',monospace;font-size:14px;outline:none;width:100%"
             onkeydown="if(event.key==='Enter') uhtConfirmFollow()">
-          <button class="uht-follow-btn" onclick="uhtConfirmFollow()" style="white-space:nowrap;padding:10px 16px">✓ Follow</button>
+          <button class="uht-follow-btn" onclick="uhtConfirmFollow()" style="width:100%;padding:10px 16px">✓ Follow</button>
         </div>
         <div style="font-size:12px;color:rgba(255,255,255,0.3);margin-top:8px;font-family:'Courier Prime',monospace;line-height:1.7">
           📱 Monday drops · 🔔 First to know · 🔥 Vote on every pick
@@ -425,7 +426,13 @@ function uhtOpenModal(c) {
             +'<div style="font-size:20px;font-weight:700;color:var(--rc-light);margin-top:4px">'+s.title+'</div>'
             +'<div style="font-size:15px;opacity:0.7;color:var(--rc-light)">'+s.artist+'</div>'
             +(s.curator_note?'<div style="font-size:13px;opacity:0.5;margin-top:6px;font-style:italic;font-family:Courier Prime,monospace">"'+s.curator_note+'"</div>':'')
-            +votesHtml+'</div>';
+            +votesHtml
+          +'<button onclick="uhtSharePick(''+s.title.replace(/'/g,"\'")+'',' +
+            '''+s.artist.replace(/'/g,"\'")+'')" ' +
+            'style="margin-top:10px;font-family:Courier Prime,monospace;font-size:11px;letter-spacing:1px;' +
+            'text-transform:uppercase;cursor:pointer;border-radius:999px;padding:6px 14px;' +
+            'border:1px solid rgba(255,255,255,0.15);background:transparent;color:rgba(255,255,255,0.5)">⤴ Share Pick</button>'
+          +'</div>';
         });
       } else {
         html += '<div style="font-size:11px;opacity:0.35;font-family:Courier Prime,monospace;text-align:center;padding:16px 0">No picks yet.</div>';
@@ -444,6 +451,21 @@ function uhtCloseModal() {
   var nameEl = document.getElementById('uhtModalName');
   var tierEl = nameEl ? nameEl.querySelector('.uht-tier') : null;
   if(tierEl) tierEl.remove();
+}
+
+function uhtSharePick(title, artist) {
+  var curatorName = document.getElementById('uhtModalName').textContent.replace(/\n.*/,'').trim();
+  var url = window.location.origin + '/drop/curator/' + curatorName.toLowerCase().replace(/\s+/g,'-');
+  var text = artist + ' — ' + title;
+  if(navigator.share) { navigator.share({title:text, url:url}); }
+  else { navigator.clipboard.writeText(text + '\n' + url).then(function(){ alert('Link copied!'); }); }
+}
+
+function uhtShareCurator() {
+  var name = document.getElementById('uhtModalName').textContent.replace(/\n.*/,'').trim();
+  var url = window.location.origin + '/drop/curator/' + name.toLowerCase().replace(/\s+/g,'-');
+  if(navigator.share) { navigator.share({title:name, url:url}); }
+  else { navigator.clipboard.writeText(url).then(function(){ alert('Link copied!'); }); }
 }
 
 function uhtFollowClick() {
