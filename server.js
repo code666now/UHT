@@ -723,8 +723,9 @@ html,body{background:#000;margin:0;padding:0;overflow-x:hidden;font-family:Georg
     ${ytId ? `<div class="press-play" id="pressPlay">Press Play.</div>` : ''}
   </div>
 
-  ${ytId ? `<div class="video-wrap"><div id="player"></div><div class="end-screen" id="endScreen"><p>This one's his pick.<br><br>Follow ${firstName} — he drops a new one every Monday.</p></div></div>`
-    : `<div class="no-video">${d.spotify_url ? `<a class="sp-btn" href="${d.spotify_url}" target="_blank">🎵 Play on Spotify</a>` : '<p style="opacity:.35">No playback source available.</p>'}</div>`}
+  ${ytId ? `<div class="video-wrap" id="ytWrap"><div id="player"></div><div class="end-screen" id="endScreen"><p>This one's his pick.<br><br>Follow ${firstName} — he drops a new one every Monday.</p></div></div>` : ''}
+  ${!ytId && d.spotify_url ? `<div class="sp-wrap" id="spWrap"><iframe style="border-radius:12px" src="https://open.spotify.com/embed/track/${d.spotify_url.match(/track\/([a-zA-Z0-9]+)/)?.[1]}" width="100%" height="152" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div>` : ''}
+  ${ytId && d.spotify_url ? `<div id="spWrap" style="display:none;margin:12px 0"><iframe style="border-radius:12px" src="https://open.spotify.com/embed/track/${d.spotify_url.match(/track\/([a-zA-Z0-9]+)/)?.[1]}" width="100%" height="152" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div>` : ''}
 
   <div class="vote-row">
     <button class="vote-btn vote-hit" id="vMega" onclick="vote('mega_hit')">🔥 Mega Hit</button>
@@ -733,6 +734,7 @@ html,body{background:#000;margin:0;padding:0;overflow-x:hidden;font-family:Georg
   </div>
   <div class="vote-msg" id="voteMsg"></div>
 
+  ${d.spotify_url && ytId ? `<div style="text-align:center;margin:8px 0"><span onclick="document.getElementById('spWrap').style.display=document.getElementById('spWrap').style.display==='none'?'':'none'" style="font-family:'Courier Prime',monospace;font-size:11px;letter-spacing:1px;color:rgba(255,255,255,0.3);cursor:pointer;text-decoration:underline;text-transform:uppercase">Prefer Spotify?</span></div>` : ''}
   <div class="share-wrap">
     <button class="share-btn" id="shareBtn" onclick="sharePick()">Share this pick</button>
   </div>
