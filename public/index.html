@@ -370,7 +370,7 @@ function uhtOpenModal(c) {
   // Instagram
   var igEl = document.getElementById('uhtModalIg');
   igEl.innerHTML = c.instagram
-    ? '<a href="https://instagram.com/'+c.instagram.replace('@','')+'" target="_blank" style="font-family:Courier Prime,monospace;font-size:12px;color:rgba(160,160,190,0.5);text-decoration:none">@'+c.instagram.replace('@','')+'</a>'
+    ? '<a href="https://instagram.com/'+c.instagram.replace('@','')+'" target="_blank" style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.6);text-decoration:none;font-size:18px" title="@'+c.instagram.replace('@','')+'">&#xe600;</a>'
     : '';
   // Image
   var imgWrap = document.getElementById('uhtModalImgWrap');
