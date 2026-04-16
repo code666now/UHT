@@ -513,7 +513,7 @@ document.addEventListener('DOMContentLoaded', function(){
         el.innerHTML = '<div class="uht-curator-ring">'+imgHtml+'</div>'
           +'<div class="uht-curator-name-tag">'+c.name.split(' ')[0]+'</div>'
           +(c.instagram?'<a class="uht-curator-ig" href="https://instagram.com/'+c.instagram.replace('@','')+'" target="_blank" onclick="event.stopPropagation()">@'+c.instagram.replace('@','')+'</a>':'');
-        el.addEventListener('click', function(){ uhtOpenModal(c); });
+        el.setAttribute('onclick', 'uhtOpenModal(' + JSON.stringify(c).replace(/'/g, "\'") + ')'); el.style.cursor='pointer';
         strip.appendChild(el);
       });
     })
