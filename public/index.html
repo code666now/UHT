@@ -186,70 +186,287 @@
 
 
 
+<!-- ══════════════════════════════════════════════════════════
+     CURATOR OF THE MONTH — full card + slider
+══════════════════════════════════════════════════════════ -->
+<style>
+.cotm-wrap { max-width:480px; margin:28px auto 0; padding:0 16px; font-family:Georgia,'Times New Roman',serif; }
+.cotm-card { border:1px solid rgba(255,255,255,.1); border-radius:16px; overflow:hidden; background:rgba(255,255,255,.02); }
+.cotm-hero { position:relative; width:100%; aspect-ratio:4/3; overflow:hidden; }
+.cotm-hero img { width:100%; height:100%; object-fit:cover; object-position:center top; display:block; }
+.cotm-hero-overlay { position:absolute; inset:0; background:linear-gradient(to bottom,transparent 30%,rgba(0,0,0,.95) 100%); }
+.cotm-hero-text { position:absolute; bottom:0; left:0; right:0; padding:20px; }
+.cotm-hero-eyebrow { font-size:10px; letter-spacing:.25em; opacity:.5; color:#f3f1ea; margin-bottom:6px; }
+.cotm-hero-name { font-size:32px; font-weight:600; color:#f3f1ea; line-height:1; margin-bottom:8px; }
+.cotm-tier-badge { display:inline-block; font-size:10px; letter-spacing:.18em; color:#f3f1ea; opacity:.6; border:1px solid rgba(243,241,234,.25); border-radius:999px; padding:3px 12px; }
+.cotm-stats { display:flex; border-bottom:1px solid rgba(255,255,255,.07); }
+.cotm-stat { flex:1; padding:12px; text-align:center; border-right:1px solid rgba(255,255,255,.07); }
+.cotm-stat:last-child { border-right:none; }
+.cotm-stat-num { font-size:20px; font-weight:600; color:#f3f1ea; }
+.cotm-stat-lbl { font-size:9px; letter-spacing:.2em; opacity:.35; color:#f3f1ea; margin-top:2px; }
+.cotm-bio { padding:18px 20px; border-bottom:1px solid rgba(255,255,255,.07); }
+.cotm-bio-lead { font-size:14px; line-height:1.75; opacity:.75; color:#f3f1ea; font-style:italic; border-left:2px solid rgba(243,241,234,.2); padding-left:14px; margin:0 0 10px; }
+.cotm-bio-body { font-size:13px; line-height:1.8; opacity:.45; color:#f3f1ea; margin:0; }
+.cotm-bio-quote { font-size:13px; font-style:italic; opacity:.4; color:#f3f1ea; margin:12px 0 0; }
+.cotm-theme { padding:14px 20px; border-bottom:1px solid rgba(255,255,255,.07); text-align:center; }
+.cotm-theme-eyebrow { font-size:9px; letter-spacing:.3em; opacity:.35; color:#f3f1ea; margin-bottom:6px; }
+.cotm-theme-title { font-size:18px; font-weight:600; color:#f3f1ea; margin-bottom:10px; }
+.cotm-song-eyebrow { font-size:9px; letter-spacing:.2em; opacity:.35; color:#f3f1ea; margin-bottom:6px; }
+.cotm-song-title { font-size:20px; font-weight:600; color:#f3f1ea; margin-bottom:4px; }
+.cotm-song-artist { font-size:14px; opacity:.55; color:#f3f1ea; }
+.cotm-tabs { padding:12px 20px 0; display:flex; gap:6px; }
+.cotm-tab { border-radius:999px; padding:7px 20px; font-size:10px; letter-spacing:.15em; font-family:Georgia,serif; cursor:pointer; transition:all .2s; }
+.cotm-tab-yt { background:#f3f1ea; color:#000; border:none; }
+.cotm-tab-sp { background:transparent; color:#f3f1ea; border:1px solid rgba(255,255,255,.2); opacity:.55; }
+.cotm-player-yt { padding:10px 0 0; }
+.cotm-player-yt-inner { position:relative; width:100%; aspect-ratio:16/9; }
+.cotm-player-yt-inner iframe { width:100%; height:100%; display:block; border:none; }
+.cotm-player-sp { padding:10px 16px 0; display:none; }
+.cotm-player-sp iframe { width:100%; display:block; border:none; border-radius:8px; }
+.cotm-follow { padding:16px 20px; border-top:1px solid rgba(255,255,255,.07); }
+.cotm-follow-btn { width:100%; background:rgba(255,255,255,.07); color:#f3f1ea; border:1px solid rgba(255,255,255,.2); border-radius:999px; padding:12px; font-size:11px; letter-spacing:.2em; font-family:Georgia,serif; cursor:pointer; transition:all .2s; }
+.cotm-follow-btn:hover { background:rgba(255,255,255,.12); }
+.cotm-follow-input { display:none; margin-top:12px; }
+.cotm-follow-input input { width:100%; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.2); border-radius:8px; padding:10px 14px; color:#f3f1ea; font-family:Georgia,serif; font-size:14px; outline:none; box-sizing:border-box; }
+.cotm-follow-confirm { width:100%; margin-top:8px; background:#f3f1ea; color:#000; border:none; border-radius:999px; padding:11px; font-size:11px; letter-spacing:.2em; font-family:Georgia,serif; cursor:pointer; }
+.cotm-follow-success { display:none; padding:12px 16px; border-radius:10px; background:rgba(100,220,120,.06); border:1px solid rgba(100,220,120,.2); font-size:13px; color:rgba(100,220,120,.9); line-height:1.7; margin-top:12px; }
+.cotm-follow-legal { font-size:10px; opacity:.25; color:#f3f1ea; margin-top:8px; line-height:1.6; }
+.cotm-archive { padding:0 20px 4px; }
+.cotm-archive-lbl { font-size:9px; letter-spacing:.3em; opacity:.3; color:#f3f1ea; margin:14px 0 10px; }
+.cotm-pick { padding:12px 14px; border-radius:10px; background:rgba(255,255,255,.04); margin-bottom:8px; }
+.cotm-pick-week { font-size:9px; letter-spacing:.2em; opacity:.35; color:#f3f1ea; margin-bottom:4px; }
+.cotm-pick-title { font-size:17px; font-weight:600; color:#f3f1ea; margin-bottom:2px; }
+.cotm-pick-artist { font-size:13px; opacity:.6; color:#f3f1ea; margin-bottom:4px; }
+.cotm-pick-note { font-size:12px; font-style:italic; opacity:.4; color:#f3f1ea; }
+.cotm-pick-votes { display:flex; gap:12px; margin-top:6px; font-size:12px; opacity:.5; color:#f3f1ea; }
+.cotm-footer { padding:12px 20px 16px; text-align:center; }
+.cotm-footer a { font-size:10px; letter-spacing:.2em; opacity:.3; color:#f3f1ea; text-decoration:none; }
 
+/* Slider */
+.cotm-slider-wrap { max-width:480px; margin:24px auto 0; padding:0 16px; }
+.cotm-slider-label { font-size:10px; letter-spacing:.3em; opacity:.3; color:#f3f1ea; font-family:Georgia,serif; margin-bottom:12px; text-align:center; }
+.cotm-slider { display:flex; gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; padding-bottom:8px; scrollbar-width:none; }
+.cotm-slider::-webkit-scrollbar { display:none; }
+.cotm-slide { flex:0 0 200px; scroll-snap-align:start; border:1px solid rgba(255,255,255,.1); border-radius:12px; overflow:hidden; background:rgba(255,255,255,.02); cursor:pointer; transition:border-color .2s; }
+.cotm-slide:hover { border-color:rgba(255,255,255,.25); }
+.cotm-slide-img { width:100%; aspect-ratio:3/2; object-fit:cover; object-position:center top; display:block; }
+.cotm-slide-body { padding:10px 12px 12px; }
+.cotm-slide-month { font-size:9px; letter-spacing:.2em; opacity:.35; color:#f3f1ea; font-family:Georgia,serif; margin-bottom:4px; }
+.cotm-slide-name { font-size:15px; font-weight:600; color:#f3f1ea; font-family:Georgia,serif; margin-bottom:3px; }
+.cotm-slide-theme { font-size:11px; opacity:.5; color:#f3f1ea; font-family:Georgia,serif; font-style:italic; margin-bottom:4px; }
+.cotm-slide-tier { font-size:9px; letter-spacing:.15em; opacity:.45; color:#f3f1ea; font-family:Georgia,serif; }
+</style>
 
-<div style="max-width:480px;margin:24px auto 0;padding:0 16px;font-family:Georgia,'Times New Roman',serif">
-  <div style="border:1px solid rgba(255,255,255,.12);border-radius:14px;overflow:hidden;background:rgba(255,255,255,.03)">
+<!-- Full Curator Card -->
+<div class="cotm-wrap">
+  <div class="cotm-card">
 
-    <!-- Header -->
-    <a href="https://undeniablehittheory.com/curator-of-the-month/" style="display:flex;align-items:center;gap:14px;padding:16px;text-decoration:none">
-      <img src="http://undeniablehittheory.com/wp-content/uploads/2026/04/Lucas-moon-Large-format.png"
-           style="width:56px;height:56px;border-radius:50%;object-fit:cover;object-position:center top;flex-shrink:0" alt="Lucas Moon"/>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:10px;letter-spacing:.25em;opacity:.4;color:#f3f1ea;margin-bottom:3px">🌙 CURATOR OF THE MONTH · APRIL</div>
-        <div style="font-size:17px;font-weight:600;color:#f3f1ea;margin-bottom:1px">Lucas Moon</div>
-        <div style="font-size:13px;opacity:.55;color:#f3f1ea;font-style:italic">Walking on a Pretty Day · Kurt Vile</div>
+    <!-- Hero -->
+    <div class="cotm-hero">
+      <img src="https://undeniablehittheory.com/wp-content/uploads/2026/04/Lucas-moon-Large-format.png" alt="Lucas Moon"/>
+      <div class="cotm-hero-overlay"></div>
+      <div class="cotm-hero-text">
+        <div class="cotm-hero-eyebrow">🌙 CURATOR OF THE MONTH · APRIL 2026</div>
+        <div class="cotm-hero-name">Lucas Moon</div>
+        <div class="cotm-tier-badge" id="cotmTierBadge">🌙 RISING CURATOR</div>
       </div>
-    </a>
-
-    <!-- Tabs -->
-    <div style="border-top:1px solid rgba(255,255,255,.07);padding:10px 16px 0;display:flex;gap:6px">
-      <button id="cotmTabYT" onclick="cotmShow('yt')"
-        style="background:#f3f1ea;color:#000;border:none;border-radius:999px;padding:6px 18px;font-size:10px;letter-spacing:.15em;font-family:Georgia,serif;cursor:pointer">
-        YOUTUBE
-      </button>
-      <button id="cotmTabSP" onclick="cotmShow('sp')"
-        style="background:transparent;color:#f3f1ea;border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:6px 18px;font-size:10px;letter-spacing:.15em;font-family:Georgia,serif;cursor:pointer;opacity:.6">
-        SPOTIFY
-      </button>
     </div>
 
-    <!-- YouTube -->
-    <div id="cotmYT" style="padding:12px 0 0">
-      <div style="position:relative;width:100%;aspect-ratio:16/9">
+    <!-- Live stats — hidden until votes exist -->
+    <div class="cotm-stats" id="cotmStatsBar" style="display:none">
+      <div class="cotm-stat">
+        <div class="cotm-stat-num" id="cotmHitRate">—</div>
+        <div class="cotm-stat-lbl">HIT RATE</div>
+      </div>
+      <div class="cotm-stat">
+        <div class="cotm-stat-num" id="cotmHits">0</div>
+        <div class="cotm-stat-lbl">HITS</div>
+      </div>
+      <div class="cotm-stat">
+        <div class="cotm-stat-num" id="cotmDenies">0</div>
+        <div class="cotm-stat-lbl">DENIED</div>
+      </div>
+    </div>
+
+    <!-- Bio -->
+    <div class="cotm-bio">
+      <p class="cotm-bio-lead">Raised between late-night radio and underground shows, he developed an instinct for songs that linger.</p>
+      <p class="cotm-bio-body">He listens for emotion first, production second, and hype last. Like the moon itself, Lucas moves quietly — no algorithm, no trend.</p>
+      <p class="cotm-bio-quote">"If it doesn't move you, it's not a hit."</p>
+    </div>
+
+    <!-- Theme + current pick -->
+    <div class="cotm-theme">
+      <div class="cotm-theme-eyebrow">APRIL THEME · WEEK 1 OF 4</div>
+      <div class="cotm-theme-title">Songs to Ride Your Bike To</div>
+      <div class="cotm-song-eyebrow">HIT OF THE WEEK</div>
+      <div class="cotm-song-title">Walking on a Pretty Day</div>
+      <div class="cotm-song-artist">Kurt Vile</div>
+    </div>
+
+    <!-- Player tabs -->
+    <div class="cotm-tabs">
+      <button class="cotm-tab cotm-tab-yt" id="cotmTabYT" onclick="cotmShow('yt')">YOUTUBE</button>
+      <button class="cotm-tab cotm-tab-sp" id="cotmTabSP" onclick="cotmShow('sp')">SPOTIFY</button>
+    </div>
+
+    <!-- YouTube player -->
+    <div class="cotm-player-yt" id="cotmYT">
+      <div class="cotm-player-yt-inner">
         <iframe src="https://www.youtube.com/embed/tVL02_LghE4?rel=0&modestbranding=1&playsinline=1"
-          style="width:100%;height:100%;display:block;border:none"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
       </div>
     </div>
 
-    <!-- Spotify -->
-    <div id="cotmSP" style="padding:12px 16px 0;display:none">
+    <!-- Spotify player -->
+    <div class="cotm-player-sp" id="cotmSP">
       <iframe src="https://open.spotify.com/embed/track/4cCoZML1dPIQxNjOwDmJGf" height="152"
-        style="width:100%;display:block;border:none;border-radius:8px"
         allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
     </div>
 
-    <div style="padding:10px 16px 14px;font-size:11px;letter-spacing:.1em;opacity:.3;color:#f3f1ea;text-align:center">
-      Monday drops · Sign up above to get Lucas's picks
+    <!-- Archive of picks -->
+    <div class="cotm-archive" id="cotmArchive"></div>
+
+    <!-- Follow = subscribe to Monday drops -->
+    <div class="cotm-follow">
+      <button class="cotm-follow-btn" id="cotmFollowBtn" onclick="cotmFollowClick()">+ Follow Lucas · Get Monday Drops</button>
+      <div class="cotm-follow-input" id="cotmFollowInput">
+        <input type="tel" id="cotmFollowPhone" placeholder="+1 (___) ___-____" autocomplete="tel"/>
+        <button class="cotm-follow-confirm" onclick="cotmConfirmFollow()">SEND ME MONDAY DROPS</button>
+        <div class="cotm-follow-legal">By continuing you agree to receive weekly SMS. Reply STOP anytime.</div>
+      </div>
+      <div class="cotm-follow-success" id="cotmFollowSuccess">
+        ✓ Following Lucas Moon &nbsp;·&nbsp; 📱 Monday drops &nbsp;·&nbsp; 🔥 Vote on every pick
+      </div>
     </div>
+
+    <!-- Footer link -->
+    <div class="cotm-footer">
+      <a href="https://undeniablehittheory.com/curator-of-the-month/">FULL BIO + ALL PICKS →</a>
+    </div>
+
   </div>
+</div>
+
+<!-- Curator Slider — grows as more curators are added each month -->
+<div class="cotm-slider-wrap" id="cotmSliderWrap" style="display:none">
+  <div class="cotm-slider-label">PAST CURATORS</div>
+  <div class="cotm-slider" id="cotmSlider"></div>
 </div>
 
 <script>
 function cotmShow(tab) {
-  document.getElementById('cotmYT').style.display = tab === 'yt' ? 'block' : 'none';
-  document.getElementById('cotmSP').style.display = tab === 'sp' ? 'block' : 'none';
-  document.getElementById('cotmTabYT').style.background = tab === 'yt' ? '#f3f1ea' : 'transparent';
-  document.getElementById('cotmTabYT').style.color = tab === 'yt' ? '#000' : '#f3f1ea';
-  document.getElementById('cotmTabYT').style.opacity = tab === 'yt' ? '1' : '0.6';
-  document.getElementById('cotmTabYT').style.border = tab === 'yt' ? 'none' : '1px solid rgba(255,255,255,.2)';
-  document.getElementById('cotmTabSP').style.background = tab === 'sp' ? '#1DB954' : 'transparent';
-  document.getElementById('cotmTabSP').style.color = tab === 'sp' ? '#000' : '#f3f1ea';
-  document.getElementById('cotmTabSP').style.opacity = tab === 'sp' ? '1' : '0.6';
-  document.getElementById('cotmTabSP').style.border = tab === 'sp' ? 'none' : '1px solid rgba(255,255,255,.2)';
+  document.getElementById('cotmYT').style.display = tab==='yt' ? 'block' : 'none';
+  document.getElementById('cotmSP').style.display = tab==='sp' ? 'block' : 'none';
+  var yt=document.getElementById('cotmTabYT'), sp=document.getElementById('cotmTabSP');
+  yt.className = 'cotm-tab cotm-tab-yt';
+  sp.className = 'cotm-tab cotm-tab-sp';
+  yt.style.opacity = tab==='yt' ? '1' : '0.55';
+  sp.style.opacity = tab==='sp' ? '1' : '0.55';
+  sp.style.background = tab==='sp' ? '#1DB954' : 'transparent';
+  sp.style.color = tab==='sp' ? '#000' : '#f3f1ea';
 }
+
+function cotmFollowClick() {
+  var inp = document.getElementById('cotmFollowInput');
+  inp.style.display = inp.style.display === 'none' ? 'block' : 'none';
+  if(inp.style.display === 'block') document.getElementById('cotmFollowPhone').focus();
+}
+
+function cotmConfirmFollow() {
+  var phone = document.getElementById('cotmFollowPhone').value.trim();
+  if(!phone) { document.getElementById('cotmFollowPhone').style.borderColor='rgba(243,241,234,.6)'; return; }
+  var btn = document.querySelector('.cotm-follow-confirm');
+  btn.disabled = true; btn.textContent = 'SENDING...';
+  fetch('/api/subscribe', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ phone: phone, curator_id: 1 })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    if(d.message || d.ok) {
+      document.getElementById('cotmFollowInput').style.display = 'none';
+      document.getElementById('cotmFollowBtn').style.display = 'none';
+      document.getElementById('cotmFollowSuccess').style.display = 'block';
+    } else {
+      btn.disabled = false; btn.textContent = 'SEND ME MONDAY DROPS';
+      alert(d.error || 'Something went wrong. Try again.');
+    }
+  })
+  .catch(function(){
+    btn.disabled = false; btn.textContent = 'SEND ME MONDAY DROPS';
+    alert('Something went wrong. Try again.');
+  });
+}
+
+// Load live scorecard
+fetch('/api/curators/1/scorecard')
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    var s = d.stats || {};
+    var total = parseInt(s.total) || 0;
+
+    // Update tier badge
+    if(d.tier) document.getElementById('cotmTierBadge').textContent = d.tier.toUpperCase();
+
+    // Only show stats bar if there are votes
+    if(total > 0) {
+      document.getElementById('cotmStatsBar').style.display = 'flex';
+      document.getElementById('cotmHitRate').textContent = s.hit_rate ? s.hit_rate + '%' : '—';
+      document.getElementById('cotmHits').textContent = (parseInt(s.hits)||0) + (parseInt(s.mega_hits)||0);
+      document.getElementById('cotmDenies').textContent = parseInt(s.denies)||0;
+    }
+
+    // Render archive
+    var subs = d.submissions || [];
+    var archiveEl = document.getElementById('cotmArchive');
+    if(subs.length) {
+      var html = '<div class="cotm-archive-lbl">APRIL PICKS</div>';
+      subs.forEach(function(s) {
+        var total = (parseInt(s.mega_hits)||0)+(parseInt(s.hits)||0)+(parseInt(s.denies)||0);
+        var votesHtml = total > 0
+          ? '<div class="cotm-pick-votes"><span>🔥 '+(parseInt(s.mega_hits)||0)+' Mega</span><span>🎯 '+(parseInt(s.hits)||0)+' Hit</span><span>💀 '+(parseInt(s.denies)||0)+' Denied</span></div>'
+          : '<div style="font-size:11px;opacity:.3;color:#f3f1ea;margin-top:4px;font-family:Georgia,serif">no votes yet</div>';
+        html += '<div class="cotm-pick">'
+          +'<div class="cotm-pick-week">WEEK '+(s.week_number||'?')+' PICK</div>'
+          +'<div class="cotm-pick-title">'+s.title+'</div>'
+          +'<div class="cotm-pick-artist">'+s.artist+'</div>'
+          +(s.curator_note ? '<div class="cotm-pick-note">"'+s.curator_note+'"</div>' : '')
+          +votesHtml
+          +'</div>';
+      });
+      archiveEl.innerHTML = html;
+    }
+  })
+  .catch(function(){});
+
+// Load all curators for slider
+fetch('/api/curators')
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    var curators = d.curators || [];
+    // Only show slider if more than 1 curator
+    if(curators.length <= 1) return;
+    var sliderEl = document.getElementById('cotmSlider');
+    var wrapEl = document.getElementById('cotmSliderWrap');
+    var html = '';
+    curators.forEach(function(c) {
+      html += '<div class="cotm-slide" onclick="window.location.href='https://undeniablehittheory.com/curator-of-the-month/'">'
+        +(c.image_url ? '<img class="cotm-slide-img" src="'+c.image_url+'" alt="'+c.name+'"/>' : '<div style="width:100%;aspect-ratio:3/2;background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;font-size:28px">🌙</div>')
+        +'<div class="cotm-slide-body">'
+        +'<div class="cotm-slide-month">APRIL 2026</div>'
+        +'<div class="cotm-slide-name">'+c.name+'</div>'
+        +(c.monthly_theme ? '<div class="cotm-slide-theme">'+c.monthly_theme+'</div>' : '')
+        +'<div class="cotm-slide-tier">🌙 Rising Curator</div>'
+        +'</div></div>';
+    });
+    sliderEl.innerHTML = html;
+    wrapEl.style.display = 'block';
+  })
+  .catch(function(){});
 </script>
+
 
 <div class="wrap">
   <h1>Undeniable Hit Theory</h1>
