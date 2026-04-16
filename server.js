@@ -31,6 +31,9 @@ app.use(express.urlencoded({ extended: false, limit: "10mb" }));
 app.use(express.json({ limit: "10mb" }));
 app.use(require("express").static(require("path").join(__dirname, "public")));
 
+// Admin panel
+app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "public", "admin.html")));
+
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
   res.json({ status: 'UHT SMS Platform running', version: '1.0.0' });
