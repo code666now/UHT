@@ -503,7 +503,7 @@ document.addEventListener('DOMContentLoaded', function(){
       var curators = d.curators || [];
       var strip = document.getElementById('uhtCuratorStrip');
       if(!curators.length) { strip.style.display='none'; return; }
-      curators.forEach(function(c){ if(document.querySelector("#uhtCuratorStrip [title=""+c.name+""]")) return;
+      curators.forEach(function(c){
         var el = document.createElement('div');
         el.className = 'uht-curator-avatar';
         el.title = c.name;
