@@ -358,7 +358,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
         <button class="btn btn-primary" onclick="openModal('subscriber')">+ Add Subscriber</button>
       </div>
       <div class="table-wrap"><table>
-        <thead><tr><th>#</th><th>Phone</th><th>Subscribed To</th><th>Type</th><th>Status</th><th>Joined</th><th></th></tr></thead>
+        <thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Subscribed To</th><th>Type</th><th>Status</th><th>Joined</th><th></th></tr></thead>
         <tbody id="subs-tbody"><tr class="empty-row"><td colspan="7">Loading…</td></tr></tbody>
       </table></div>
     </div>
@@ -792,7 +792,7 @@ async function loadSubscribers() {
     const {subscribers} = await api('GET','/api/subscribers');
     tbody.innerHTML = subscribers.length
       ? subscribers.map(s=>`<tr>
-          <td style="color:var(--muted)">#${s.id}</td><td>${esc(s.phone)}</td>
+          <td style="color:var(--muted)">#${s.id}</td><td>${esc(s.name||'—')}</td><td>${esc(s.phone)}</td>
           <td><strong>${esc(s.target_name||'—')}</strong></td>
           <td><span class="tag ${s.curator_id?'tag-curator':'tag-genre'}">${s.curator_id?'curator':'genre'}</span></td>
           <td><span class="tag ${s.is_active?'tag-active':'tag-inactive'}">${s.is_active?'active':'paused'}</span></td>
