@@ -485,18 +485,19 @@ function uhtConfirmFollow() {
 }
 
 // Close modal on background click
-document.getElementById('uhtModalBg').addEventListener('click', function(e){
-  if(e.target===this) uhtCloseModal();
-});
-
-// Wire up hardcoded Lucas avatar
-document.getElementById('lucasAvatar').addEventListener('click', function(){
-  uhtOpenModal({
-    id: 1,
-    name: 'Lucas Moon',
-    bio: 'Raised between late-night radio and underground shows, he developed an instinct for songs that linger. He listens for emotion first, production second, and hype last.',
-    image_url: 'https://uht-app-production.up.railway.app/lucas-moon.jpg',
-    instagram: 'lucasmoon'
+document.addEventListener('DOMContentLoaded', function(){
+  document.getElementById('uhtModalBg').addEventListener('click', function(e){
+    if(e.target===this) uhtCloseModal();
+  });
+  var avatar = document.getElementById('lucasAvatar');
+  if(avatar) avatar.addEventListener('click', function(){
+    uhtOpenModal({
+      id: 1,
+      name: 'Lucas Moon',
+      bio: 'Raised between late-night radio and underground shows, he developed an instinct for songs that linger. He listens for emotion first, production second, and hype last.',
+      image_url: 'https://uht-app-production.up.railway.app/lucas-moon.jpg',
+      instagram: 'lucasmoon'
+    });
   });
 });
 
