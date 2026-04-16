@@ -371,6 +371,8 @@ function uhtInitials(name) {
 }
 
 function uhtOpenModal(c) {
+  console.log("uhtOpenModal called", c);
+  alert("Modal opening for: " + c.name);
   uhtCurrentCuratorId = c.id;
   document.getElementById('uhtModalName').textContent = c.name || '';
   document.getElementById('uhtModalBio').textContent = c.bio || 'No bio yet.';
