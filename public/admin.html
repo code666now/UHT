@@ -275,7 +275,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <div class="panel active" id="panel-dashboard">
       <div class="config-bar">
         <span>Node.js API URL:</span>
-        <input type="text" id="api-url-input" value="http://localhost:3000">
+        <input type="text" id="api-url-input" value="https://uht-app-production.up.railway.app">
         <button class="btn btn-primary" onclick="saveApiUrl()">Connect</button>
       </div>
       <div class="stats">
@@ -654,7 +654,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 //  UHT Admin — vanilla JS
 // ═══════════════════════════════════════════════════════════════
 
-let API  = localStorage.getItem('uht_api_url') || 'http://localhost:3000';
+let API  = localStorage.getItem('uht_api_url') || 'https://uht-app-production.up.railway.app';
 let AKEY = localStorage.getItem('uht_anthropic_key') || '';
 let GENRES = [], CURATORS = [];
 let agentHistory = []; // Claude conversation history
