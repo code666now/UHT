@@ -489,7 +489,7 @@ document.addEventListener('DOMContentLoaded', function(){
 });
 
 // Load curators into strip
-document.addEventListener("DOMContentLoaded", async()=>{
+(async()=>{
   const strip = document.getElementById('uhtCuratorStrip');
   try {
     const r = await fetch('/api/curators');
@@ -513,7 +513,7 @@ document.addEventListener("DOMContentLoaded", async()=>{
       strip.appendChild(el);
     });
   } catch(e){ console.error("curator fetch error", e); }
-});
+})();
 </script>
 
 
