@@ -489,28 +489,30 @@ document.addEventListener('DOMContentLoaded', function(){
 });
 
 // Load curators into strip
-(function(){
-  fetch('/api/curators')
-    .then(function(r){ return r.json(); })
-    .then(function(d){
-      var curators = d.curators || [];
-      var strip = document.getElementById('uhtCuratorStrip');
-      if(!curators.length) { strip.style.display='none'; return; }
-      curators.forEach(function(c){
-        var el = document.createElement('div');
-        el.className = 'uht-curator-avatar';
-        el.title = c.name;
-        var imgHtml = c.image_url
+(async()=>{
+  const strip = document.getElementById('uhtCuratorStrip');
+  try {
+    const r = await fetch('/api/curators');
+    const d = await r.json();
+    const curators = d.curators || [];
+    if(!curators.length){ strip.style.display='none'; return; }
+    curators.forEach(c=>{
+      const el = document.createElement('div');
+      el.className = 'uht-curator-avatar';
+      el.title = c.name;
+      el.style.cursor = 'pointer';
+      el.innerHTML =
+        '<div class="uht-curator-ring">' +
+          (c.image_url
             ? '<img src="'+c.image_url+'" alt="'+c.name+'" style="width:100%;height:100%;object-fit:cover;object-position:center top">'
-            : '<span style="font-family:Bebas Neue,sans-serif;font-size:48px;color:rgba(200,168,112,0.5)">'+uhtInitials(c.name)+'</span>';
-        el.innerHTML = '<div class="uht-curator-ring">'+imgHtml+'</div>'
-          +'<div class="uht-curator-name-tag">'+c.name.split(' ')[0]+'</div>'
-          +(c.instagram?'<a class="uht-curator-ig" href="https://instagram.com/'+c.instagram.replace('@','')+'" target="_blank" onclick="event.stopPropagation()">@'+c.instagram.replace('@','')+'</a>':'');
-        el.setAttribute('onclick', 'uhtOpenModal(' + JSON.stringify(c).replace(/'/g, "\'") + ')'); el.style.cursor='pointer';
-        strip.appendChild(el);
-      });
-    })
-    .catch(function(){});
+            : '<span style="font-family:Bebas Neue,sans-serif;font-size:48px;color:rgba(200,168,112,0.5)">'+c.name.split(' ').map(w=>w[0]).join('')+'</span>') +
+        '</div>' +
+        '<div class="uht-curator-name-tag">'+c.name.split(' ')[0]+'</div>' +
+        (c.instagram ? '<a class="uht-curator-ig" href="https://instagram.com/'+c.instagram.replace('@','')+'" target="_blank" onclick="event.stopPropagation()">@'+c.instagram.replace('@','')+'</a>' : '');
+      el.addEventListener('click', ()=>uhtOpenModal(c));
+      strip.appendChild(el);
+    });
+  } catch(e){ strip.style.display='none'; }
 })();
 </script>
 
