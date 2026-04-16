@@ -377,7 +377,7 @@ function uhtOpenModal(c) {
   // Image
   var imgWrap = document.getElementById('uhtModalImgWrap');
   if(c.image_url) {
-    imgWrap.innerHTML = '<img class="uht-modal-img" src="'+c.image_url+'" alt="'+c.name+'" onerror="this.parentNode.innerHTML='<div class=uht-modal-img-placeholder>'+uhtInitials(c.name)+'</div>'">';
+    imgWrap.innerHTML = '<img class="uht-modal-img" src="'+c.image_url+'" alt="'+c.name+'">';
   } else {
     imgWrap.innerHTML = '<div class="uht-modal-img-placeholder">'+uhtInitials(c.name)+'</div>';
   }
