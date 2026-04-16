@@ -664,58 +664,74 @@ app.get('/drop/curator/:slug', async (req, res) => {
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>${curator.name}'s Pick — UHT</title>
 <style>
-html,body{background:#000;margin:0;padding:0;overflow-x:hidden;font-family:Georgia,"Times New Roman",serif;color:#f3f1ea}
-.wrap{min-height:100svh;background:#000;display:flex;flex-direction:column;padding:0 0 60px}
-.hero{position:relative;width:100%;aspect-ratio:4/3;max-height:360px;overflow:hidden;background:#111}
-.hero img{width:100%;height:100%;object-fit:cover;display:block}
-.hero-grad{position:absolute;inset:0;background:linear-gradient(to bottom,transparent 30%,#000 100%)}
-.header{text-align:center;padding:0 20px;margin-top:16px}
-.c-label{font-size:10px;letter-spacing:.3em;opacity:.4;text-transform:uppercase;margin-bottom:8px}
-.c-name{margin:0;font-size:32px;font-weight:600;letter-spacing:3px;text-transform:uppercase}
-.c-bio{font-size:14px;opacity:.5;margin-top:6px;font-style:italic}
-.pick-label{font-size:10px;letter-spacing:.3em;opacity:.4;text-transform:uppercase;margin:24px 0 10px}
-.song-title{font-size:28px;font-weight:600;margin:0 0 4px}
-.song-artist{font-size:17px;opacity:.6;margin:0}
-.song-note{font-size:16px;font-style:italic;opacity:.6;margin-top:12px;padding:0 10px}
-.press-play{font-size:10px;letter-spacing:.3em;opacity:.45;text-transform:uppercase;margin-top:10px}
-.video-wrap{position:relative;width:100%;aspect-ratio:16/9;margin-top:16px}
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500&display=swap');
+html,body{background:#0a0a0a;margin:0;padding:0;overflow-x:hidden;font-family:'Inter',sans-serif;color:#f0ede6}
+.wrap{min-height:100svh;background:#0a0a0a;display:flex;flex-direction:column;max-width:720px;margin:0 auto;padding:0 0 80px}
+/* Hero — full bleed with name overlay */
+.hero{position:relative;width:100%;aspect-ratio:3/2;max-height:480px;overflow:hidden;background:#111}
+.hero img{width:100%;height:100%;object-fit:cover;object-position:center top;display:block}
+.hero-grad{position:absolute;inset:0;background:linear-gradient(to bottom,transparent 20%,rgba(10,10,10,0.5) 60%,#0a0a0a 100%)}
+.hero-text{position:absolute;bottom:0;left:0;right:0;padding:24px 24px 28px}
+.c-label{font-size:9px;letter-spacing:.35em;opacity:.5;text-transform:uppercase;margin-bottom:10px;font-family:'Inter',sans-serif}
+.c-name{margin:0;font-size:clamp(36px,8vw,56px);font-weight:700;letter-spacing:1px;font-family:'Playfair Display',serif;line-height:1.1}
+.c-tier{font-size:10px;letter-spacing:.25em;opacity:.5;text-transform:uppercase;margin-top:8px;font-family:'Inter',sans-serif}
+/* Bio section */
+.bio-section{padding:28px 24px;border-bottom:1px solid rgba(255,255,255,.07)}
+.c-bio{font-size:15px;line-height:1.8;color:rgba(240,237,230,0.7);font-family:'Playfair Display',serif;font-style:italic}
+/* Pick section */
+.pick-section{padding:32px 24px}
+.pick-label{font-size:9px;letter-spacing:.35em;opacity:.4;text-transform:uppercase;margin-bottom:20px;font-family:'Inter',sans-serif}
+.song-title{font-size:clamp(28px,6vw,42px);font-weight:700;margin:0 0 6px;font-family:'Playfair Display',serif;line-height:1.2}
+.song-artist{font-size:16px;opacity:.55;margin:0 0 14px;font-family:'Inter',sans-serif;font-weight:300;letter-spacing:.05em}
+.song-note{font-size:15px;font-style:italic;opacity:.5;margin:0 0 24px;font-family:'Playfair Display',serif;line-height:1.7;padding-left:16px;border-left:2px solid rgba(255,255,255,.15)}
+.press-play{font-size:9px;letter-spacing:.35em;opacity:.4;text-transform:uppercase;margin-bottom:12px;font-family:'Inter',sans-serif}
+/* Video */
+.video-wrap{position:relative;width:100%;aspect-ratio:16/9;border-radius:8px;overflow:hidden;margin-bottom:8px}
 #player{width:100%;height:100%}
 .end-screen{position:absolute;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .4s}
 .end-screen.show{opacity:1;pointer-events:all}
-.end-screen p{margin:0;font-size:18px;line-height:1.7}
-.vote-row{display:flex;gap:12px;justify-content:center;margin-top:24px;padding:0 20px}
-.vote-btn{flex:1;max-width:160px;padding:14px;border-radius:12px;border:none;font-family:Georgia,serif;font-size:16px;cursor:pointer;transition:all .2s}
-.vote-hit{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.8)}.vote-hit:hover,.vote-hit:hover,.vote-hit:active{background:rgba(200,0,0,.3);border-color:rgba(200,0,0,.6);color:#ff4444}
-.vote-denied{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.8)}.vote-denied:hover,.vote-denied:hover,.vote-denied:active{background:rgba(200,0,0,.3);border-color:rgba(200,0,0,.6);color:#ff4444}
-.vote-btn:disabled{opacity:.35;cursor:default}
-.vote-msg{text-align:center;margin-top:10px;font-size:13px;opacity:.45;min-height:18px;letter-spacing:.05em}
-.share-wrap{display:flex;justify-content:center;margin-top:28px}
-.share-btn{background:rgba(255,255,255,.04);color:#f3f1ea;border:1px solid rgba(243,241,234,.2);padding:11px 22px;border-radius:999px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;cursor:pointer;transition:all .2s;font-family:inherit}
-.share-btn:hover{background:#f3f1ea;color:#000}
-.join-cta{display:none;text-align:center;margin-top:36px;padding:0 20px;border-top:1px solid rgba(255,255,255,.06);padding-top:32px}
-.join-cta p{font-size:12px;opacity:.45;letter-spacing:.15em;text-transform:uppercase;margin:0 0 14px}
-.join-btn{display:inline-block;padding:13px 30px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.18);color:#f3f1ea;text-decoration:none;font-size:12px;letter-spacing:.15em;text-transform:uppercase;transition:all .2s}
-.join-btn:hover{background:#f3f1ea;color:#000}
+.end-screen p{margin:0;font-size:18px;line-height:1.7;font-family:'Playfair Display',serif}
+/* Vote */
+.vote-row{display:flex;gap:10px;justify-content:center;margin:24px 0 8px}
+.vote-btn{flex:1;max-width:140px;padding:14px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:rgba(240,237,230,.8);font-family:'Inter',sans-serif;font-size:14px;cursor:pointer;transition:all .2s;letter-spacing:.03em}
+.vote-btn:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25);color:#fff}
+.vote-btn:disabled{opacity:.3;cursor:default}
+.vote-msg{text-align:center;margin-top:8px;font-size:12px;opacity:.4;min-height:18px;letter-spacing:.08em;font-family:'Inter',sans-serif;text-transform:uppercase}
+/* Spotify subtle link */
+.sp-toggle{text-align:center;margin:4px 0 20px;font-size:11px;letter-spacing:.12em;color:rgba(255,255,255,.25);text-transform:uppercase;cursor:pointer;font-family:'Inter',sans-serif}
+.sp-toggle:hover{color:rgba(255,255,255,.5)}
+.sp-wrap{margin:0 0 16px}
+/* Share */
+.share-wrap{display:flex;justify-content:center;margin-top:8px}
+.share-btn{background:transparent;color:rgba(240,237,230,.6);border:1px solid rgba(240,237,230,.15);padding:11px 24px;border-radius:999px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;cursor:pointer;transition:all .2s;font-family:'Inter',sans-serif}
+.share-btn:hover{background:rgba(255,255,255,.06);color:#f0ede6;border-color:rgba(255,255,255,.3)}
+/* Join CTA */
+.join-cta{display:none;text-align:center;margin-top:40px;padding:32px 24px 0;border-top:1px solid rgba(255,255,255,.06)}
+.join-cta p{font-size:11px;opacity:.4;letter-spacing:.18em;text-transform:uppercase;margin:0 0 16px;font-family:'Inter',sans-serif}
+.join-btn{display:inline-block;padding:13px 32px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.18);color:#f0ede6;text-decoration:none;font-size:11px;letter-spacing:.18em;text-transform:uppercase;transition:all .2s;font-family:'Inter',sans-serif}
+.join-btn:hover{background:#f0ede6;color:#000}
 .no-video{padding:40px 20px;text-align:center}
 .sp-btn{display:inline-block;margin-top:14px;padding:12px 28px;border-radius:999px;background:#1DB954;color:#fff;text-decoration:none;font-size:15px}
-@media(min-width:768px){
-  .wrap{align-items:center}
-  .hero{max-height:500px;aspect-ratio:16/7;width:100%}
-  .song-title{font-size:36px}
-  .video-wrap{max-width:1200px;width:100%}
+@media(min-width:600px){
+  .hero{max-height:560px}
+  .song-title{font-size:42px}
 }
 </style>
 </head>
 <body>
 <div class="wrap">
 
-  ${curator.image_url ? `<div class="hero"><img src="${curator.image_url}" alt="${curator.name}"><div class="hero-grad"></div></div>` : ''}
-
-  <div class="header">
-    <div class="c-label">${curator.curator_month ? 'Curator of the Month — ' + curator.curator_month : 'Curator Pick'}</div>
-    <h1 class="c-name">${curator.name}</h1>
-    <div style="font-size:11px;letter-spacing:.2em;opacity:.5;margin-top:6px;text-transform:uppercase">${curatorTier}</div>
-    ${curator.bio ? `<div class="c-bio">${curator.bio}</div>` : ''}
+  <div class="hero">
+    ${curator.image_url ? `<img src="${curator.image_url}" alt="${curator.name}">` : ''}
+    <div class="hero-grad"></div>
+    <div class="hero-text">
+      <div class="c-label">${curator.curator_month ? 'Curator of the Month · ' + curator.curator_month : 'UHT · Curator Pick'}</div>
+      <h1 class="c-name">${curator.name}</h1>
+      <div class="c-tier">${curatorTier}</div>
+    </div>
+  </div>
+  ${curator.bio ? `<div class="bio-section"><div class="c-bio">${curator.bio}</div></div>` : ''}
+  <div class="pick-section">
     <div class="pick-label">${d.theme ? d.theme.toUpperCase() + ' · ' : ''}Week ${d.week_number}</div>
     <div class="song-title">${d.title}</div>
     <div class="song-artist">${d.artist}</div>
@@ -727,6 +743,8 @@ html,body{background:#000;margin:0;padding:0;overflow-x:hidden;font-family:Georg
   ${!ytId && d.spotify_url ? `<div class="sp-wrap" id="spWrap"><iframe style="border-radius:12px" src="https://open.spotify.com/embed/track/${d.spotify_url.match(/track\/([a-zA-Z0-9]+)/)?.[1]}" width="100%" height="152" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div>` : ''}
   ${ytId && d.spotify_url ? `<div id="spWrap" style="display:none;margin:12px 0"><iframe style="border-radius:12px" src="https://open.spotify.com/embed/track/${d.spotify_url.match(/track\/([a-zA-Z0-9]+)/)?.[1]}" width="100%" height="152" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div>` : ''}
 
+  </div>
+  <div style="padding:0 24px">
   <div class="vote-row">
     <button class="vote-btn vote-hit" id="vMega" onclick="vote('mega_hit')">🔥 Mega Hit</button>
     <button class="vote-btn vote-hit" id="vHit" onclick="vote('hit')">🎯 Hit</button>
@@ -735,6 +753,8 @@ html,body{background:#000;margin:0;padding:0;overflow-x:hidden;font-family:Georg
   <div class="vote-msg" id="voteMsg"></div>
 
   ${d.spotify_url && ytId ? `<div style="text-align:center;margin:8px 0"><span onclick="document.getElementById('spWrap').style.display=document.getElementById('spWrap').style.display==='none'?'':'none'" style="font-family:'Courier Prime',monospace;font-size:11px;letter-spacing:1px;color:rgba(255,255,255,0.3);cursor:pointer;text-decoration:underline;text-transform:uppercase">Prefer Spotify?</span></div>` : ''}
+  </div>
+  <div style="padding:0 24px">
   <div class="share-wrap">
     <button class="share-btn" id="shareBtn" onclick="sharePick()">Share this pick</button>
   </div>
