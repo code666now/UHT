@@ -322,6 +322,13 @@
 <!-- Curator strip -->
 <div class="uht-curator-strip" id="uhtCuratorStrip">
   <div class="uht-curator-strip-label">Curator of the Month</div>
+  <div class="uht-curator-avatar" onclick="fetch('/api/curators').then(r=>r.json()).then(d=>uhtOpenModal(d.curators[0]))">
+    <div class="uht-curator-ring">
+      <img src="https://uht-app-production.up.railway.app/lucas-moon.jpg" alt="Lucas Moon" style="width:100%;height:100%;object-fit:cover;object-position:center top"/>
+    </div>
+    <div class="uht-curator-name-tag">Lucas</div>
+    <a class="uht-curator-ig" href="https://instagram.com/lucasmoon" target="_blank" onclick="event.stopPropagation()">@lucasmoon</a>
+  </div>
 </div>
 
 <!-- Curator modal — exact radio page card -->
