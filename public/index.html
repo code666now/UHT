@@ -187,263 +187,325 @@
 
 
 
-<!-- CURATOR OF THE MONTH — radio card style -->
+
+<!-- ══ RADIO-STYLE CURATOR SECTION ══ -->
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap');
-  :root {
-    --rc-body:#1c1c26; --rc-dark:#0e0e16; --rc-darker:#08080e;
-    --rc-light:#c8a870; --rc-chrome:#8888a8; --rc-ring:#5858a0;
-    --rc-ink:#90e8b0; --rc-display:'Bebas Neue',sans-serif; --rc-mono:'Courier Prime',monospace;
+
+  /* Radio page CSS vars mapped to homepage themes */
+  body.theme-dark  { --dial-ring:#5858a0; --rc-display:'Bebas Neue',sans-serif; --rc-mono:'Courier Prime',monospace; --rc-body:#1c1c26; --rc-darker:#08080e; --rc-light:#c8a870; --rc-chrome:#8888a8; }
+  body.theme-fire  { --dial-ring:#ff6020; --rc-body:#6a2008; --rc-darker:#200400; --rc-light:#ff6030; --rc-chrome:#ff4010; }
+  body.theme-party { --dial-ring:#a060e0; --rc-body:#3a1868; --rc-darker:#140628; --rc-light:#6030a8; --rc-chrome:#8040c0; }
+
+  /* Page title — exact from radio page */
+  .uht-page-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(32px, 10vw, 64px);
+    letter-spacing: 4px; text-align: center;
+    color: var(--rc-chrome); margin: 0;
+    text-shadow: 0 0 40px rgba(136,136,168,0.2);
+    transition: color 1.2s;
   }
-  body.theme-fire  { --rc-body:#6a2008; --rc-dark:#3a0a00; --rc-darker:#200400; --rc-light:#ff6030; --rc-chrome:#ff4010; --rc-ring:#ff6020; --rc-ink:#ff5000; }
-  body.theme-party { --rc-body:#3a1868; --rc-dark:#220a48; --rc-darker:#140628; --rc-light:#6030a8; --rc-chrome:#8040c0; --rc-ring:#a060e0; --rc-ink:#c0a0ff; }
+  body.theme-fire  .uht-page-title { color: #ff9060; text-shadow: 0 0 30px rgba(255,80,20,0.4); }
+  body.theme-party .uht-page-title { color: #c0a0ff; text-shadow: 0 0 30px rgba(160,100,255,0.4); }
+  .uht-page-sub {
+    font-family: 'Courier Prime', monospace;
+    font-size: 10px; letter-spacing: 4px; text-transform: uppercase;
+    text-align: center; color: rgba(160,160,190,0.45);
+    margin-top: 4px; transition: color 1.2s;
+  }
+  body.theme-fire  .uht-page-sub { color: rgba(255,150,80,0.4); }
+  body.theme-party .uht-page-sub { color: rgba(180,140,255,0.4); }
 
-  .rc-wrap { max-width:480px; margin:28px auto 0; padding:0 16px; }
-  .rc-card { border-radius:16px; overflow:hidden; background:var(--rc-body); box-shadow:0 30px 80px rgba(0,0,0,.9),0 0 0 1px rgba(255,255,255,.06); }
-  .rc-img { width:100%; height:220px; object-fit:cover; object-position:center top; display:block; }
-  .rc-body { padding:20px 22px 8px; }
-  .rc-name { font-family:var(--rc-display); font-size:36px; letter-spacing:3px; color:var(--rc-light); margin-bottom:4px; transition:color 1.2s; }
-  .rc-tier { font-family:var(--rc-mono); font-size:13px; letter-spacing:2px; opacity:.6; margin-bottom:10px; text-transform:uppercase; color:var(--rc-light); }
-  .rc-bio { font-family:var(--rc-mono); font-size:15px; line-height:1.7; color:rgba(200,168,112,.75); margin-bottom:16px; }
-  body.theme-fire  .rc-bio { color:rgba(255,160,80,.55); }
-  body.theme-party .rc-bio { color:rgba(180,140,255,.55); }
+  /* Curator strip — exact from radio page */
+  .uht-curator-strip {
+    display: flex; align-items: center; justify-content: center;
+    gap: 14px; flex-wrap: wrap;
+    width: min(700px, 96vw); margin: 20px auto 0;
+  }
+  .uht-curator-strip-label {
+    width: 100%; text-align: center;
+    font-family: 'Courier Prime', monospace; font-size: 9px;
+    letter-spacing: 3px; text-transform: uppercase;
+    color: rgba(200,168,112,0.35); margin-bottom: 2px; transition: color 1.2s;
+  }
+  body.theme-fire  .uht-curator-strip-label { color: rgba(255,160,80,0.3); }
+  body.theme-party .uht-curator-strip-label { color: rgba(180,140,255,0.3); }
+  .uht-curator-avatar {
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    cursor: pointer; transition: transform 0.2s;
+  }
+  .uht-curator-avatar:hover { transform: translateY(-3px); }
+  .uht-curator-avatar:hover .uht-curator-ring { box-shadow: 0 0 0 2px var(--dial-ring), 0 0 16px rgba(200,168,112,0.3); }
+  body.theme-fire  .uht-curator-avatar:hover .uht-curator-ring { box-shadow: 0 0 0 2px #ff5000, 0 0 16px rgba(255,80,0,0.3); }
+  body.theme-party .uht-curator-avatar:hover .uht-curator-ring { box-shadow: 0 0 0 2px #a060e0, 0 0 16px rgba(160,80,255,0.3); }
+  .uht-curator-ring {
+    width: 160px; height: 160px; border-radius: 50%;
+    overflow: hidden; border: 2px solid rgba(200,168,112,0.2);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+    transition: box-shadow 0.25s; background: var(--rc-darker);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .uht-curator-ring img { width: 100%; height: 100%; object-fit: cover; object-position: center top; }
+  .uht-curator-name-tag {
+    font-family: 'Courier Prime', monospace; font-size: 10px; letter-spacing: 1px;
+    color: rgba(200,168,112,0.6); text-align: center;
+  }
+  body.theme-fire  .uht-curator-name-tag { color: rgba(255,160,80,0.5); }
+  body.theme-party .uht-curator-name-tag { color: rgba(180,140,255,0.5); }
+  .uht-curator-ig {
+    display: block; text-align: center;
+    font-family: 'Courier Prime', monospace; font-size: 8px; letter-spacing: 1px;
+    color: rgba(160,160,190,0.5); text-decoration: none; transition: color 0.2s;
+  }
+  .uht-curator-ig:hover { color: var(--dial-ring); }
 
-  .rc-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
-  .rc-follow-btn { font-family:var(--rc-mono); font-size:12px; letter-spacing:1px; text-transform:uppercase; cursor:pointer; border-radius:999px; padding:8px 18px; border:1px solid var(--rc-ring); background:rgba(0,0,0,.3); color:var(--rc-light); transition:all .2s; }
-  .rc-follow-btn:hover { background:var(--rc-ring); color:#fff; }
-  .rc-follow-btn.following { border-color:rgba(100,220,120,.4); color:rgba(100,220,120,.9); background:rgba(100,220,120,.06); }
-
-  .rc-follow-input { display:none; margin-bottom:14px; }
-  .rc-follow-input input { width:100%; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.2); border-radius:8px; padding:10px 14px; color:#fff; font-family:var(--rc-mono); font-size:14px; outline:none; box-sizing:border-box; margin-bottom:8px; }
-  .rc-follow-confirm { font-family:var(--rc-mono); font-size:12px; letter-spacing:1px; text-transform:uppercase; cursor:pointer; border-radius:999px; padding:9px 20px; border:none; background:var(--rc-ring); color:#fff; transition:all .2s; }
-  .rc-follow-legal { font-size:11px; opacity:.3; color:var(--rc-light); margin-top:6px; line-height:1.6; font-family:var(--rc-mono); }
-  .rc-follow-perks { display:none; padding:10px 14px; border-radius:8px; background:rgba(100,220,120,.06); border:1px solid rgba(100,220,120,.2); font-family:var(--rc-mono); font-size:13px; color:rgba(100,220,120,.8); line-height:1.8; margin-bottom:14px; }
-
-  .rc-scorecard { padding:0 22px 20px; }
-  .rc-hit-badge { display:flex; align-items:center; gap:10px; margin-bottom:16px; padding:12px 16px; border-radius:10px; background:rgba(255,255,255,.05); }
-  .rc-hit-rate { font-size:42px; font-weight:900; font-family:var(--rc-display); }
-  .rc-hit-lbl { font-size:13px; letter-spacing:2px; font-family:var(--rc-mono); opacity:.5; text-transform:uppercase; }
-  .rc-hit-detail { font-size:15px; opacity:.7; margin-top:2px; }
-  .rc-archive-lbl { font-size:11px; letter-spacing:2px; font-family:var(--rc-mono); opacity:.4; margin-bottom:12px; text-transform:uppercase; }
-  .rc-pick { padding:14px 16px; border-radius:10px; background:rgba(255,255,255,.04); margin-bottom:10px; }
-  .rc-pick-theme { font-size:11px; letter-spacing:2px; font-family:var(--rc-mono); opacity:.6; text-transform:uppercase; margin-bottom:2px; }
-  .rc-pick-week { font-size:11px; letter-spacing:2px; font-family:var(--rc-mono); opacity:.35; text-transform:uppercase; }
-  .rc-pick-title { font-size:20px; font-weight:700; color:var(--rc-light); margin-top:4px; }
-  .rc-pick-artist { font-size:15px; opacity:.7; color:var(--rc-light); margin-top:2px; }
-  .rc-pick-note { font-size:14px; opacity:.5; margin-top:6px; font-style:italic; font-family:var(--rc-mono); color:var(--rc-light); }
-  .rc-pick-votes { display:flex; gap:12px; margin-top:8px; font-size:14px; opacity:.7; font-family:var(--rc-mono); }
-  .rc-no-votes { font-size:13px; opacity:.35; font-family:var(--rc-mono); margin-top:4px; }
-
-  .rc-tabs { display:flex; gap:6px; padding:0 22px 12px; }
-  .rc-tab { font-family:var(--rc-mono); font-size:11px; letter-spacing:1px; text-transform:uppercase; cursor:pointer; border-radius:999px; padding:6px 18px; transition:all .2s; }
-  .rc-tab-yt { background:var(--rc-light); color:#000; border:none; }
-  .rc-tab-sp { background:transparent; color:var(--rc-light); border:1px solid rgba(255,255,255,.2); opacity:.55; }
-
-  .rc-player-yt { padding:0 0 12px; }
-  .rc-player-yt-inner { position:relative; width:100%; aspect-ratio:16/9; }
-  .rc-player-yt-inner iframe { width:100%; height:100%; display:block; border:none; }
-  .rc-player-sp { padding:0 16px 12px; display:none; }
-  .rc-player-sp iframe { width:100%; display:block; border:none; border-radius:8px; }
-
-  .rc-footer { padding:10px 22px 18px; border-top:1px solid rgba(255,255,255,.05); display:flex; justify-content:space-between; align-items:center; }
-  .rc-footer a { font-family:var(--rc-mono); font-size:11px; letter-spacing:1px; opacity:.3; color:var(--rc-light); text-decoration:none; text-transform:uppercase; }
-  .rc-footer a:hover { opacity:.6; }
-
-  /* Slider */
-  .rc-slider-wrap { max-width:480px; margin:20px auto 0; padding:0 16px; display:none; }
-  .rc-slider-lbl { font-family:var(--rc-mono); font-size:10px; letter-spacing:2px; opacity:.3; color:#fff; margin-bottom:10px; text-align:center; text-transform:uppercase; }
-  .rc-slider { display:flex; gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; padding-bottom:8px; scrollbar-width:none; }
-  .rc-slider::-webkit-scrollbar { display:none; }
-  .rc-slide { flex:0 0 180px; scroll-snap-align:start; border-radius:12px; overflow:hidden; background:var(--rc-body); border:1px solid rgba(255,255,255,.08); cursor:pointer; transition:border-color .2s; }
-  .rc-slide:hover { border-color:var(--rc-ring); }
-  .rc-slide img { width:100%; aspect-ratio:3/2; object-fit:cover; object-position:center top; display:block; }
-  .rc-slide-body { padding:10px 12px 12px; }
-  .rc-slide-month { font-family:var(--rc-mono); font-size:9px; letter-spacing:2px; opacity:.35; color:var(--rc-light); margin-bottom:3px; text-transform:uppercase; }
-  .rc-slide-name { font-family:var(--rc-display); font-size:18px; letter-spacing:2px; color:var(--rc-light); margin-bottom:2px; }
-  .rc-slide-theme { font-family:var(--rc-mono); font-size:11px; opacity:.5; color:var(--rc-light); font-style:italic; }
+  /* Modal — exact from radio page */
+  .uht-modal-bg {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,0.75); backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.3s;
+  }
+  .uht-modal-bg.open { opacity: 1; pointer-events: all; }
+  .uht-modal {
+    width: min(380px, 90vw); border-radius: 16px; overflow: hidden;
+    background: var(--rc-body);
+    box-shadow: 0 30px 80px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.06);
+    transform: translateY(20px) scale(0.97);
+    transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
+    max-height: 85vh; overflow-y: auto; position: relative;
+  }
+  .uht-modal-bg.open .uht-modal { transform: translateY(0) scale(1); }
+  .uht-modal-img { width: 100%; height: 200px; object-fit: cover; object-position: center top; display: block; }
+  .uht-modal-img-placeholder {
+    width: 100%; height: 200px; display: flex; align-items: center; justify-content: center;
+    background: var(--rc-darker); font-family: 'Bebas Neue', sans-serif;
+    font-size: 64px; letter-spacing: 2px; color: rgba(200,168,112,0.3);
+  }
+  .uht-modal-body { padding: 20px 22px 24px; }
+  .uht-modal-name {
+    font-family: 'Bebas Neue', sans-serif; font-size: 32px; letter-spacing: 3px;
+    color: var(--rc-light); margin-bottom: 8px; transition: color 1.2s;
+  }
+  .uht-modal-bio {
+    font-family: 'Courier Prime', monospace; font-size: 15px; line-height: 1.7;
+    color: rgba(200,168,112,0.75); transition: color 1.2s;
+  }
+  body.theme-fire  .uht-modal-bio { color: rgba(255,160,80,0.55); }
+  body.theme-party .uht-modal-bio { color: rgba(180,140,255,0.55); }
+  .uht-modal-close {
+    position: absolute; top: 12px; right: 14px;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: rgba(0,0,0,0.5); border: none; cursor: pointer;
+    color: rgba(255,255,255,0.6); font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s;
+  }
+  .uht-modal-close:hover { background: rgba(0,0,0,0.8); color: #fff; }
+  .uht-follow-btn {
+    font-family: 'Courier Prime', monospace; font-size: 12px; letter-spacing: 1px;
+    text-transform: uppercase; cursor: pointer; border-radius: 999px;
+    padding: 8px 18px; border: 1px solid var(--dial-ring);
+    background: rgba(0,0,0,0.3); color: var(--rc-light); transition: all .2s;
+  }
+  .uht-follow-btn:hover { background: var(--dial-ring); color: #fff; }
+  .uht-follow-btn.following { border-color: rgba(100,220,120,.4); color: rgba(100,220,120,.9); background: rgba(100,220,120,.06); }
 </style>
 
-<div class="rc-wrap">
-  <div class="rc-card">
+<!-- Page title -->
+<div style="text-align:center;padding:32px 16px 0">
+  <div class="uht-page-title">Undeniable Hit Theory</div>
+  <div class="uht-page-sub">Weekly SMS · Vote Hit or Denied</div>
+</div>
 
-    <!-- Hero image -->
-    <img class="rc-img" src="https://undeniablehittheory.com/wp-content/uploads/2026/04/Lucas-moon-Large-format.png" alt="Lucas Moon"/>
+<!-- Curator strip -->
+<div class="uht-curator-strip" id="uhtCuratorStrip">
+  <div class="uht-curator-strip-label">Curator of the Month</div>
+</div>
 
-    <!-- Body -->
-    <div class="rc-body">
-      <div class="rc-name" id="rcName">Lucas Moon</div>
-      <div class="rc-tier" id="rcTier">🌙 Rising Curator</div>
-      <div class="rc-bio">Raised between late-night radio and underground shows — an ear trained on what moves people when no one is watching.</div>
-
-      <!-- Follow button -->
-      <div class="rc-actions">
-        <button class="rc-follow-btn" id="rcFollowBtn" onclick="rcFollowClick()">+ Follow · Monday Drops</button>
+<!-- Curator modal — exact radio page card -->
+<div class="uht-modal-bg" id="uhtModalBg">
+  <div class="uht-modal" id="uhtModal">
+    <button class="uht-modal-close" onclick="uhtCloseModal()">✕</button>
+    <div id="uhtModalImgWrap"></div>
+    <div class="uht-modal-body">
+      <div class="uht-modal-name" id="uhtModalName"></div>
+      <div class="uht-modal-bio" id="uhtModalBio"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap">
+        <button class="uht-follow-btn" id="uhtFollowBtn" onclick="uhtFollowClick()">+ Follow</button>
+        <div id="uhtModalIg"></div>
       </div>
-      <div class="rc-follow-input" id="rcFollowInput">
-        <input type="tel" id="rcFollowPhone" placeholder="+1 (___) ___-____" autocomplete="tel"/>
-        <button class="rc-follow-confirm" onclick="rcConfirmFollow()">Confirm Follow</button>
-        <div class="rc-follow-legal">📱 Monday drops · 🔥 Vote on every pick · Reply STOP anytime</div>
+      <div id="uhtFollowInput" style="display:none;margin-top:12px">
+        <div style="font-size:12px;color:rgba(255,255,255,0.5);font-family:'Courier Prime',monospace;letter-spacing:1px;margin-bottom:8px;text-transform:uppercase">Enter your number to follow</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="tel" id="uhtFollowPhone" placeholder="+1 (212) 555-1234"
+            style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:10px 14px;color:#fff;font-family:'Courier Prime',monospace;font-size:14px;outline:none;flex:1"
+            onkeydown="if(event.key==='Enter') uhtConfirmFollow()">
+          <button class="uht-follow-btn" onclick="uhtConfirmFollow()" style="white-space:nowrap;padding:10px 16px">✓ Follow</button>
+        </div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.3);margin-top:8px;font-family:'Courier Prime',monospace;line-height:1.7">
+          📱 Monday drops · 🔔 First to know · 🔥 Vote on every pick
+        </div>
       </div>
-      <div class="rc-follow-perks" id="rcFollowPerks">
-        ✓ Following Lucas Moon &nbsp;·&nbsp; 📱 Monday drops &nbsp;·&nbsp; 🔔 Drop alerts &nbsp;·&nbsp; 🔥 Vote on picks
+      <div id="uhtFollowPerks" style="display:none;margin-top:12px;padding:12px 16px;border-radius:10px;background:rgba(100,220,120,0.06);border:1px solid rgba(100,220,120,0.2);font-family:'Courier Prime',monospace;font-size:13px;color:rgba(100,220,120,0.8);line-height:1.8">
+        ✓ Following · 📱 Monday drops · 🔔 Drop alerts · 🔥 Vote on picks
       </div>
+      <div id="uhtModalScorecard" style="margin-top:18px"></div>
     </div>
-
-    <!-- Player tabs -->
-    <div class="rc-tabs">
-      <button class="rc-tab rc-tab-yt" id="rcTabYT" onclick="rcShow('yt')">YouTube</button>
-      <button class="rc-tab rc-tab-sp" id="rcTabSP" onclick="rcShow('sp')">Spotify</button>
-    </div>
-
-    <!-- YouTube -->
-    <div class="rc-player-yt" id="rcYT">
-      <div class="rc-player-yt-inner">
-        <iframe src="https://www.youtube.com/embed/tVL02_LghE4?rel=0&modestbranding=1&playsinline=1"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-      </div>
-    </div>
-
-    <!-- Spotify -->
-    <div class="rc-player-sp" id="rcSP">
-      <iframe src="https://open.spotify.com/embed/track/4cCoZML1dPIQxNjOwDmJGf" height="152"
-        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
-    </div>
-
-    <!-- Live scorecard -->
-    <div class="rc-scorecard" id="rcScorecard">
-      <div style="font-family:var(--rc-mono);font-size:11px;letter-spacing:2px;opacity:.3;text-transform:uppercase">Loading picks…</div>
-    </div>
-
-    <!-- Footer -->
-    <div class="rc-footer">
-      <a href="https://undeniablehittheory.com/curator-of-the-month/">Full bio + all picks →</a>
-    </div>
-
   </div>
 </div>
 
-<!-- Curator slider — shows when more curators are added -->
-<div class="rc-slider-wrap" id="rcSliderWrap">
-  <div class="rc-slider-lbl">Past Curators</div>
-  <div class="rc-slider" id="rcSlider"></div>
-</div>
-
 <script>
-function rcShow(tab) {
-  document.getElementById('rcYT').style.display = tab==='yt' ? 'block' : 'none';
-  document.getElementById('rcSP').style.display = tab==='sp' ? 'block' : 'none';
-  var yt=document.getElementById('rcTabYT'), sp=document.getElementById('rcTabSP');
-  yt.style.background = tab==='yt' ? 'var(--rc-light)' : 'transparent';
-  yt.style.color = tab==='yt' ? '#000' : 'var(--rc-light)';
-  yt.style.border = tab==='yt' ? 'none' : '1px solid rgba(255,255,255,.2)';
-  yt.style.opacity = '1';
-  sp.style.background = tab==='sp' ? '#1DB954' : 'transparent';
-  sp.style.color = tab==='sp' ? '#000' : 'var(--rc-light)';
-  sp.style.border = tab==='sp' ? 'none' : '1px solid rgba(255,255,255,.2)';
-  sp.style.opacity = tab==='sp' ? '1' : '0.55';
+var uhtCurrentCuratorId = null;
+
+function uhtInitials(name) {
+  return name.split(' ').map(function(w){ return w[0]; }).join('').toUpperCase().slice(0,2);
 }
 
-function rcFollowClick() {
-  var inp = document.getElementById('rcFollowInput');
+function uhtOpenModal(c) {
+  uhtCurrentCuratorId = c.id;
+  document.getElementById('uhtModalName').textContent = c.name || '';
+  document.getElementById('uhtModalBio').textContent = c.bio || 'No bio yet.';
+  // Instagram
+  var igEl = document.getElementById('uhtModalIg');
+  igEl.innerHTML = c.instagram
+    ? '<a href="https://instagram.com/'+c.instagram.replace('@','')+'" target="_blank" style="font-family:Courier Prime,monospace;font-size:12px;color:rgba(160,160,190,0.5);text-decoration:none">@'+c.instagram.replace('@','')+'</a>'
+    : '';
+  // Image
+  var imgWrap = document.getElementById('uhtModalImgWrap');
+  if(c.image_url) {
+    imgWrap.innerHTML = '<img class="uht-modal-img" src="'+c.image_url+'" alt="'+c.name+'" onerror="this.parentNode.innerHTML='<div class=uht-modal-img-placeholder>'+uhtInitials(c.name)+'</div>'">';
+  } else {
+    imgWrap.innerHTML = '<div class="uht-modal-img-placeholder">'+uhtInitials(c.name)+'</div>';
+  }
+  // Reset follow state
+  document.getElementById('uhtFollowBtn').className = 'uht-follow-btn';
+  document.getElementById('uhtFollowBtn').textContent = '+ Follow';
+  document.getElementById('uhtFollowInput').style.display = 'none';
+  document.getElementById('uhtFollowPerks').style.display = 'none';
+  // Load scorecard
+  var scorecardEl = document.getElementById('uhtModalScorecard');
+  scorecardEl.innerHTML = '<div style="opacity:0.4;font-size:11px;letter-spacing:2px;font-family:Courier Prime,monospace;margin-bottom:8px">LOADING PICKS…</div>';
+  fetch('/api/curators/'+c.id+'/scorecard')
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      var st = data.stats || {};
+      var subs = data.submissions || [];
+      var hitRate = st.hit_rate ? parseFloat(st.hit_rate) : 0;
+      var rateColor = hitRate>=70 ? '#4ade80' : hitRate>=40 ? '#facc15' : '#f87171';
+      // Tier
+      var nameEl = document.getElementById('uhtModalName');
+      if(nameEl && !nameEl.querySelector('.uht-tier')) {
+        var tier = data.tier || '🌙 Rising Curator';
+        var tierDiv = document.createElement('div');
+        tierDiv.className = 'uht-tier';
+        tierDiv.style.cssText = 'font-family:Courier Prime,monospace;font-size:13px;letter-spacing:2px;opacity:0.6;margin-top:4px;margin-bottom:2px;text-transform:uppercase';
+        tierDiv.textContent = tier;
+        nameEl.appendChild(tierDiv);
+      }
+      var html = '';
+      if(parseInt(st.total) > 0) {
+        html += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:14px 16px;border-radius:10px;background:rgba(255,255,255,0.07)">'
+          +'<div style="font-size:42px;font-weight:900;color:'+rateColor+';font-family:Bebas Neue,sans-serif">'+hitRate+'%</div>'
+          +'<div><div style="font-size:13px;letter-spacing:2px;font-family:Courier Prime,monospace;color:rgba(255,255,255,0.5);text-transform:uppercase">Hit Rate</div>'
+          +'<div style="font-size:15px;color:rgba(255,255,255,0.8)">🔥 '+(st.mega_hits||0)+' Mega · 🎯 '+(st.hits||0)+' Hit · 💀 '+(st.denies||0)+' Denied</div></div></div>';
+      }
+      if(subs.length) {
+        html += '<div style="font-size:11px;letter-spacing:2px;font-family:Courier Prime,monospace;color:rgba(255,255,255,0.4);margin-bottom:12px;text-transform:uppercase">Archive</div>';
+        subs.forEach(function(s){
+          var vTotal=(parseInt(s.mega_hits)||0)+(parseInt(s.hits)||0)+(parseInt(s.denies)||0);
+          var votesHtml = vTotal>0
+            ? '<div style="display:flex;gap:10px;margin-top:6px;font-size:13px;font-family:Courier Prime,monospace;opacity:0.7"><span>🔥 '+(s.mega_hits||0)+'</span><span>🎯 '+(s.hits||0)+'</span><span>💀 '+(s.denies||0)+'</span></div>'
+            : '<div style="font-size:12px;opacity:0.35;font-family:Courier Prime,monospace;margin-top:4px">no votes yet</div>';
+          html += '<div style="padding:14px 16px;border-radius:10px;background:rgba(255,255,255,0.04);margin-bottom:10px">'
+            +(s.theme?'<div style="font-size:10px;letter-spacing:2px;font-family:Courier Prime,monospace;opacity:0.5;text-transform:uppercase;margin-bottom:2px">'+s.theme+'</div>':'')
+            +'<div style="font-size:10px;letter-spacing:2px;font-family:Courier Prime,monospace;opacity:0.35;text-transform:uppercase">Week '+(s.week_number||'?')+' Pick</div>'
+            +'<div style="font-size:20px;font-weight:700;color:var(--rc-light);margin-top:4px">'+s.title+'</div>'
+            +'<div style="font-size:15px;opacity:0.7;color:var(--rc-light)">'+s.artist+'</div>'
+            +(s.curator_note?'<div style="font-size:13px;opacity:0.5;margin-top:6px;font-style:italic;font-family:Courier Prime,monospace">"'+s.curator_note+'"</div>':'')
+            +votesHtml+'</div>';
+        });
+      } else {
+        html += '<div style="font-size:11px;opacity:0.35;font-family:Courier Prime,monospace;text-align:center;padding:16px 0">No picks yet.</div>';
+      }
+      scorecardEl.innerHTML = html;
+    })
+    .catch(function(){ scorecardEl.innerHTML = ''; });
+  document.getElementById('uhtModalBg').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function uhtCloseModal() {
+  document.getElementById('uhtModalBg').classList.remove('open');
+  document.body.style.overflow = '';
+  // Clear tier div for next open
+  var nameEl = document.getElementById('uhtModalName');
+  var tierEl = nameEl ? nameEl.querySelector('.uht-tier') : null;
+  if(tierEl) tierEl.remove();
+}
+
+function uhtFollowClick() {
+  var inp = document.getElementById('uhtFollowInput');
   inp.style.display = inp.style.display==='block' ? 'none' : 'block';
-  if(inp.style.display==='block') document.getElementById('rcFollowPhone').focus();
+  if(inp.style.display==='block') document.getElementById('uhtFollowPhone').focus();
 }
 
-function rcConfirmFollow() {
-  var phone = document.getElementById('rcFollowPhone').value.trim();
-  if(!phone) { document.getElementById('rcFollowPhone').style.borderColor='rgba(255,255,255,.6)'; return; }
-  var btn = document.querySelector('.rc-follow-confirm');
-  btn.disabled=true; btn.textContent='Sending...';
+function uhtConfirmFollow() {
+  var phone = document.getElementById('uhtFollowPhone').value.trim();
+  if(!phone) { document.getElementById('uhtFollowPhone').style.borderColor='rgba(255,255,255,.6)'; return; }
+  var btn = document.querySelector('#uhtFollowInput .uht-follow-btn');
+  btn.disabled=true; btn.textContent='...';
   fetch('/api/subscribe', {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({ phone:phone, curator_id:1 })
+    body:JSON.stringify({ phone:phone, curator_id: uhtCurrentCuratorId })
   })
   .then(function(r){ return r.json(); })
   .then(function(d){
     if(d.message||d.ok||d.subscriber) {
-      document.getElementById('rcFollowInput').style.display='none';
-      document.getElementById('rcFollowBtn').className='rc-follow-btn following';
-      document.getElementById('rcFollowBtn').textContent='✓ Following';
-      document.getElementById('rcFollowBtn').onclick=null;
-      document.getElementById('rcFollowPerks').style.display='block';
+      document.getElementById('uhtFollowInput').style.display='none';
+      var fbtn = document.getElementById('uhtFollowBtn');
+      fbtn.className='uht-follow-btn following'; fbtn.textContent='✓ Following'; fbtn.onclick=null;
+      document.getElementById('uhtFollowPerks').style.display='block';
     } else {
-      btn.disabled=false; btn.textContent='Confirm Follow';
+      btn.disabled=false; btn.textContent='✓ Follow';
       alert(d.error||'Something went wrong.');
     }
   })
-  .catch(function(){ btn.disabled=false; btn.textContent='Confirm Follow'; alert('Something went wrong.'); });
+  .catch(function(){ btn.disabled=false; btn.textContent='✓ Follow'; });
 }
 
-// Load live scorecard from API
-fetch('/api/curators/1/scorecard')
-  .then(function(r){ return r.json(); })
-  .then(function(d){
-    var st = d.stats||{};
-    var subs = d.submissions||[];
-    var total = parseInt(st.total)||0;
-    var hitRate = parseFloat(st.hit_rate)||0;
-    var rateColor = hitRate>=70 ? '#4ade80' : hitRate>=40 ? '#facc15' : '#f87171';
+// Close modal on background click
+document.getElementById('uhtModalBg').addEventListener('click', function(e){
+  if(e.target===this) uhtCloseModal();
+});
 
-    // Update tier
-    if(d.tier) document.getElementById('rcTier').textContent = d.tier;
-
-    var html = '';
-
-    // Hit rate badge — only if votes exist
-    if(total > 0) {
-      html += '<div class="rc-hit-badge">'
-        +'<div class="rc-hit-rate" style="color:'+rateColor+'">'+hitRate+'%</div>'
-        +'<div><div class="rc-hit-lbl">Hit Rate</div>'
-        +'<div class="rc-hit-detail">🔥 '+(st.mega_hits||0)+' Mega · 🎯 '+(st.hits||0)+' Hit · 💀 '+(st.denies||0)+' Denied</div>'
-        +'</div></div>';
-    }
-
-    // Archive
-    if(subs.length) {
-      html += '<div class="rc-archive-lbl">Archive</div>';
-      subs.forEach(function(s){
-        var vTotal=(parseInt(s.mega_hits)||0)+(parseInt(s.hits)||0)+(parseInt(s.denies)||0);
-        var votesHtml = vTotal>0
-          ? '<div class="rc-pick-votes"><span>🔥 '+(s.mega_hits||0)+' Mega</span><span>🎯 '+(s.hits||0)+' Hit</span><span>💀 '+(s.denies||0)+' Denied</span></div>'
-          : '<div class="rc-no-votes">no votes yet</div>';
-        html += '<div class="rc-pick">'
-          +(s.theme?'<div class="rc-pick-theme">'+s.theme+'</div>':'')
-          +'<div class="rc-pick-week">Week '+(s.week_number||'?')+' Pick</div>'
-          +'<div class="rc-pick-title">'+s.title+'</div>'
-          +'<div class="rc-pick-artist">'+s.artist+'</div>'
-          +(s.curator_note?'<div class="rc-pick-note">"'+s.curator_note+'"</div>':'')
-          +votesHtml+'</div>';
+// Load curators into strip
+(function(){
+  fetch('/api/curators')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      var curators = d.curators || [];
+      var strip = document.getElementById('uhtCuratorStrip');
+      if(!curators.length) { strip.style.display='none'; return; }
+      curators.forEach(function(c){
+        var el = document.createElement('div');
+        el.className = 'uht-curator-avatar';
+        el.title = c.name;
+        el.innerHTML = '<div class="uht-curator-ring">'
+          +(c.image_url
+            ? '<img src="'+c.image_url+'" alt="'+c.name+'" onerror="this.parentNode.innerHTML='<span style=font-family:Bebas Neue,sans-serif;font-size:48px;color:rgba(200,168,112,0.5)>'+uhtInitials(c.name)+'</span>'">'
+            : '<span style="font-family:Bebas Neue,sans-serif;font-size:48px;color:rgba(200,168,112,0.5)">'+uhtInitials(c.name)+'</span>')
+          +'</div>'
+          +'<div class="uht-curator-name-tag">'+c.name.split(' ')[0]+'</div>'
+          +(c.instagram?'<a class="uht-curator-ig" href="https://instagram.com/'+c.instagram.replace('@','')+'" target="_blank" onclick="event.stopPropagation()">@'+c.instagram.replace('@','')+'</a>':'');
+        el.addEventListener('click', function(){ uhtOpenModal(c); });
+        strip.appendChild(el);
       });
-    } else {
-      html += '<div class="rc-no-votes" style="padding:8px 0">No picks yet.</div>';
-    }
-
-    document.getElementById('rcScorecard').innerHTML = html;
-  })
-  .catch(function(){ document.getElementById('rcScorecard').innerHTML=''; });
-
-// Curator slider
-fetch('/api/curators')
-  .then(function(r){ return r.json(); })
-  .then(function(d){
-    var curators = d.curators||[];
-    if(curators.length<=1) return;
-    var html='';
-    curators.forEach(function(c){
-      html+='<div class="rc-slide" onclick="window.location.href='https://undeniablehittheory.com/curator-of-the-month/'">'
-        +(c.image_url?'<img src="'+c.image_url+'" alt="'+c.name+'"/>':'<div style="width:100%;aspect-ratio:3/2;background:var(--rc-darker);display:flex;align-items:center;justify-content:center;font-size:32px;font-family:var(--rc-display);color:var(--rc-ring)">'+c.name.charAt(0)+'</div>')
-        +'<div class="rc-slide-body">'
-        +'<div class="rc-slide-month">April 2026</div>'
-        +'<div class="rc-slide-name">'+c.name+'</div>'
-        +(c.monthly_theme?'<div class="rc-slide-theme">'+c.monthly_theme+'</div>':'')
-        +'</div></div>';
-    });
-    document.getElementById('rcSlider').innerHTML=html;
-    document.getElementById('rcSliderWrap').style.display='block';
-  })
-  .catch(function(){});
+    })
+    .catch(function(){});
+})();
 </script>
-
 
 
 <div class="wrap">
