@@ -427,11 +427,7 @@ function uhtOpenModal(c) {
             +'<div style="font-size:15px;opacity:0.7;color:var(--rc-light)">'+s.artist+'</div>'
             +(s.curator_note?'<div style="font-size:13px;opacity:0.5;margin-top:6px;font-style:italic;font-family:Courier Prime,monospace">"'+s.curator_note+'"</div>':'')
             +votesHtml
-          +'<button onclick="uhtSharePick(''+s.title.replace(/'/g,"\'")+'',' +
-            '''+s.artist.replace(/'/g,"\'")+'')" ' +
-            'style="margin-top:10px;font-family:Courier Prime,monospace;font-size:11px;letter-spacing:1px;' +
-            'text-transform:uppercase;cursor:pointer;border-radius:999px;padding:6px 14px;' +
-            'border:1px solid rgba(255,255,255,0.15);background:transparent;color:rgba(255,255,255,0.5)">⤴ Share Pick</button>'
+          +'<button class="uht-share-pick-btn" style="margin-top:10px;font-family:Courier Prime,monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;border-radius:999px;padding:6px 14px;border:1px solid rgba(255,255,255,0.15);background:transparent;color:rgba(255,255,255,0.5)">&#10548; Share Pick</button>'
           +'</div>';
         });
       } else {
