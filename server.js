@@ -1938,7 +1938,3 @@ app.get('/api/curators/:id/scorecard', async (req, res) => {
 
 app.get('/api/test-new', (req, res) => res.json({ ok: true }));
 require('./curator-scheduler');
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
