@@ -663,368 +663,136 @@ app.get('/drop/curator/:slug', async (req, res) => {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>${curator.name}'s Pick — UHT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500&display=swap');
-html,body{background:#0a0a0a;margin:0;padding:0;overflow-x:hidden;font-family:'Inter',sans-serif;color:#f0ede6}
-.wrap{min-height:100svh;background:#0a0a0a;display:flex;flex-direction:column;max-width:720px;margin:0 auto;padding:0 0 80px}
-/* Hero — full bleed with name overlay */
-.hero{position:relative;width:100%;aspect-ratio:3/2;max-height:480px;overflow:hidden;background:#111}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#080808;color:#ede8df;font-family:'Inter',sans-serif;overflow-x:hidden}
+.page{max-width:680px;margin:0 auto}
+
+/* Stamp */
+.stamp{text-align:center;padding:52px 24px 40px}
+.stamp-brand{font-size:9px;letter-spacing:.4em;text-transform:uppercase;color:rgba(237,232,223,0.3);margin-bottom:10px}
+.stamp-month{font-size:9px;letter-spacing:.3em;text-transform:uppercase;color:rgba(237,232,223,0.2)}
+
+/* Hero */
+.hero{position:relative;width:100%;aspect-ratio:3/4;max-height:88vh;overflow:hidden;background:#111}
 .hero img{width:100%;height:100%;object-fit:cover;object-position:center top;display:block}
-.hero-grad{position:absolute;inset:0;background:linear-gradient(to bottom,transparent 20%,rgba(10,10,10,0.5) 60%,#0a0a0a 100%)}
-.hero-text{position:absolute;bottom:0;left:0;right:0;padding:24px 24px 28px}
-.c-label{font-size:9px;letter-spacing:.35em;opacity:.5;text-transform:uppercase;margin-bottom:10px;font-family:'Inter',sans-serif}
-.c-name{margin:0;font-size:clamp(36px,8vw,56px);font-weight:700;letter-spacing:1px;font-family:'Playfair Display',serif;line-height:1.1}
-.c-tier{font-size:10px;letter-spacing:.25em;opacity:.5;text-transform:uppercase;margin-top:8px;font-family:'Inter',sans-serif}
-/* Bio section */
-.bio-section{padding:28px 24px;border-bottom:1px solid rgba(255,255,255,.07)}
-.c-bio{font-size:15px;line-height:1.8;color:rgba(240,237,230,0.7);font-family:'Playfair Display',serif;font-style:italic}
-/* Pick section */
-.pick-section{padding:32px 24px}
-.pick-label{font-size:9px;letter-spacing:.35em;opacity:.4;text-transform:uppercase;margin-bottom:20px;font-family:'Inter',sans-serif}
-.song-title{font-size:clamp(28px,6vw,42px);font-weight:700;margin:0 0 6px;font-family:'Playfair Display',serif;line-height:1.2}
-.song-artist{font-size:16px;opacity:.55;margin:0 0 14px;font-family:'Inter',sans-serif;font-weight:300;letter-spacing:.05em}
-.song-note{font-size:15px;font-style:italic;opacity:.5;margin:0 0 24px;font-family:'Playfair Display',serif;line-height:1.7;padding-left:16px;border-left:2px solid rgba(255,255,255,.15)}
-.press-play{font-size:9px;letter-spacing:.35em;opacity:.4;text-transform:uppercase;margin-bottom:12px;font-family:'Inter',sans-serif}
-/* Video */
-.video-wrap{position:relative;width:100%;aspect-ratio:16/9;border-radius:8px;overflow:hidden;margin-bottom:8px}
-#player{width:100%;height:100%}
-.end-screen{position:absolute;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .4s}
-.end-screen.show{opacity:1;pointer-events:all}
-.end-screen p{margin:0;font-size:18px;line-height:1.7;font-family:'Playfair Display',serif}
+.hero-grad{position:absolute;inset:0;background:linear-gradient(to bottom,transparent 35%,rgba(8,8,8,0.6) 70%,#080808 100%)}
+.hero-name{position:absolute;bottom:0;left:0;right:0;padding:28px 32px 40px}
+.c-name{font-family:'Playfair Display',serif;font-size:clamp(44px,11vw,76px);font-weight:700;line-height:1;letter-spacing:-1.5px;color:#ede8df}
+.c-tier{font-size:9px;letter-spacing:.3em;text-transform:uppercase;color:rgba(237,232,223,0.35);margin-top:12px}
+
+/* Bio */
+.bio{padding:44px 32px;border-bottom:1px solid rgba(255,255,255,0.06)}
+.bio p{font-family:'Playfair Display',serif;font-size:16px;line-height:2;color:rgba(237,232,223,0.5);font-style:italic}
+
+/* Pick */
+.pick{padding:56px 32px 36px}
+.pick-meta{font-size:9px;letter-spacing:.35em;text-transform:uppercase;color:rgba(237,232,223,0.25);margin-bottom:24px}
+.song-title{font-family:'Playfair Display',serif;font-size:clamp(38px,9vw,68px);font-weight:700;line-height:1.02;letter-spacing:-1.5px;color:#ede8df;margin-bottom:12px}
+.song-artist{font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:rgba(237,232,223,0.35);font-weight:400;margin-bottom:32px}
+.song-note{font-family:'Playfair Display',serif;font-size:18px;font-style:italic;color:rgba(237,232,223,0.45);line-height:1.85;padding-left:22px;border-left:1px solid rgba(237,232,223,0.18);margin-bottom:40px}
+
+/* Player */
+.player-outer{width:100%;aspect-ratio:16/9;background:#000;overflow:hidden}
+.player-outer iframe,#player{width:100%;height:100%;border:none;display:block}
+
 /* Vote */
-.vote-row{display:flex;gap:10px;justify-content:center;margin:24px 0 8px}
-.vote-btn{flex:1;max-width:140px;padding:14px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:rgba(240,237,230,.8);font-family:'Inter',sans-serif;font-size:14px;cursor:pointer;transition:all .2s;letter-spacing:.03em}
-.vote-btn:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25);color:#fff}
-.vote-btn:disabled{opacity:.3;cursor:default}
-.vote-msg{text-align:center;margin-top:8px;font-size:12px;opacity:.4;min-height:18px;letter-spacing:.08em;font-family:'Inter',sans-serif;text-transform:uppercase}
-/* Spotify subtle link */
-.sp-toggle{text-align:center;margin:4px 0 20px;font-size:11px;letter-spacing:.12em;color:rgba(255,255,255,.25);text-transform:uppercase;cursor:pointer;font-family:'Inter',sans-serif}
-.sp-toggle:hover{color:rgba(255,255,255,.5)}
-.sp-wrap{margin:0 0 16px}
-/* Share */
-.share-wrap{display:flex;justify-content:center;margin-top:8px}
-.share-btn{background:transparent;color:rgba(240,237,230,.6);border:1px solid rgba(240,237,230,.15);padding:11px 24px;border-radius:999px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;cursor:pointer;transition:all .2s;font-family:'Inter',sans-serif}
-.share-btn:hover{background:rgba(255,255,255,.06);color:#f0ede6;border-color:rgba(255,255,255,.3)}
-/* Join CTA */
-.join-cta{display:none;text-align:center;margin-top:40px;padding:32px 24px 0;border-top:1px solid rgba(255,255,255,.06)}
-.join-cta p{font-size:11px;opacity:.4;letter-spacing:.18em;text-transform:uppercase;margin:0 0 16px;font-family:'Inter',sans-serif}
-.join-btn{display:inline-block;padding:13px 32px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.18);color:#f0ede6;text-decoration:none;font-size:11px;letter-spacing:.18em;text-transform:uppercase;transition:all .2s;font-family:'Inter',sans-serif}
-.join-btn:hover{background:#f0ede6;color:#000}
-.no-video{padding:40px 20px;text-align:center}
-.sp-btn{display:inline-block;margin-top:14px;padding:12px 28px;border-radius:999px;background:#1DB954;color:#fff;text-decoration:none;font-size:15px}
-@media(min-width:600px){
-  .hero{max-height:560px}
-  .song-title{font-size:42px}
-}
+.vote-section{padding:44px 32px 24px}
+.vote-label{font-size:9px;letter-spacing:.35em;text-transform:uppercase;color:rgba(237,232,223,0.2);text-align:center;margin-bottom:24px}
+.vote-btn{display:block;width:100%;padding:20px;margin-bottom:14px;border-radius:14px;border:1px solid rgba(255,255,255,0.09);background:rgba(255,255,255,0.025);color:rgba(237,232,223,0.75);font-family:'Inter',sans-serif;font-size:16px;font-weight:400;cursor:pointer;transition:all .25s;text-align:center;letter-spacing:.03em}
+.vote-btn:hover{background:rgba(255,255,255,0.07);border-color:rgba(255,255,255,0.18);color:#ede8df;transform:translateY(-2px)}
+.vote-btn:active{transform:translateY(0)}
+.vote-btn:disabled{opacity:.2;cursor:default;transform:none}
+.vote-msg{text-align:center;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:rgba(237,232,223,0.3);min-height:22px;padding:10px 0 4px}
+
+/* Bottom */
+.bottom{padding:8px 32px 72px;display:flex;flex-direction:column;align-items:center;gap:18px}
+.sp-embed-wrap{width:100%}
+.sp-btn{font-size:9px;letter-spacing:.25em;text-transform:uppercase;color:rgba(237,232,223,0.2);cursor:pointer;background:none;border:none;font-family:'Inter',sans-serif;padding:0}
+.sp-btn:hover{color:rgba(237,232,223,0.45)}
+.share-btn{font-size:9px;letter-spacing:.25em;text-transform:uppercase;color:rgba(237,232,223,0.3);cursor:pointer;background:none;border:1px solid rgba(237,232,223,0.12);border-radius:999px;padding:11px 26px;font-family:'Inter',sans-serif;transition:all .2s}
+.share-btn:hover{color:#ede8df;border-color:rgba(237,232,223,0.35)}
+.follow-a{font-size:9px;letter-spacing:.25em;text-transform:uppercase;color:rgba(237,232,223,0.18);text-decoration:none;font-family:'Inter',sans-serif;transition:color .2s}
+.follow-a:hover{color:rgba(237,232,223,0.5)}
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="page">
 
-  <div class="hero">
-    ${curator.image_url ? `<img src="${curator.image_url}" alt="${curator.name}">` : ''}
-    <div class="hero-grad"></div>
-    <div class="hero-text">
-      <div class="c-label">${curator.curator_month ? 'Curator of the Month · ' + curator.curator_month : 'UHT · Curator Pick'}</div>
-      <h1 class="c-name">${curator.name}</h1>
-      <div class="c-tier">${curatorTier}</div>
-    </div>
-  </div>
-  ${curator.bio ? `<div class="bio-section"><div class="c-bio">${curator.bio}</div></div>` : ''}
-  <div class="pick-section">
-    <div class="pick-label">${d.theme ? d.theme.toUpperCase() + ' · ' : ''}Week ${d.week_number}</div>
-    <div class="song-title">${d.title}</div>
-    <div class="song-artist">${d.artist}</div>
-    ${d.curator_note ? `<div class="song-note">"${d.curator_note}"</div>` : ''}
-    ${ytId ? `<div class="press-play" id="pressPlay">Press Play.</div>` : ''}
-  </div>
+<div class="stamp">
+  <div class="stamp-brand">Undeniable Hit Theory</div>
+  <div class="stamp-month">${curator.curator_month ? '🌙 Curator of the Month · ' + curator.curator_month : '🌙 Curator Pick'}</div>
+</div>
 
-  ${ytId ? `<div class="video-wrap" id="ytWrap"><div id="player"></div><div class="end-screen" id="endScreen"><p>This one's his pick.<br><br>Follow ${firstName} — he drops a new one every Monday.</p></div></div>` : ''}
-  ${!ytId && d.spotify_url ? `<div class="sp-wrap" id="spWrap"><iframe style="border-radius:12px" src="https://open.spotify.com/embed/track/${d.spotify_url.match(/track\/([a-zA-Z0-9]+)/)?.[1]}" width="100%" height="152" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div>` : ''}
-  ${ytId && d.spotify_url ? `<div id="spWrap" style="display:none;margin:12px 0"><iframe style="border-radius:12px" src="https://open.spotify.com/embed/track/${d.spotify_url.match(/track\/([a-zA-Z0-9]+)/)?.[1]}" width="100%" height="152" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div>` : ''}
+<div class="hero">
+  ${curator.image_url ? `<img src="${curator.image_url}" alt="${curator.name}">` : ''}
+  <div class="hero-grad"></div>
+  <div class="hero-name">
+    <div class="c-name">${curator.name}</div>
+    <div class="c-tier">${curatorTier}</div>
+  </div>
+</div>
 
-  </div>
-  <div style="padding:0 24px">
-  <div class="vote-row">
-    <button class="vote-btn vote-hit" id="vMega" onclick="vote('mega_hit')">🔥 Mega Hit</button>
-    <button class="vote-btn vote-hit" id="vHit" onclick="vote('hit')">🎯 Hit</button>
-    <button class="vote-btn vote-denied" id="vDenied" onclick="vote('deny')">💀 Denied</button>
-  </div>
+${curator.bio ? `<div class="bio"><p>${curator.bio}</p></div>` : ''}
+
+<div class="pick">
+  <div class="pick-meta">${d.theme ? d.theme.toUpperCase() + ' · ' : ''}Week ${d.week_number}</div>
+  <div class="song-title">${d.title}</div>
+  <div class="song-artist">${d.artist}</div>
+  ${d.curator_note ? `<div class="song-note">"${d.curator_note}"</div>` : ''}
+</div>
+
+${ytId ? `<div class="player-outer" id="ytWrap"><div id="player"></div></div>` : ''}
+${!ytId && d.spotify_url ? `<div class="player-outer"><iframe src="https://open.spotify.com/embed/track/${d.spotify_url.match(/track\/([a-zA-Z0-9]+)/)?.[1]}" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div>` : ''}
+
+<div class="vote-section">
+  <div class="vote-label">Is this an undeniable hit?</div>
+  <button class="vote-btn" id="vMega" onclick="vote('mega_hit')">🔥 Mega Hit</button>
+  <button class="vote-btn" id="vHit" onclick="vote('hit')">🎯 Hit</button>
+  <button class="vote-btn" id="vDenied" onclick="vote('deny')">💀 Denied</button>
   <div class="vote-msg" id="voteMsg"></div>
+</div>
 
-  ${d.spotify_url && ytId ? `<div style="text-align:center;margin:8px 0"><span onclick="document.getElementById('spWrap').style.display=document.getElementById('spWrap').style.display==='none'?'':'none'" style="font-family:'Courier Prime',monospace;font-size:11px;letter-spacing:1px;color:rgba(255,255,255,0.3);cursor:pointer;text-decoration:underline;text-transform:uppercase">Prefer Spotify?</span></div>` : ''}
+<div class="bottom">
+  ${ytId && d.spotify_url ? `
+  <div id="spWrap" style="display:none;width:100%">
+    <iframe style="border-radius:10px" src="https://open.spotify.com/embed/track/${d.spotify_url.match(/track\/([a-zA-Z0-9]+)/)?.[1]}" width="100%" height="152" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
   </div>
-  <div style="padding:0 24px">
-  <div class="share-wrap">
-    <button class="share-btn" id="shareBtn" onclick="sharePick()">Share this pick</button>
-  </div>
-
-  <div class="join-cta" id="joinCta">
-    <p>Get ${firstName}'s pick every Monday</p>
-    <a class="join-btn" href="/uht-radio.html">Follow ${firstName} →</a>
-  </div>
+  <button class="sp-btn" onclick="var w=document.getElementById('spWrap');w.style.display=w.style.display==='none'?'block':'none'">Prefer Spotify?</button>
+  ` : ''}
+  <button class="share-btn" onclick="sharePick()">Share this pick</button>
+  <a class="follow-a" href="/uht-radio.html">Follow ${firstName} →</a>
+</div>
 
 </div>
 
 ${ytId ? `<script src="https://www.youtube.com/iframe_api"></script>
 <script>
-var player,shown=false,started=false;
+var player;
 function onYouTubeIframeAPIReady(){
-  player=new YT.Player('player',{videoId:'${ytId}',playerVars:{rel:0,modestbranding:1,playsinline:1},events:{onStateChange:onChange}});
+  player=new YT.Player('player',{videoId:'${ytId}',playerVars:{rel:0,modestbranding:1,playsinline:1}});
 }
-function onChange(e){
-  if(e.data===1){var p=document.getElementById('pressPlay');if(p)p.style.opacity='0';if(!started){started=true;setInterval(check,500);}}
-}
-function check(){if(!player||shown)return;var c=player.getCurrentTime(),d=player.getDuration();if(d&&d-c<=10){document.getElementById('endScreen').classList.add('show');shown=true;}}
 </script>` : ''}
 
 <script>
-if(new URLSearchParams(window.location.search).get('ref')==='share'){
-  document.getElementById('joinCta').style.display='block';
-}
-function lockVote(msg){
-  document.getElementById('vMega').disabled=true;
-  document.getElementById('vHit').disabled=true;
-  document.getElementById('vDenied').disabled=true;
-  document.getElementById('voteMsg').textContent=msg;
-}
-// Check localStorage on load
-(function(){
-  var key='uht_voted_${d.id}';
-  var prior=localStorage.getItem(key);
-  if(prior){
-    lockVote(prior==='mega_hit'?'🔥 Mega Hit recorded!':prior==='hit'?'🎯 Hit recorded!':'💀 Denied recorded!');
-  }
-})();
-function vote(type){
-  var key='uht_voted_${d.id}';
-  if(localStorage.getItem(key)) return;
-  var msg=type==='mega_hit'?'🔥 Mega Hit recorded!':type==='hit'?'🎯 Hit recorded!':'💀 Denied recorded!';
-  lockVote(msg);
-  localStorage.setItem(key,type);
-  fetch('/api/genre-vote',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({submission_id:${d.id},vote:type,type:'curator'})})
-    .then(function(r){if(!r.ok)r.json().then(function(e){console.error('[vote error]',e);});})
-    .catch(function(e){console.error('[vote network error]',e);});
+function vote(v){
+  ['vMega','vHit','vDenied'].forEach(function(id){var b=document.getElementById(id);if(b)b.disabled=true;});
+  var msg=document.getElementById('voteMsg');
+  fetch('/api/vote',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({submission_id:${d.id},vote:v,page:'curator'})})
+  .then(function(r){return r.json();})
+  .then(function(){
+    var labels={mega_hit:'🔥 Mega Hit recorded!',hit:'🎯 Hit recorded!',deny:'💀 Denied recorded!'};
+    if(msg) msg.textContent=labels[v]||'Recorded!';
+  })
+  .catch(function(){if(msg)msg.textContent='Try again.';['vMega','vHit','vDenied'].forEach(function(id){var b=document.getElementById(id);if(b)b.disabled=false;});});
 }
 function sharePick(){
-  var url=window.location.origin+'${pageUrl}?ref=share';
-  var text="${curator.name}'s pick: ${d.title} by ${d.artist}\\nListen & vote: ";
-  if(navigator.share){navigator.share({title:'UHT',text:text,url:url}).catch(()=>{});return;}
-  if(navigator.clipboard&&window.isSecureContext){
-    navigator.clipboard.writeText(text+url).then(function(){var b=document.getElementById('shareBtn');var o=b.innerText;b.innerText='Copied!';setTimeout(function(){b.innerText=o;},1500);});
-    return;
-  }
-  window.location.href='sms:?&body='+encodeURIComponent(text+url);
-}
-</script>
-
-<style>
-.archive{padding:0 20px;margin-top:40px;border-top:1px solid rgba(255,255,255,.06);padding-top:32px}
-.archive-label{font-size:10px;letter-spacing:.3em;opacity:.4;text-transform:uppercase;margin-bottom:16px;text-align:center}
-.archive-item{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.06);cursor:pointer;transition:opacity .2s}
-.archive-item:hover{opacity:.7}
-.archive-item:last-child{border-bottom:none}
-.archive-meta{flex:1}
-.archive-title{font-size:16px;font-weight:600;margin:0 0 2px}
-.archive-artist{font-size:13px;opacity:.5;margin:0}
-.archive-week{font-size:10px;letter-spacing:.2em;opacity:.35;text-transform:uppercase;margin-top:4px}
-.archive-play{font-size:20px;opacity:.4;margin-left:12px}
-.archive-player{display:none;width:100%;aspect-ratio:16/9;margin-top:12px}
-.archive-player.show{display:block}
-</style>
-
-<div class="archive" id="archiveSection" style="display:none">
-  <div class="archive-label">Past Picks</div>
-  <div id="archiveList"></div>
-</div>
-
-<script>
-(function(){
-  fetch('/api/curators/${slug}/submissions')
-    .then(function(r){return r.json();})
-    .then(function(data){
-      if(!data.submissions||data.submissions.length<=1) return;
-      var list=document.getElementById('archiveList');
-      var section=document.getElementById('archiveSection');
-      var past=data.submissions.slice(1);
-      past.forEach(function(sub,i){
-        var ytId=sub.youtube_url?(sub.youtube_url.match(/(?:v=|youtu\.be\/)([^&?/]+)/)||[])[1]:null;
-        var item=document.createElement('div');
-        item.className='archive-item';
-        item.innerHTML=
-          '<div class="archive-meta">'+
-            '<div class="archive-title">'+sub.title+'</div>'+
-            '<div class="archive-artist">'+sub.artist+'</div>'+
-            '<div class="archive-week">'+(sub.theme?sub.theme.toUpperCase()+' · ':'')+'Week '+sub.week_number+'</div>'+
-          '</div>'+
-          (ytId?'<div class="archive-play">&#9654;</div>':'');
-        var playerDiv=document.createElement('div');
-        playerDiv.className='archive-player';
-        playerDiv.id='ap-'+i;
-        if(ytId){
-          item.addEventListener('click',function(){
-            var p=document.getElementById('ap-'+i);
-            if(p.classList.contains('show')){p.classList.remove('show');p.innerHTML='';return;}
-            document.querySelectorAll('.archive-player.show').forEach(function(x){x.classList.remove('show');x.innerHTML='';});
-            p.innerHTML='<iframe width="100%" height="100%" src="https://www.youtube.com/embed/'+ytId+'?autoplay=1" frameborder="0" allow="autoplay;encrypted-media" allowfullscreen></iframe>';
-            p.classList.add('show');
-          });
-        }
-        list.appendChild(item);
-        list.appendChild(playerDiv);
-      });
-      section.style.display='block';
-    })
-    .catch(function(e){console.error('[archive error]',e);});
-})();
-</script>
-</body>
-</html>`);
-  } catch(e) { res.status(500).send('<h1>Error: '+e.message+'</h1>'); }
-});
-
-
-// ── GET /api/curators/:slug/submissions ──────────────────────────────────────
-app.get('/api/curators/:slug/submissions', async (req, res) => {
-  try {
-    const slug = req.params.slug.toLowerCase();
-    const curatorRes = await db.query(
-      `SELECT id FROM curators WHERE LOWER(REPLACE(name,' ','-'))=$1 LIMIT 1`,
-      [slug]
-    );
-    if (!curatorRes.rows.length) return res.status(404).json({ error: 'Curator not found.' });
-    const curatorId = curatorRes.rows[0].id;
-    const { rows } = await db.query(
-      `SELECT * FROM curator_submissions WHERE curator_id=$1
-       ORDER BY week_number DESC, submitted_at DESC`,
-      [curatorId]
-    );
-    res.json({ submissions: rows });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── GET /drop/:genre ─────────────────────────────────────────────────────────
-app.get('/drop/:genre', async (req, res) => {
-  const genre = req.params.genre.toLowerCase();
-  try {
-    const { rows } = await db.query(
-      `SELECT * FROM genre_submissions WHERE LOWER(genre)=$1
-       ORDER BY drop_date DESC NULLS LAST, created_at DESC LIMIT 1`,
-      [genre]
-    );
-    if (!rows.length) return res.status(404).send('<h1>No drop found for this genre.</h1>');
-    const d = rows[0];
-    const ytId = d.youtube_url ? (d.youtube_url.match(/(?:v=|youtu\.be\/)([^&?/]+)/) || [])[1] : null;
-    const weekTitle = d.week_title || ('Undeniable ' + genre.charAt(0).toUpperCase() + genre.slice(1) + ' Hit of the Week');
-
-    res.send(`<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${weekTitle}</title>
-<style>
-html,body{background:#000;margin:0;padding:0;overflow-x:hidden;font-family:Georgia,"Times New Roman",serif;color:#f3f1ea}
-.uht-hit{min-height:100svh;background:#000;display:flex;flex-direction:column;justify-content:flex-start;padding:12px 0 40px}
-.uht-header{text-align:center;padding:0 14px;margin-bottom:14px}
-.uht-label{font-size:11px;letter-spacing:.25em;opacity:.6;margin-bottom:10px;text-transform:uppercase}
-.uht-title{margin:0;font-size:42px;line-height:1.05;font-weight:600}
-.uht-sub{margin:16px 0 0}
-.uht-song-name{display:block;font-size:24px;font-weight:600;opacity:.98}
-.uht-artist-name{display:block;margin-top:4px;font-size:18px;opacity:.72}
-.uht-note{margin-top:14px;font-size:17px;font-style:italic;opacity:.75}
-.uht-play{margin-top:12px;font-size:11px;letter-spacing:.3em;opacity:.6;transition:opacity .4s ease;text-transform:uppercase}
-.uht-video{position:relative;width:100%;aspect-ratio:16/9}
-#player{width:100%;height:100%}
-.uht-end{position:absolute;inset:0;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .45s ease}
-.uht-end.show{opacity:1;pointer-events:all}
-.uht-end p{margin:0;font-size:20px;line-height:1.6}
-.vote-row{display:flex;gap:12px;justify-content:center;margin-top:24px;padding:0 14px}
-.vote-btn{flex:1;max-width:160px;padding:14px;border-radius:12px;border:none;font-family:Georgia,serif;font-size:16px;cursor:pointer;transition:all .2s;letter-spacing:1px}
-.vote-hit{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.8)}.vote-hit:hover,.vote-hit:hover,.vote-hit:hover,.vote-hit:active{background:rgba(200,0,0,.3);border-color:rgba(200,0,0,.6);color:#ff4444}
-.vote-denied{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.8)}.vote-denied:hover,.vote-denied:hover,.vote-denied:hover,.vote-denied:active{background:rgba(200,0,0,.3);border-color:rgba(200,0,0,.6);color:#ff4444}
-.vote-btn:disabled{opacity:.4;cursor:default}
-.vote-confirm{text-align:center;margin-top:12px;font-size:13px;letter-spacing:.1em;opacity:.5;min-height:20px}
-.no-video{padding:40px 14px;text-align:center}
-.spotify-btn{display:inline-block;margin-top:16px;padding:12px 28px;border-radius:999px;background:#1DB954;color:#fff;text-decoration:none;font-size:15px;letter-spacing:1px}
-@media(min-width:768px){
-  .uht-hit{align-items:center;padding:20px 0 60px}
-  .uht-title{font-size:clamp(48px,6vw,82px)}
-  .uht-song-name{font-size:32px}
-  .uht-artist-name{font-size:20px}
-  .uht-note{font-size:19px}
-  .uht-video{max-width:1400px}
-}
-</style>
-</head>
-<body>
-<section class="uht-hit">
-  <div class="uht-header">
-    <div class="uht-label">Hit of the Week</div>
-    <h1 class="uht-title">${weekTitle}</h1>
-    <p class="uht-sub">
-      <span class="uht-song-name">${d.title}</span>
-      <span class="uht-artist-name">${d.artist}</span>
-    </p>
-    ${d.note ? `<p class="uht-note">${d.note}</p>` : ''}
-    ${ytId ? `<div class="uht-play" id="uhtPlay">Press Play.</div>` : ''}
-  </div>
-
-  ${ytId ? `
-  <div class="uht-video">
-    <div id="player"></div>
-    <div class="uht-end" id="endMessage">
-      <p>This one's yours.<br><br>Your next hit arrives via text next Friday.</p>
-    </div>
-  </div>` : `
-  <div class="no-video">
-    ${d.spotify_url ? `<a class="spotify-btn" href="${d.spotify_url}" target="_blank">🎵 Play on Spotify</a>` : '<p style="opacity:.4">No playback source available.</p>'}
-  </div>`}
-
-  <div class="vote-row">
-    <button class="vote-btn vote-hit" id="voteHit" onclick="castVote('hit')">🔥 Hit</button>
-    <button class="vote-btn vote-denied" id="voteDenied" onclick="castVote('denied')">💀 Denied</button>
-  </div>
-  <div class="vote-confirm" id="voteConfirm"></div>
-</section>
-
-${ytId ? `
-<script src="https://www.youtube.com/iframe_api"></script>
-<script>
-let player, shown=false, timerStarted=false;
-function onYouTubeIframeAPIReady(){
-  player = new YT.Player('player',{
-    videoId:'${ytId}',
-    playerVars:{rel:0,modestbranding:1,playsinline:1},
-    events:{onStateChange:onPlayerStateChange}
-  });
-}
-function onPlayerStateChange(e){
-  if(e.data===YT.PlayerState.PLAYING){
-    var p=document.getElementById('uhtPlay');
-    if(p) p.style.opacity='0';
-    if(!timerStarted){timerStarted=true;setInterval(checkTime,500);}
-  }
-}
-function checkTime(){
-  if(!player||shown) return;
-  var c=player.getCurrentTime(), d=player.getDuration();
-  if(d&&(d-c<=10)){document.getElementById('endMessage').classList.add('show');shown=true;}
-}
-</script>` : ''}
-
-<script>
-function castVote(type){
-  document.getElementById('voteHit').disabled=true;
-  document.getElementById('voteDenied').disabled=true;
-  document.getElementById('voteConfirm').textContent = type==='hit' ? '🔥 Hit recorded!' : '💀 Denied recorded!';
-  // Save vote via API
-  fetch('/api/genre-vote', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({submission_id:${d.id}, vote:type})
-  }).then(function(r){if(!r.ok)r.json().then(function(e){console.error('[vote error]',e);});})
-    .catch(function(e){console.error('[vote network error]',e);});
+  var url=window.location.href.split('?')[0]+'?ref=share';
+  if(navigator.share){navigator.share({title:'${d.title} — ${d.artist}',text:'Is this an undeniable hit?',url:url});}
+  else{navigator.clipboard.writeText(url).then(function(){document.getElementById('voteMsg').textContent='Link copied!';});}
 }
 </script>
 </body>
