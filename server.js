@@ -637,6 +637,11 @@ app.get('/drop/curator/:slug', async (req, res) => {
     );
     if (!subRes.rows.length) return res.status(404).send('<h1>No picks yet.</h1>');
     const d = subRes.rows[0];
+    const allSubsRes = await db.query(
+      `SELECT * FROM curator_submissions WHERE curator_id=$1 ORDER BY week_number ASC`,
+      [curator.id]
+    );
+    const allSubs = allSubsRes.rows;
 
     // Compute curator tier from lifetime hit votes
     const hitRes = await db.query(
@@ -668,54 +673,91 @@ app.get('/drop/curator/:slug', async (req, res) => {
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{background:#080808;color:#ede8df;font-family:'Inter',sans-serif;overflow-x:hidden}
-.page{max-width:680px;margin:0 auto}
+.page{max-width:720px;margin:0 auto}
 
 /* Stamp */
-.stamp{text-align:center;padding:52px 24px 40px}
-.stamp-brand{font-size:9px;letter-spacing:.4em;text-transform:uppercase;color:rgba(237,232,223,0.3);margin-bottom:10px}
-.stamp-month{font-size:9px;letter-spacing:.3em;text-transform:uppercase;color:rgba(237,232,223,0.2)}
+.stamp{text-align:center;padding:44px 24px 36px}
+.stamp-brand{font-family:'Playfair Display',serif;font-size:clamp(22px,5vw,32px);font-weight:700;letter-spacing:2px;color:rgba(237,232,223,0.85);margin-bottom:10px}
+.stamp-month{font-size:9px;letter-spacing:.35em;text-transform:uppercase;color:rgba(237,232,223,0.3)}
 
-/* Hero */
-.hero{position:relative;width:100%;aspect-ratio:3/4;max-height:88vh;overflow:hidden;background:#111}
+/* Hero — full bleed */
+.hero{position:relative;width:100%;aspect-ratio:3/4;max-height:90vh;overflow:hidden;background:#111}
 .hero img{width:100%;height:100%;object-fit:cover;object-position:center top;display:block}
-.hero-grad{position:absolute;inset:0;background:linear-gradient(to bottom,transparent 35%,rgba(8,8,8,0.6) 70%,#080808 100%)}
-.hero-name{position:absolute;bottom:0;left:0;right:0;padding:28px 32px 40px}
-.c-name{font-family:'Playfair Display',serif;font-size:clamp(44px,11vw,76px);font-weight:700;line-height:1;letter-spacing:-1.5px;color:#ede8df}
-.c-tier{font-size:9px;letter-spacing:.3em;text-transform:uppercase;color:rgba(237,232,223,0.35);margin-top:12px}
+.hero-grad{position:absolute;inset:0;background:linear-gradient(to bottom,transparent 40%,rgba(8,8,8,0.5) 70%,#080808 100%)}
+.hero-name{position:absolute;bottom:0;left:0;right:0;padding:24px 28px 32px;display:flex;justify-content:space-between;align-items:flex-end}
+.hero-name-left{}
+.c-name{font-family:'Playfair Display',serif;font-size:clamp(40px,10vw,68px);font-weight:700;line-height:1;letter-spacing:-1px;color:#ede8df}
+.c-tier{font-size:9px;letter-spacing:.28em;text-transform:uppercase;color:rgba(237,232,223,0.4);margin-top:10px}
+.hero-actions{display:flex;flex-direction:column;align-items:flex-end;gap:10px;flex-shrink:0;padding-left:16px}
+.hero-follow{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:rgba(237,232,223,0.7);background:rgba(0,0,0,0.45);border:1px solid rgba(237,232,223,0.25);border-radius:999px;padding:8px 14px;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;backdrop-filter:blur(8px);transition:all .2s}
+.hero-follow:hover{background:rgba(237,232,223,0.15);color:#ede8df}
+.hero-ig{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,0.45);border:1px solid rgba(237,232,223,0.2);color:rgba(237,232,223,0.6);text-decoration:none;backdrop-filter:blur(8px);transition:all .2s}
+.hero-ig:hover{background:rgba(237,232,223,0.15);color:#ede8df}
 
 /* Bio */
 .bio{padding:44px 32px;border-bottom:1px solid rgba(255,255,255,0.06)}
 .bio p{font-family:'Playfair Display',serif;font-size:16px;line-height:2;color:rgba(237,232,223,0.5);font-style:italic}
 
 /* Pick */
-.pick{padding:56px 32px 36px}
-.pick-meta{font-size:9px;letter-spacing:.35em;text-transform:uppercase;color:rgba(237,232,223,0.25);margin-bottom:24px}
-.song-title{font-family:'Playfair Display',serif;font-size:clamp(38px,9vw,68px);font-weight:700;line-height:1.02;letter-spacing:-1.5px;color:#ede8df;margin-bottom:12px}
-.song-artist{font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:rgba(237,232,223,0.35);font-weight:400;margin-bottom:32px}
-.song-note{font-family:'Playfair Display',serif;font-size:18px;font-style:italic;color:rgba(237,232,223,0.45);line-height:1.85;padding-left:22px;border-left:1px solid rgba(237,232,223,0.18);margin-bottom:40px}
+.pick{padding:52px 32px 36px}
+.pick-meta{font-size:9px;letter-spacing:.35em;text-transform:uppercase;color:rgba(237,232,223,0.25);margin-bottom:22px}
+.song-title{font-family:'Playfair Display',serif;font-size:clamp(38px,9vw,66px);font-weight:700;line-height:1.02;letter-spacing:-1.5px;color:#ede8df;margin-bottom:10px}
+.song-artist{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:rgba(237,232,223,0.35);font-weight:400;margin-bottom:32px}
+.song-note{font-family:'Playfair Display',serif;font-size:17px;font-style:italic;color:rgba(237,232,223,0.45);line-height:1.9;padding-left:20px;border-left:1px solid rgba(237,232,223,0.18);margin-bottom:0}
 
 /* Player */
 .player-outer{width:100%;aspect-ratio:16/9;background:#000;overflow:hidden}
-.player-outer iframe,#player{width:100%;height:100%;border:none;display:block}
+#player,#player iframe{width:100%;height:100%;border:none;display:block}
+
+/* Below player */
+.below-player{padding:16px 32px 8px;display:flex;flex-direction:column;gap:10px}
+.sp-whisper{font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:rgba(237,232,223,0.2);cursor:pointer;background:none;border:none;font-family:'Inter',sans-serif;padding:0;text-align:left}
+.sp-whisper:hover{color:rgba(237,232,223,0.45)}
+.sp-embed{width:100%}
+.share-cta{font-size:13px;color:rgba(237,232,223,0.55);cursor:pointer;background:none;border:none;font-family:'Playfair Display',serif;font-style:italic;padding:0;letter-spacing:.02em;transition:color .2s}
+.share-cta:hover{color:#ede8df}
 
 /* Vote */
-.vote-section{padding:44px 32px 24px}
-.vote-label{font-size:9px;letter-spacing:.35em;text-transform:uppercase;color:rgba(237,232,223,0.2);text-align:center;margin-bottom:24px}
-.vote-btn{display:block;width:100%;padding:20px;margin-bottom:14px;border-radius:14px;border:1px solid rgba(255,255,255,0.09);background:rgba(255,255,255,0.025);color:rgba(237,232,223,0.75);font-family:'Inter',sans-serif;font-size:16px;font-weight:400;cursor:pointer;transition:all .25s;text-align:center;letter-spacing:.03em}
+.vote-section{padding:32px 32px 28px}
+.vote-label{font-size:9px;letter-spacing:.35em;text-transform:uppercase;color:rgba(237,232,223,0.2);text-align:center;margin-bottom:20px}
+.vote-row{display:flex;flex-direction:column;gap:12px}
+.vote-btn{width:100%;padding:20px;border-radius:12px;border:1px solid rgba(255,255,255,0.09);background:rgba(255,255,255,0.025);color:rgba(237,232,223,0.75);font-family:'Inter',sans-serif;font-size:16px;cursor:pointer;transition:all .25s;text-align:center;letter-spacing:.03em}
 .vote-btn:hover{background:rgba(255,255,255,0.07);border-color:rgba(255,255,255,0.18);color:#ede8df;transform:translateY(-2px)}
 .vote-btn:active{transform:translateY(0)}
 .vote-btn:disabled{opacity:.2;cursor:default;transform:none}
-.vote-msg{text-align:center;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:rgba(237,232,223,0.3);min-height:22px;padding:10px 0 4px}
+.vote-msg{text-align:center;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:rgba(237,232,223,0.3);min-height:22px;padding:12px 0 0}
+@media(min-width:600px){
+  .vote-row{flex-direction:row}
+  .vote-btn{flex:1}
+}
+
+/* Archive */
+.archive{padding:44px 32px 20px;border-top:1px solid rgba(255,255,255,0.06)}
+.archive-label{font-size:9px;letter-spacing:.35em;text-transform:uppercase;color:rgba(237,232,223,0.2);margin-bottom:28px}
+.archive-item{padding:24px 0;border-bottom:1px solid rgba(255,255,255,0.05)}
+.archive-item:last-child{border-bottom:none}
+.archive-week{font-size:9px;letter-spacing:.28em;text-transform:uppercase;color:rgba(237,232,223,0.25);margin-bottom:8px}
+.archive-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:#ede8df;margin-bottom:4px}
+.archive-artist{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:rgba(237,232,223,0.35);margin-bottom:8px}
+.archive-note{font-family:'Playfair Display',serif;font-size:14px;font-style:italic;color:rgba(237,232,223,0.35);line-height:1.7}
+.archive-votes{font-size:11px;color:rgba(237,232,223,0.2);margin-top:8px;letter-spacing:.05em}
 
 /* Bottom */
-.bottom{padding:8px 32px 72px;display:flex;flex-direction:column;align-items:center;gap:18px}
-.sp-embed-wrap{width:100%}
-.sp-btn{font-size:9px;letter-spacing:.25em;text-transform:uppercase;color:rgba(237,232,223,0.2);cursor:pointer;background:none;border:none;font-family:'Inter',sans-serif;padding:0}
-.sp-btn:hover{color:rgba(237,232,223,0.45)}
-.share-btn{font-size:9px;letter-spacing:.25em;text-transform:uppercase;color:rgba(237,232,223,0.3);cursor:pointer;background:none;border:1px solid rgba(237,232,223,0.12);border-radius:999px;padding:11px 26px;font-family:'Inter',sans-serif;transition:all .2s}
-.share-btn:hover{color:#ede8df;border-color:rgba(237,232,223,0.35)}
-.follow-a{font-size:9px;letter-spacing:.25em;text-transform:uppercase;color:rgba(237,232,223,0.18);text-decoration:none;font-family:'Inter',sans-serif;transition:color .2s}
-.follow-a:hover{color:rgba(237,232,223,0.5)}
+.bottom{padding:20px 32px 72px;text-align:center}
+.bottom-share{font-size:9px;letter-spacing:.25em;text-transform:uppercase;color:rgba(237,232,223,0.2);cursor:pointer;background:none;border:none;font-family:'Inter',sans-serif}
+.bottom-share:hover{color:rgba(237,232,223,0.5)}
+
+/* Follow modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);z-index:999;display:none;align-items:flex-end;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:#141414;border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:32px 28px 48px}
+.modal-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:#ede8df;margin-bottom:6px}
+.modal-sub{font-size:12px;letter-spacing:.1em;color:rgba(237,232,223,0.35);margin-bottom:24px;text-transform:uppercase}
+.modal input{width:100%;padding:16px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:#ede8df;font-family:'Inter',sans-serif;font-size:16px;outline:none;margin-bottom:12px}
+.modal-btn{width:100%;padding:16px;background:#ede8df;color:#080808;border:none;border-radius:10px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;cursor:pointer;transition:opacity .2s}
+.modal-btn:hover{opacity:.9}
+.modal-close{position:absolute;top:16px;right:20px;background:none;border:none;color:rgba(237,232,223,0.4);font-size:20px;cursor:pointer;font-family:'Inter',sans-serif}
+.modal-msg{text-align:center;font-size:12px;color:rgba(237,232,223,0.4);margin-top:12px;min-height:18px}
 </style>
 </head>
 <body>
@@ -730,8 +772,14 @@ html,body{background:#080808;color:#ede8df;font-family:'Inter',sans-serif;overfl
   ${curator.image_url ? `<img src="${curator.image_url}" alt="${curator.name}">` : ''}
   <div class="hero-grad"></div>
   <div class="hero-name">
-    <div class="c-name">${curator.name}</div>
-    <div class="c-tier">${curatorTier}</div>
+    <div class="hero-name-left">
+      <div class="c-name">${curator.name}</div>
+      <div class="c-tier">${curatorTier}</div>
+    </div>
+    <div class="hero-actions">
+      ${curator.instagram ? `<a class="hero-ig" href="https://instagram.com/${curator.instagram.replace('@','')}" target="_blank" title="@${curator.instagram}"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg></a>` : ''}
+      <button class="hero-follow" onclick="openFollowModal()">+ Follow</button>
+    </div>
   </div>
 </div>
 
@@ -745,27 +793,59 @@ ${curator.bio ? `<div class="bio"><p>${curator.bio}</p></div>` : ''}
 </div>
 
 ${ytId ? `<div class="player-outer" id="ytWrap"><div id="player"></div></div>` : ''}
-${!ytId && d.spotify_url ? `<div class="player-outer"><iframe src="https://open.spotify.com/embed/track/${d.spotify_url.match(/track\/([a-zA-Z0-9]+)/)?.[1]}" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div>` : ''}
+${!ytId && d.spotify_url ? `<div class="player-outer" style="height:152px"><iframe src="https://open.spotify.com/embed/track/${d.spotify_url.match(/track\/([a-zA-Z0-9]+)/)?.[1]}" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div>` : ''}
+
+<div class="below-player">
+  ${ytId && d.spotify_url ? `
+  <button class="sp-whisper" onclick="var w=document.getElementById('spWrap');w.style.display=w.style.display==='none'?'block':'none'">Prefer Spotify?</button>
+  <div id="spWrap" style="display:none">
+    <iframe style="border-radius:10px;display:block" src="https://open.spotify.com/embed/track/${d.spotify_url.match(/track\/([a-zA-Z0-9]+)/)?.[1]}" width="100%" height="152" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+  </div>
+  ` : ''}
+  <button class="share-cta" onclick="sharePick()">↗ Share this pick with a friend</button>
+</div>
 
 <div class="vote-section">
   <div class="vote-label">Is this an undeniable hit?</div>
-  <button class="vote-btn" id="vMega" onclick="vote('mega_hit')">🔥 Mega Hit</button>
-  <button class="vote-btn" id="vHit" onclick="vote('hit')">🎯 Hit</button>
-  <button class="vote-btn" id="vDenied" onclick="vote('deny')">💀 Denied</button>
+  <div class="vote-row">
+    <button class="vote-btn" id="vMega" onclick="vote('mega_hit')">🔥 Mega Hit</button>
+    <button class="vote-btn" id="vHit" onclick="vote('hit')">🎯 Hit</button>
+    <button class="vote-btn" id="vDenied" onclick="vote('deny')">💀 Denied</button>
+  </div>
   <div class="vote-msg" id="voteMsg"></div>
 </div>
 
-<div class="bottom">
-  ${ytId && d.spotify_url ? `
-  <div id="spWrap" style="display:none;width:100%">
-    <iframe style="border-radius:10px" src="https://open.spotify.com/embed/track/${d.spotify_url.match(/track\/([a-zA-Z0-9]+)/)?.[1]}" width="100%" height="152" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+${allSubs && allSubs.length > 0 ? `
+<div class="archive">
+  <div class="archive-label">Archive · ${curator.name.split(' ')[0]}'s Picks</div>
+  ${allSubs.map((sub, i) => `
+  <div class="archive-item">
+    <div class="archive-week">Week ${sub.week_number} of ${allSubs.length}</div>
+    <div class="archive-title">${sub.title}</div>
+    <div class="archive-artist">${sub.artist}</div>
+    ${sub.curator_note ? `<div class="archive-note">"${sub.curator_note}"</div>` : ''}
+    <div class="archive-votes">🔥 ${sub.mega_hits||0} · 🎯 ${sub.hits||0} · 💀 ${sub.denies||0}</div>
   </div>
-  <button class="sp-btn" onclick="var w=document.getElementById('spWrap');w.style.display=w.style.display==='none'?'block':'none'">Prefer Spotify?</button>
-  ` : ''}
-  <button class="share-btn" onclick="sharePick()">Share this pick</button>
-  <a class="follow-a" href="/uht-radio.html">Follow ${firstName} →</a>
+  `).join('')}
+</div>
+` : ''}
+
+<div class="bottom">
+  <button class="bottom-share" onclick="sharePick()">Share this pick</button>
 </div>
 
+</div>
+
+<!-- Follow Modal -->
+<div class="modal-bg" id="followModal" onclick="if(event.target===this)closeFollowModal()">
+  <div class="modal" style="position:relative">
+    <button class="modal-close" onclick="closeFollowModal()">✕</button>
+    <div class="modal-title">Follow ${firstName}</div>
+    <div class="modal-sub">Get his pick every Monday by text</div>
+    <input type="tel" id="followPhone" placeholder="+1 (212) 555-1234" onkeydown="if(event.key==='Enter')submitFollow()">
+    <button class="modal-btn" onclick="submitFollow()">Follow ${firstName} →</button>
+    <div class="modal-msg" id="followMsg"></div>
+  </div>
 </div>
 
 ${ytId ? `<script src="https://www.youtube.com/iframe_api"></script>
@@ -787,12 +867,46 @@ function vote(v){
     var labels={mega_hit:'🔥 Mega Hit recorded!',hit:'🎯 Hit recorded!',deny:'💀 Denied recorded!'};
     if(msg) msg.textContent=labels[v]||'Recorded!';
   })
-  .catch(function(){if(msg)msg.textContent='Try again.';['vMega','vHit','vDenied'].forEach(function(id){var b=document.getElementById(id);if(b)b.disabled=false;});});
+  .catch(function(){
+    if(msg)msg.textContent='Try again.';
+    ['vMega','vHit','vDenied'].forEach(function(id){var b=document.getElementById(id);if(b)b.disabled=false;});
+  });
 }
+
 function sharePick(){
   var url=window.location.href.split('?')[0]+'?ref=share';
   if(navigator.share){navigator.share({title:'${d.title} — ${d.artist}',text:'Is this an undeniable hit?',url:url});}
   else{navigator.clipboard.writeText(url).then(function(){document.getElementById('voteMsg').textContent='Link copied!';});}
+}
+
+function openFollowModal(){
+  document.getElementById('followModal').classList.add('open');
+  setTimeout(function(){document.getElementById('followPhone').focus();},100);
+}
+
+function closeFollowModal(){
+  document.getElementById('followModal').classList.remove('open');
+}
+
+function submitFollow(){
+  var phone=document.getElementById('followPhone').value.trim();
+  var msg=document.getElementById('followMsg');
+  if(!phone){document.getElementById('followPhone').style.borderColor='rgba(237,232,223,0.5)';return;}
+  msg.textContent='...';
+  fetch('/api/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({phone:phone,curator_id:${curator.id}})})
+  .then(function(r){return r.json();})
+  .then(function(data){
+    if(data.message||data.ok||data.subscriber){
+      msg.textContent='You are now following ${firstName} 🌙';
+      document.getElementById('followPhone').disabled=true;
+      document.querySelector('.modal-btn').disabled=true;
+      document.querySelector('.modal-btn').textContent='✓ Following';
+    } else {
+      msg.textContent=data.error||'Something went wrong.';
+    }
+  })
+  .catch(function(){msg.textContent='Network error. Try again.';});
 }
 </script>
 </body>
