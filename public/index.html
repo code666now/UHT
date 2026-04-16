@@ -331,198 +331,6 @@
   </div>
 </div>
 
-<!-- Curator modal — exact radio page card -->
-<div class="uht-modal-bg" id="uhtModalBg">
-  <div class="uht-modal" id="uhtModal">
-    <button class="uht-modal-close" onclick="uhtCloseModal()">✕</button>
-    <div id="uhtModalImgWrap"></div>
-    <div class="uht-modal-body">
-      <div class="uht-modal-name" id="uhtModalName"></div>
-      <div class="uht-modal-bio" id="uhtModalBio"></div>
-      <div style="display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap">
-        <button class="uht-follow-btn" id="uhtFollowBtn" onclick="uhtFollowClick()">+ Follow</button>
-        <div id="uhtModalIg"></div>
-      </div>
-      <div id="uhtFollowInput" style="display:none;margin-top:12px">
-        <div style="font-size:12px;color:rgba(255,255,255,0.5);font-family:'Courier Prime',monospace;letter-spacing:1px;margin-bottom:8px;text-transform:uppercase">Enter your number to follow</div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <input type="tel" id="uhtFollowPhone" placeholder="+1 (212) 555-1234"
-            style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:10px 14px;color:#fff;font-family:'Courier Prime',monospace;font-size:14px;outline:none;flex:1"
-            onkeydown="if(event.key==='Enter') uhtConfirmFollow()">
-          <button class="uht-follow-btn" onclick="uhtConfirmFollow()" style="white-space:nowrap;padding:10px 16px">✓ Follow</button>
-        </div>
-        <div style="font-size:12px;color:rgba(255,255,255,0.3);margin-top:8px;font-family:'Courier Prime',monospace;line-height:1.7">
-          📱 Monday drops · 🔔 First to know · 🔥 Vote on every pick
-        </div>
-      </div>
-      <div id="uhtFollowPerks" style="display:none;margin-top:12px;padding:12px 16px;border-radius:10px;background:rgba(100,220,120,0.06);border:1px solid rgba(100,220,120,0.2);font-family:'Courier Prime',monospace;font-size:13px;color:rgba(100,220,120,0.8);line-height:1.8">
-        ✓ Following · 📱 Monday drops · 🔔 Drop alerts · 🔥 Vote on picks
-      </div>
-      <div id="uhtModalScorecard" style="margin-top:18px"></div>
-    </div>
-  </div>
-</div>
-
-<script>
-var uhtCurrentCuratorId = null;
-
-function uhtInitials(name) {
-  return name.split(' ').map(function(w){ return w[0]; }).join('').toUpperCase().slice(0,2);
-}
-
-function uhtOpenModal(c) {
-  uhtCurrentCuratorId = c.id;
-  document.getElementById('uhtModalName').textContent = c.name || '';
-  document.getElementById('uhtModalBio').textContent = c.bio || 'No bio yet.';
-  // Instagram
-  var igEl = document.getElementById('uhtModalIg');
-  igEl.innerHTML = c.instagram
-    ? '<a href="https://instagram.com/'+c.instagram.replace('@','')+'" target="_blank" style="font-family:Courier Prime,monospace;font-size:12px;color:rgba(160,160,190,0.5);text-decoration:none">@'+c.instagram.replace('@','')+'</a>'
-    : '';
-  // Image
-  var imgWrap = document.getElementById('uhtModalImgWrap');
-  if(c.image_url) {
-    imgWrap.innerHTML = '<img class="uht-modal-img" src="'+c.image_url+'" alt="'+c.name+'" onerror="this.parentNode.innerHTML='<div class=uht-modal-img-placeholder>'+uhtInitials(c.name)+'</div>'">';
-  } else {
-    imgWrap.innerHTML = '<div class="uht-modal-img-placeholder">'+uhtInitials(c.name)+'</div>';
-  }
-  // Reset follow state
-  document.getElementById('uhtFollowBtn').className = 'uht-follow-btn';
-  document.getElementById('uhtFollowBtn').textContent = '+ Follow';
-  document.getElementById('uhtFollowInput').style.display = 'none';
-  document.getElementById('uhtFollowPerks').style.display = 'none';
-  // Load scorecard
-  var scorecardEl = document.getElementById('uhtModalScorecard');
-  scorecardEl.innerHTML = '<div style="opacity:0.4;font-size:11px;letter-spacing:2px;font-family:Courier Prime,monospace;margin-bottom:8px">LOADING PICKS…</div>';
-  fetch('/api/curators/'+c.id+'/scorecard')
-    .then(function(r){ return r.json(); })
-    .then(function(data){
-      var st = data.stats || {};
-      var subs = data.submissions || [];
-      var hitRate = st.hit_rate ? parseFloat(st.hit_rate) : 0;
-      var rateColor = hitRate>=70 ? '#4ade80' : hitRate>=40 ? '#facc15' : '#f87171';
-      // Tier
-      var nameEl = document.getElementById('uhtModalName');
-      if(nameEl && !nameEl.querySelector('.uht-tier')) {
-        var tier = data.tier || '🌙 Rising Curator';
-        var tierDiv = document.createElement('div');
-        tierDiv.className = 'uht-tier';
-        tierDiv.style.cssText = 'font-family:Courier Prime,monospace;font-size:13px;letter-spacing:2px;opacity:0.6;margin-top:4px;margin-bottom:2px;text-transform:uppercase';
-        tierDiv.textContent = tier;
-        nameEl.appendChild(tierDiv);
-      }
-      var html = '';
-      if(parseInt(st.total) > 0) {
-        html += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:14px 16px;border-radius:10px;background:rgba(255,255,255,0.07)">'
-          +'<div style="font-size:42px;font-weight:900;color:'+rateColor+';font-family:Bebas Neue,sans-serif">'+hitRate+'%</div>'
-          +'<div><div style="font-size:13px;letter-spacing:2px;font-family:Courier Prime,monospace;color:rgba(255,255,255,0.5);text-transform:uppercase">Hit Rate</div>'
-          +'<div style="font-size:15px;color:rgba(255,255,255,0.8)">🔥 '+(st.mega_hits||0)+' Mega · 🎯 '+(st.hits||0)+' Hit · 💀 '+(st.denies||0)+' Denied</div></div></div>';
-      }
-      if(subs.length) {
-        html += '<div style="font-size:11px;letter-spacing:2px;font-family:Courier Prime,monospace;color:rgba(255,255,255,0.4);margin-bottom:12px;text-transform:uppercase">Archive</div>';
-        subs.forEach(function(s){
-          var vTotal=(parseInt(s.mega_hits)||0)+(parseInt(s.hits)||0)+(parseInt(s.denies)||0);
-          var votesHtml = vTotal>0
-            ? '<div style="display:flex;gap:10px;margin-top:6px;font-size:13px;font-family:Courier Prime,monospace;opacity:0.7"><span>🔥 '+(s.mega_hits||0)+'</span><span>🎯 '+(s.hits||0)+'</span><span>💀 '+(s.denies||0)+'</span></div>'
-            : '<div style="font-size:12px;opacity:0.35;font-family:Courier Prime,monospace;margin-top:4px">no votes yet</div>';
-          html += '<div style="padding:14px 16px;border-radius:10px;background:rgba(255,255,255,0.04);margin-bottom:10px">'
-            +(s.theme?'<div style="font-size:10px;letter-spacing:2px;font-family:Courier Prime,monospace;opacity:0.5;text-transform:uppercase;margin-bottom:2px">'+s.theme+'</div>':'')
-            +'<div style="font-size:10px;letter-spacing:2px;font-family:Courier Prime,monospace;opacity:0.35;text-transform:uppercase">Week '+(s.week_number||'?')+' Pick</div>'
-            +'<div style="font-size:20px;font-weight:700;color:var(--rc-light);margin-top:4px">'+s.title+'</div>'
-            +'<div style="font-size:15px;opacity:0.7;color:var(--rc-light)">'+s.artist+'</div>'
-            +(s.curator_note?'<div style="font-size:13px;opacity:0.5;margin-top:6px;font-style:italic;font-family:Courier Prime,monospace">"'+s.curator_note+'"</div>':'')
-            +votesHtml+'</div>';
-        });
-      } else {
-        html += '<div style="font-size:11px;opacity:0.35;font-family:Courier Prime,monospace;text-align:center;padding:16px 0">No picks yet.</div>';
-      }
-      scorecardEl.innerHTML = html;
-    })
-    .catch(function(){ scorecardEl.innerHTML = ''; });
-  document.getElementById('uhtModalBg').classList.add('open');
-  document.body.style.overflow = 'hidden';
-}
-
-function uhtCloseModal() {
-  document.getElementById('uhtModalBg').classList.remove('open');
-  document.body.style.overflow = '';
-  // Clear tier div for next open
-  var nameEl = document.getElementById('uhtModalName');
-  var tierEl = nameEl ? nameEl.querySelector('.uht-tier') : null;
-  if(tierEl) tierEl.remove();
-}
-
-function uhtFollowClick() {
-  var inp = document.getElementById('uhtFollowInput');
-  inp.style.display = inp.style.display==='block' ? 'none' : 'block';
-  if(inp.style.display==='block') document.getElementById('uhtFollowPhone').focus();
-}
-
-function uhtConfirmFollow() {
-  var phone = document.getElementById('uhtFollowPhone').value.trim();
-  if(!phone) { document.getElementById('uhtFollowPhone').style.borderColor='rgba(255,255,255,.6)'; return; }
-  var btn = document.querySelector('#uhtFollowInput .uht-follow-btn');
-  btn.disabled=true; btn.textContent='...';
-  fetch('/api/subscribe', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({ phone:phone, curator_id: uhtCurrentCuratorId })
-  })
-  .then(function(r){ return r.json(); })
-  .then(function(d){
-    if(d.message||d.ok||d.subscriber) {
-      document.getElementById('uhtFollowInput').style.display='none';
-      var fbtn = document.getElementById('uhtFollowBtn');
-      fbtn.className='uht-follow-btn following'; fbtn.textContent='✓ Following'; fbtn.onclick=null;
-      document.getElementById('uhtFollowPerks').style.display='block';
-    } else {
-      btn.disabled=false; btn.textContent='✓ Follow';
-      alert(d.error||'Something went wrong.');
-    }
-  })
-  .catch(function(){ btn.disabled=false; btn.textContent='✓ Follow'; });
-}
-
-// Close modal on background click
-document.getElementById('uhtModalBg').addEventListener('click', function(e){
-  if(e.target===this) uhtCloseModal();
-});
-
-// Load curators into strip
-(function(){
-  fetch('/api/curators')
-    .then(function(r){ return r.json(); })
-    .then(function(d){
-      var curators = d.curators || [];
-      var strip = document.getElementById('uhtCuratorStrip');
-      if(!curators.length) { strip.style.display='none'; return; }
-      curators.forEach(function(c){
-        var el = document.createElement('div');
-        el.className = 'uht-curator-avatar';
-        el.title = c.name;
-        var imgHtml = c.image_url
-            ? '<img src="'+c.image_url+'" alt="'+c.name+'" style="width:100%;height:100%;object-fit:cover;object-position:center top">'
-            : '<span style="font-family:Bebas Neue,sans-serif;font-size:48px;color:rgba(200,168,112,0.5)">'+uhtInitials(c.name)+'</span>';
-        el.innerHTML = '<div class="uht-curator-ring">'+imgHtml+'</div>'
-          +'<div class="uht-curator-name-tag">'+c.name.split(' ')[0]+'</div>'
-          +(c.instagram?'<a class="uht-curator-ig" href="https://instagram.com/'+c.instagram.replace('@','')+'" target="_blank" onclick="event.stopPropagation()">@'+c.instagram.replace('@','')+'</a>':'');
-        el.addEventListener('click', function(){ uhtOpenModal(c); });
-        strip.appendChild(el);
-      });
-    })
-    .catch(function(){});
-})();
-</script>
-
-
-<div class="wrap">
-  <h1>Undeniable Hit Theory</h1>
-  <p class="lead">Pick <b>one genre</b>, get one track by SMS, vote <b>HIT</b> or <b>DENIED</b>.</p>
-
-  <div class="card">
-    <div class="audio-inline" id="audioInline" role="region" aria-label="Background audio">
-      <div class="label"><span class="dot" aria-hidden="true"></span><span>Background audio is off</span></div>
-      <button class="enable" id="enableAudio" type="button">Enable</button>
-    </div>
 
     <!-- Step 1: Subscribe -->
     <form class="form" id="step1" autocomplete="on">
@@ -879,5 +687,197 @@ document.getElementById('uhtModalBg').addEventListener('click', function(e){
 
 })();
 </script>
+<!-- Curator modal — exact radio page card -->
+<div class="uht-modal-bg" id="uhtModalBg">
+  <div class="uht-modal" id="uhtModal">
+    <button class="uht-modal-close" onclick="uhtCloseModal()">✕</button>
+    <div id="uhtModalImgWrap"></div>
+    <div class="uht-modal-body">
+      <div class="uht-modal-name" id="uhtModalName"></div>
+      <div class="uht-modal-bio" id="uhtModalBio"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap">
+        <button class="uht-follow-btn" id="uhtFollowBtn" onclick="uhtFollowClick()">+ Follow</button>
+        <div id="uhtModalIg"></div>
+      </div>
+      <div id="uhtFollowInput" style="display:none;margin-top:12px">
+        <div style="font-size:12px;color:rgba(255,255,255,0.5);font-family:'Courier Prime',monospace;letter-spacing:1px;margin-bottom:8px;text-transform:uppercase">Enter your number to follow</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="tel" id="uhtFollowPhone" placeholder="+1 (212) 555-1234"
+            style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:10px 14px;color:#fff;font-family:'Courier Prime',monospace;font-size:14px;outline:none;flex:1"
+            onkeydown="if(event.key==='Enter') uhtConfirmFollow()">
+          <button class="uht-follow-btn" onclick="uhtConfirmFollow()" style="white-space:nowrap;padding:10px 16px">✓ Follow</button>
+        </div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.3);margin-top:8px;font-family:'Courier Prime',monospace;line-height:1.7">
+          📱 Monday drops · 🔔 First to know · 🔥 Vote on every pick
+        </div>
+      </div>
+      <div id="uhtFollowPerks" style="display:none;margin-top:12px;padding:12px 16px;border-radius:10px;background:rgba(100,220,120,0.06);border:1px solid rgba(100,220,120,0.2);font-family:'Courier Prime',monospace;font-size:13px;color:rgba(100,220,120,0.8);line-height:1.8">
+        ✓ Following · 📱 Monday drops · 🔔 Drop alerts · 🔥 Vote on picks
+      </div>
+      <div id="uhtModalScorecard" style="margin-top:18px"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+var uhtCurrentCuratorId = null;
+
+function uhtInitials(name) {
+  return name.split(' ').map(function(w){ return w[0]; }).join('').toUpperCase().slice(0,2);
+}
+
+function uhtOpenModal(c) {
+  uhtCurrentCuratorId = c.id;
+  document.getElementById('uhtModalName').textContent = c.name || '';
+  document.getElementById('uhtModalBio').textContent = c.bio || 'No bio yet.';
+  // Instagram
+  var igEl = document.getElementById('uhtModalIg');
+  igEl.innerHTML = c.instagram
+    ? '<a href="https://instagram.com/'+c.instagram.replace('@','')+'" target="_blank" style="font-family:Courier Prime,monospace;font-size:12px;color:rgba(160,160,190,0.5);text-decoration:none">@'+c.instagram.replace('@','')+'</a>'
+    : '';
+  // Image
+  var imgWrap = document.getElementById('uhtModalImgWrap');
+  if(c.image_url) {
+    imgWrap.innerHTML = '<img class="uht-modal-img" src="'+c.image_url+'" alt="'+c.name+'" onerror="this.parentNode.innerHTML='<div class=uht-modal-img-placeholder>'+uhtInitials(c.name)+'</div>'">';
+  } else {
+    imgWrap.innerHTML = '<div class="uht-modal-img-placeholder">'+uhtInitials(c.name)+'</div>';
+  }
+  // Reset follow state
+  document.getElementById('uhtFollowBtn').className = 'uht-follow-btn';
+  document.getElementById('uhtFollowBtn').textContent = '+ Follow';
+  document.getElementById('uhtFollowInput').style.display = 'none';
+  document.getElementById('uhtFollowPerks').style.display = 'none';
+  // Load scorecard
+  var scorecardEl = document.getElementById('uhtModalScorecard');
+  scorecardEl.innerHTML = '<div style="opacity:0.4;font-size:11px;letter-spacing:2px;font-family:Courier Prime,monospace;margin-bottom:8px">LOADING PICKS…</div>';
+  fetch('/api/curators/'+c.id+'/scorecard')
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      var st = data.stats || {};
+      var subs = data.submissions || [];
+      var hitRate = st.hit_rate ? parseFloat(st.hit_rate) : 0;
+      var rateColor = hitRate>=70 ? '#4ade80' : hitRate>=40 ? '#facc15' : '#f87171';
+      // Tier
+      var nameEl = document.getElementById('uhtModalName');
+      if(nameEl && !nameEl.querySelector('.uht-tier')) {
+        var tier = data.tier || '🌙 Rising Curator';
+        var tierDiv = document.createElement('div');
+        tierDiv.className = 'uht-tier';
+        tierDiv.style.cssText = 'font-family:Courier Prime,monospace;font-size:13px;letter-spacing:2px;opacity:0.6;margin-top:4px;margin-bottom:2px;text-transform:uppercase';
+        tierDiv.textContent = tier;
+        nameEl.appendChild(tierDiv);
+      }
+      var html = '';
+      if(parseInt(st.total) > 0) {
+        html += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:14px 16px;border-radius:10px;background:rgba(255,255,255,0.07)">'
+          +'<div style="font-size:42px;font-weight:900;color:'+rateColor+';font-family:Bebas Neue,sans-serif">'+hitRate+'%</div>'
+          +'<div><div style="font-size:13px;letter-spacing:2px;font-family:Courier Prime,monospace;color:rgba(255,255,255,0.5);text-transform:uppercase">Hit Rate</div>'
+          +'<div style="font-size:15px;color:rgba(255,255,255,0.8)">🔥 '+(st.mega_hits||0)+' Mega · 🎯 '+(st.hits||0)+' Hit · 💀 '+(st.denies||0)+' Denied</div></div></div>';
+      }
+      if(subs.length) {
+        html += '<div style="font-size:11px;letter-spacing:2px;font-family:Courier Prime,monospace;color:rgba(255,255,255,0.4);margin-bottom:12px;text-transform:uppercase">Archive</div>';
+        subs.forEach(function(s){
+          var vTotal=(parseInt(s.mega_hits)||0)+(parseInt(s.hits)||0)+(parseInt(s.denies)||0);
+          var votesHtml = vTotal>0
+            ? '<div style="display:flex;gap:10px;margin-top:6px;font-size:13px;font-family:Courier Prime,monospace;opacity:0.7"><span>🔥 '+(s.mega_hits||0)+'</span><span>🎯 '+(s.hits||0)+'</span><span>💀 '+(s.denies||0)+'</span></div>'
+            : '<div style="font-size:12px;opacity:0.35;font-family:Courier Prime,monospace;margin-top:4px">no votes yet</div>';
+          html += '<div style="padding:14px 16px;border-radius:10px;background:rgba(255,255,255,0.04);margin-bottom:10px">'
+            +(s.theme?'<div style="font-size:10px;letter-spacing:2px;font-family:Courier Prime,monospace;opacity:0.5;text-transform:uppercase;margin-bottom:2px">'+s.theme+'</div>':'')
+            +'<div style="font-size:10px;letter-spacing:2px;font-family:Courier Prime,monospace;opacity:0.35;text-transform:uppercase">Week '+(s.week_number||'?')+' Pick</div>'
+            +'<div style="font-size:20px;font-weight:700;color:var(--rc-light);margin-top:4px">'+s.title+'</div>'
+            +'<div style="font-size:15px;opacity:0.7;color:var(--rc-light)">'+s.artist+'</div>'
+            +(s.curator_note?'<div style="font-size:13px;opacity:0.5;margin-top:6px;font-style:italic;font-family:Courier Prime,monospace">"'+s.curator_note+'"</div>':'')
+            +votesHtml+'</div>';
+        });
+      } else {
+        html += '<div style="font-size:11px;opacity:0.35;font-family:Courier Prime,monospace;text-align:center;padding:16px 0">No picks yet.</div>';
+      }
+      scorecardEl.innerHTML = html;
+    })
+    .catch(function(){ scorecardEl.innerHTML = ''; });
+  document.getElementById('uhtModalBg').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function uhtCloseModal() {
+  document.getElementById('uhtModalBg').classList.remove('open');
+  document.body.style.overflow = '';
+  // Clear tier div for next open
+  var nameEl = document.getElementById('uhtModalName');
+  var tierEl = nameEl ? nameEl.querySelector('.uht-tier') : null;
+  if(tierEl) tierEl.remove();
+}
+
+function uhtFollowClick() {
+  var inp = document.getElementById('uhtFollowInput');
+  inp.style.display = inp.style.display==='block' ? 'none' : 'block';
+  if(inp.style.display==='block') document.getElementById('uhtFollowPhone').focus();
+}
+
+function uhtConfirmFollow() {
+  var phone = document.getElementById('uhtFollowPhone').value.trim();
+  if(!phone) { document.getElementById('uhtFollowPhone').style.borderColor='rgba(255,255,255,.6)'; return; }
+  var btn = document.querySelector('#uhtFollowInput .uht-follow-btn');
+  btn.disabled=true; btn.textContent='...';
+  fetch('/api/subscribe', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ phone:phone, curator_id: uhtCurrentCuratorId })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    if(d.message||d.ok||d.subscriber) {
+      document.getElementById('uhtFollowInput').style.display='none';
+      var fbtn = document.getElementById('uhtFollowBtn');
+      fbtn.className='uht-follow-btn following'; fbtn.textContent='✓ Following'; fbtn.onclick=null;
+      document.getElementById('uhtFollowPerks').style.display='block';
+    } else {
+      btn.disabled=false; btn.textContent='✓ Follow';
+      alert(d.error||'Something went wrong.');
+    }
+  })
+  .catch(function(){ btn.disabled=false; btn.textContent='✓ Follow'; });
+}
+
+// Close modal on background click
+document.getElementById('uhtModalBg').addEventListener('click', function(e){
+  if(e.target===this) uhtCloseModal();
+});
+
+// Load curators into strip
+(function(){
+  fetch('/api/curators')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      var curators = d.curators || [];
+      var strip = document.getElementById('uhtCuratorStrip');
+      if(!curators.length) { strip.style.display='none'; return; }
+      curators.forEach(function(c){
+        var el = document.createElement('div');
+        el.className = 'uht-curator-avatar';
+        el.title = c.name;
+        var imgHtml = c.image_url
+            ? '<img src="'+c.image_url+'" alt="'+c.name+'" style="width:100%;height:100%;object-fit:cover;object-position:center top">'
+            : '<span style="font-family:Bebas Neue,sans-serif;font-size:48px;color:rgba(200,168,112,0.5)">'+uhtInitials(c.name)+'</span>';
+        el.innerHTML = '<div class="uht-curator-ring">'+imgHtml+'</div>'
+          +'<div class="uht-curator-name-tag">'+c.name.split(' ')[0]+'</div>'
+          +(c.instagram?'<a class="uht-curator-ig" href="https://instagram.com/'+c.instagram.replace('@','')+'" target="_blank" onclick="event.stopPropagation()">@'+c.instagram.replace('@','')+'</a>':'');
+        el.addEventListener('click', function(){ uhtOpenModal(c); });
+        strip.appendChild(el);
+      });
+    })
+    .catch(function(){});
+})();
+</script>
+
+
+<div class="wrap">
+  <h1>Undeniable Hit Theory</h1>
+  <p class="lead">Pick <b>one genre</b>, get one track by SMS, vote <b>HIT</b> or <b>DENIED</b>.</p>
+
+  <div class="card">
+    <div class="audio-inline" id="audioInline" role="region" aria-label="Background audio">
+      <div class="label"><span class="dot" aria-hidden="true"></span><span>Background audio is off</span></div>
+      <button class="enable" id="enableAudio" type="button">Enable</button>
+    </div>
 </body>
 </html>
