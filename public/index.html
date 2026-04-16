@@ -322,6 +322,13 @@
 <!-- Curator strip -->
 <div class="uht-curator-strip" id="uhtCuratorStrip">
   <div class="uht-curator-strip-label">Curator of the Month</div>
+  <div class="uht-curator-avatar" id="lucasAvatar" style="cursor:pointer">
+    <div class="uht-curator-ring">
+      <img src="https://uht-app-production.up.railway.app/lucas-moon.jpg" alt="Lucas Moon" style="width:100%;height:100%;object-fit:cover;object-position:center top"/>
+    </div>
+    <div class="uht-curator-name-tag">Lucas</div>
+    <div class="uht-curator-ig">@lucasmoon</div>
+  </div>
 </div>
 
 <!-- Curator modal — exact radio page card -->
@@ -481,6 +488,10 @@ function uhtConfirmFollow() {
 document.addEventListener('DOMContentLoaded', function(){
   document.getElementById('uhtModalBg').addEventListener('click', function(e){
     if(e.target===this) uhtCloseModal();
+  });
+  var la = document.getElementById('lucasAvatar');
+  if(la) la.addEventListener('click', function(){
+    uhtOpenModal({id:1, name:'Lucas Moon', bio:'Raised between late-night radio and underground shows, he developed an instinct for songs that linger. He listens for emotion first, production second, hype last.', image_url:'https://uht-app-production.up.railway.app/lucas-moon.jpg', instagram:'lucasmoon'});
   });
 });
 
