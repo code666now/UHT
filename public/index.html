@@ -186,286 +186,264 @@
 
 
 
-<!-- ══════════════════════════════════════════════════════════
-     CURATOR OF THE MONTH — full card + slider
-══════════════════════════════════════════════════════════ -->
-<style>
-.cotm-wrap { max-width:480px; margin:28px auto 0; padding:0 16px; font-family:Georgia,'Times New Roman',serif; }
-.cotm-card { border:1px solid rgba(255,255,255,.1); border-radius:16px; overflow:hidden; background:rgba(255,255,255,.02); }
-.cotm-hero { position:relative; width:100%; aspect-ratio:4/3; overflow:hidden; }
-.cotm-hero img { width:100%; height:100%; object-fit:cover; object-position:center top; display:block; }
-.cotm-hero-overlay { position:absolute; inset:0; background:linear-gradient(to bottom,transparent 30%,rgba(0,0,0,.95) 100%); }
-.cotm-hero-text { position:absolute; bottom:0; left:0; right:0; padding:20px; }
-.cotm-hero-eyebrow { font-size:10px; letter-spacing:.25em; opacity:.5; color:#f3f1ea; margin-bottom:6px; }
-.cotm-hero-name { font-size:32px; font-weight:600; color:#f3f1ea; line-height:1; margin-bottom:8px; }
-.cotm-tier-badge { display:inline-block; font-size:10px; letter-spacing:.18em; color:#f3f1ea; opacity:.6; border:1px solid rgba(243,241,234,.25); border-radius:999px; padding:3px 12px; }
-.cotm-stats { display:flex; border-bottom:1px solid rgba(255,255,255,.07); }
-.cotm-stat { flex:1; padding:12px; text-align:center; border-right:1px solid rgba(255,255,255,.07); }
-.cotm-stat:last-child { border-right:none; }
-.cotm-stat-num { font-size:20px; font-weight:600; color:#f3f1ea; }
-.cotm-stat-lbl { font-size:9px; letter-spacing:.2em; opacity:.35; color:#f3f1ea; margin-top:2px; }
-.cotm-bio { padding:18px 20px; border-bottom:1px solid rgba(255,255,255,.07); }
-.cotm-bio-lead { font-size:14px; line-height:1.75; opacity:.75; color:#f3f1ea; font-style:italic; border-left:2px solid rgba(243,241,234,.2); padding-left:14px; margin:0 0 10px; }
-.cotm-bio-body { font-size:13px; line-height:1.8; opacity:.45; color:#f3f1ea; margin:0; }
-.cotm-bio-quote { font-size:13px; font-style:italic; opacity:.4; color:#f3f1ea; margin:12px 0 0; }
-.cotm-theme { padding:14px 20px; border-bottom:1px solid rgba(255,255,255,.07); text-align:center; }
-.cotm-theme-eyebrow { font-size:9px; letter-spacing:.3em; opacity:.35; color:#f3f1ea; margin-bottom:6px; }
-.cotm-theme-title { font-size:18px; font-weight:600; color:#f3f1ea; margin-bottom:10px; }
-.cotm-song-eyebrow { font-size:9px; letter-spacing:.2em; opacity:.35; color:#f3f1ea; margin-bottom:6px; }
-.cotm-song-title { font-size:20px; font-weight:600; color:#f3f1ea; margin-bottom:4px; }
-.cotm-song-artist { font-size:14px; opacity:.55; color:#f3f1ea; }
-.cotm-tabs { padding:12px 20px 0; display:flex; gap:6px; }
-.cotm-tab { border-radius:999px; padding:7px 20px; font-size:10px; letter-spacing:.15em; font-family:Georgia,serif; cursor:pointer; transition:all .2s; }
-.cotm-tab-yt { background:#f3f1ea; color:#000; border:none; }
-.cotm-tab-sp { background:transparent; color:#f3f1ea; border:1px solid rgba(255,255,255,.2); opacity:.55; }
-.cotm-player-yt { padding:10px 0 0; }
-.cotm-player-yt-inner { position:relative; width:100%; aspect-ratio:16/9; }
-.cotm-player-yt-inner iframe { width:100%; height:100%; display:block; border:none; }
-.cotm-player-sp { padding:10px 16px 0; display:none; }
-.cotm-player-sp iframe { width:100%; display:block; border:none; border-radius:8px; }
-.cotm-follow { padding:16px 20px; border-top:1px solid rgba(255,255,255,.07); }
-.cotm-follow-btn { width:100%; background:rgba(255,255,255,.07); color:#f3f1ea; border:1px solid rgba(255,255,255,.2); border-radius:999px; padding:12px; font-size:11px; letter-spacing:.2em; font-family:Georgia,serif; cursor:pointer; transition:all .2s; }
-.cotm-follow-btn:hover { background:rgba(255,255,255,.12); }
-.cotm-follow-input { display:none; margin-top:12px; }
-.cotm-follow-input input { width:100%; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.2); border-radius:8px; padding:10px 14px; color:#f3f1ea; font-family:Georgia,serif; font-size:14px; outline:none; box-sizing:border-box; }
-.cotm-follow-confirm { width:100%; margin-top:8px; background:#f3f1ea; color:#000; border:none; border-radius:999px; padding:11px; font-size:11px; letter-spacing:.2em; font-family:Georgia,serif; cursor:pointer; }
-.cotm-follow-success { display:none; padding:12px 16px; border-radius:10px; background:rgba(100,220,120,.06); border:1px solid rgba(100,220,120,.2); font-size:13px; color:rgba(100,220,120,.9); line-height:1.7; margin-top:12px; }
-.cotm-follow-legal { font-size:10px; opacity:.25; color:#f3f1ea; margin-top:8px; line-height:1.6; }
-.cotm-archive { padding:0 20px 4px; }
-.cotm-archive-lbl { font-size:9px; letter-spacing:.3em; opacity:.3; color:#f3f1ea; margin:14px 0 10px; }
-.cotm-pick { padding:12px 14px; border-radius:10px; background:rgba(255,255,255,.04); margin-bottom:8px; }
-.cotm-pick-week { font-size:9px; letter-spacing:.2em; opacity:.35; color:#f3f1ea; margin-bottom:4px; }
-.cotm-pick-title { font-size:17px; font-weight:600; color:#f3f1ea; margin-bottom:2px; }
-.cotm-pick-artist { font-size:13px; opacity:.6; color:#f3f1ea; margin-bottom:4px; }
-.cotm-pick-note { font-size:12px; font-style:italic; opacity:.4; color:#f3f1ea; }
-.cotm-pick-votes { display:flex; gap:12px; margin-top:6px; font-size:12px; opacity:.5; color:#f3f1ea; }
-.cotm-footer { padding:12px 20px 16px; text-align:center; }
-.cotm-footer a { font-size:10px; letter-spacing:.2em; opacity:.3; color:#f3f1ea; text-decoration:none; }
 
-/* Slider */
-.cotm-slider-wrap { max-width:480px; margin:24px auto 0; padding:0 16px; }
-.cotm-slider-label { font-size:10px; letter-spacing:.3em; opacity:.3; color:#f3f1ea; font-family:Georgia,serif; margin-bottom:12px; text-align:center; }
-.cotm-slider { display:flex; gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; padding-bottom:8px; scrollbar-width:none; }
-.cotm-slider::-webkit-scrollbar { display:none; }
-.cotm-slide { flex:0 0 200px; scroll-snap-align:start; border:1px solid rgba(255,255,255,.1); border-radius:12px; overflow:hidden; background:rgba(255,255,255,.02); cursor:pointer; transition:border-color .2s; }
-.cotm-slide:hover { border-color:rgba(255,255,255,.25); }
-.cotm-slide-img { width:100%; aspect-ratio:3/2; object-fit:cover; object-position:center top; display:block; }
-.cotm-slide-body { padding:10px 12px 12px; }
-.cotm-slide-month { font-size:9px; letter-spacing:.2em; opacity:.35; color:#f3f1ea; font-family:Georgia,serif; margin-bottom:4px; }
-.cotm-slide-name { font-size:15px; font-weight:600; color:#f3f1ea; font-family:Georgia,serif; margin-bottom:3px; }
-.cotm-slide-theme { font-size:11px; opacity:.5; color:#f3f1ea; font-family:Georgia,serif; font-style:italic; margin-bottom:4px; }
-.cotm-slide-tier { font-size:9px; letter-spacing:.15em; opacity:.45; color:#f3f1ea; font-family:Georgia,serif; }
+<!-- CURATOR OF THE MONTH — radio card style -->
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap');
+  :root {
+    --rc-body:#1c1c26; --rc-dark:#0e0e16; --rc-darker:#08080e;
+    --rc-light:#c8a870; --rc-chrome:#8888a8; --rc-ring:#5858a0;
+    --rc-ink:#90e8b0; --rc-display:'Bebas Neue',sans-serif; --rc-mono:'Courier Prime',monospace;
+  }
+  body.theme-fire  { --rc-body:#6a2008; --rc-dark:#3a0a00; --rc-darker:#200400; --rc-light:#ff6030; --rc-chrome:#ff4010; --rc-ring:#ff6020; --rc-ink:#ff5000; }
+  body.theme-party { --rc-body:#3a1868; --rc-dark:#220a48; --rc-darker:#140628; --rc-light:#6030a8; --rc-chrome:#8040c0; --rc-ring:#a060e0; --rc-ink:#c0a0ff; }
+
+  .rc-wrap { max-width:480px; margin:28px auto 0; padding:0 16px; }
+  .rc-card { border-radius:16px; overflow:hidden; background:var(--rc-body); box-shadow:0 30px 80px rgba(0,0,0,.9),0 0 0 1px rgba(255,255,255,.06); }
+  .rc-img { width:100%; height:220px; object-fit:cover; object-position:center top; display:block; }
+  .rc-body { padding:20px 22px 8px; }
+  .rc-name { font-family:var(--rc-display); font-size:36px; letter-spacing:3px; color:var(--rc-light); margin-bottom:4px; transition:color 1.2s; }
+  .rc-tier { font-family:var(--rc-mono); font-size:13px; letter-spacing:2px; opacity:.6; margin-bottom:10px; text-transform:uppercase; color:var(--rc-light); }
+  .rc-bio { font-family:var(--rc-mono); font-size:15px; line-height:1.7; color:rgba(200,168,112,.75); margin-bottom:16px; }
+  body.theme-fire  .rc-bio { color:rgba(255,160,80,.55); }
+  body.theme-party .rc-bio { color:rgba(180,140,255,.55); }
+
+  .rc-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+  .rc-follow-btn { font-family:var(--rc-mono); font-size:12px; letter-spacing:1px; text-transform:uppercase; cursor:pointer; border-radius:999px; padding:8px 18px; border:1px solid var(--rc-ring); background:rgba(0,0,0,.3); color:var(--rc-light); transition:all .2s; }
+  .rc-follow-btn:hover { background:var(--rc-ring); color:#fff; }
+  .rc-follow-btn.following { border-color:rgba(100,220,120,.4); color:rgba(100,220,120,.9); background:rgba(100,220,120,.06); }
+
+  .rc-follow-input { display:none; margin-bottom:14px; }
+  .rc-follow-input input { width:100%; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.2); border-radius:8px; padding:10px 14px; color:#fff; font-family:var(--rc-mono); font-size:14px; outline:none; box-sizing:border-box; margin-bottom:8px; }
+  .rc-follow-confirm { font-family:var(--rc-mono); font-size:12px; letter-spacing:1px; text-transform:uppercase; cursor:pointer; border-radius:999px; padding:9px 20px; border:none; background:var(--rc-ring); color:#fff; transition:all .2s; }
+  .rc-follow-legal { font-size:11px; opacity:.3; color:var(--rc-light); margin-top:6px; line-height:1.6; font-family:var(--rc-mono); }
+  .rc-follow-perks { display:none; padding:10px 14px; border-radius:8px; background:rgba(100,220,120,.06); border:1px solid rgba(100,220,120,.2); font-family:var(--rc-mono); font-size:13px; color:rgba(100,220,120,.8); line-height:1.8; margin-bottom:14px; }
+
+  .rc-scorecard { padding:0 22px 20px; }
+  .rc-hit-badge { display:flex; align-items:center; gap:10px; margin-bottom:16px; padding:12px 16px; border-radius:10px; background:rgba(255,255,255,.05); }
+  .rc-hit-rate { font-size:42px; font-weight:900; font-family:var(--rc-display); }
+  .rc-hit-lbl { font-size:13px; letter-spacing:2px; font-family:var(--rc-mono); opacity:.5; text-transform:uppercase; }
+  .rc-hit-detail { font-size:15px; opacity:.7; margin-top:2px; }
+  .rc-archive-lbl { font-size:11px; letter-spacing:2px; font-family:var(--rc-mono); opacity:.4; margin-bottom:12px; text-transform:uppercase; }
+  .rc-pick { padding:14px 16px; border-radius:10px; background:rgba(255,255,255,.04); margin-bottom:10px; }
+  .rc-pick-theme { font-size:11px; letter-spacing:2px; font-family:var(--rc-mono); opacity:.6; text-transform:uppercase; margin-bottom:2px; }
+  .rc-pick-week { font-size:11px; letter-spacing:2px; font-family:var(--rc-mono); opacity:.35; text-transform:uppercase; }
+  .rc-pick-title { font-size:20px; font-weight:700; color:var(--rc-light); margin-top:4px; }
+  .rc-pick-artist { font-size:15px; opacity:.7; color:var(--rc-light); margin-top:2px; }
+  .rc-pick-note { font-size:14px; opacity:.5; margin-top:6px; font-style:italic; font-family:var(--rc-mono); color:var(--rc-light); }
+  .rc-pick-votes { display:flex; gap:12px; margin-top:8px; font-size:14px; opacity:.7; font-family:var(--rc-mono); }
+  .rc-no-votes { font-size:13px; opacity:.35; font-family:var(--rc-mono); margin-top:4px; }
+
+  .rc-tabs { display:flex; gap:6px; padding:0 22px 12px; }
+  .rc-tab { font-family:var(--rc-mono); font-size:11px; letter-spacing:1px; text-transform:uppercase; cursor:pointer; border-radius:999px; padding:6px 18px; transition:all .2s; }
+  .rc-tab-yt { background:var(--rc-light); color:#000; border:none; }
+  .rc-tab-sp { background:transparent; color:var(--rc-light); border:1px solid rgba(255,255,255,.2); opacity:.55; }
+
+  .rc-player-yt { padding:0 0 12px; }
+  .rc-player-yt-inner { position:relative; width:100%; aspect-ratio:16/9; }
+  .rc-player-yt-inner iframe { width:100%; height:100%; display:block; border:none; }
+  .rc-player-sp { padding:0 16px 12px; display:none; }
+  .rc-player-sp iframe { width:100%; display:block; border:none; border-radius:8px; }
+
+  .rc-footer { padding:10px 22px 18px; border-top:1px solid rgba(255,255,255,.05); display:flex; justify-content:space-between; align-items:center; }
+  .rc-footer a { font-family:var(--rc-mono); font-size:11px; letter-spacing:1px; opacity:.3; color:var(--rc-light); text-decoration:none; text-transform:uppercase; }
+  .rc-footer a:hover { opacity:.6; }
+
+  /* Slider */
+  .rc-slider-wrap { max-width:480px; margin:20px auto 0; padding:0 16px; display:none; }
+  .rc-slider-lbl { font-family:var(--rc-mono); font-size:10px; letter-spacing:2px; opacity:.3; color:#fff; margin-bottom:10px; text-align:center; text-transform:uppercase; }
+  .rc-slider { display:flex; gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; padding-bottom:8px; scrollbar-width:none; }
+  .rc-slider::-webkit-scrollbar { display:none; }
+  .rc-slide { flex:0 0 180px; scroll-snap-align:start; border-radius:12px; overflow:hidden; background:var(--rc-body); border:1px solid rgba(255,255,255,.08); cursor:pointer; transition:border-color .2s; }
+  .rc-slide:hover { border-color:var(--rc-ring); }
+  .rc-slide img { width:100%; aspect-ratio:3/2; object-fit:cover; object-position:center top; display:block; }
+  .rc-slide-body { padding:10px 12px 12px; }
+  .rc-slide-month { font-family:var(--rc-mono); font-size:9px; letter-spacing:2px; opacity:.35; color:var(--rc-light); margin-bottom:3px; text-transform:uppercase; }
+  .rc-slide-name { font-family:var(--rc-display); font-size:18px; letter-spacing:2px; color:var(--rc-light); margin-bottom:2px; }
+  .rc-slide-theme { font-family:var(--rc-mono); font-size:11px; opacity:.5; color:var(--rc-light); font-style:italic; }
 </style>
 
-<!-- Full Curator Card -->
-<div class="cotm-wrap">
-  <div class="cotm-card">
+<div class="rc-wrap">
+  <div class="rc-card">
 
-    <!-- Hero -->
-    <div class="cotm-hero">
-      <img src="https://undeniablehittheory.com/wp-content/uploads/2026/04/Lucas-moon-Large-format.png" alt="Lucas Moon"/>
-      <div class="cotm-hero-overlay"></div>
-      <div class="cotm-hero-text">
-        <div class="cotm-hero-eyebrow">🌙 CURATOR OF THE MONTH · APRIL 2026</div>
-        <div class="cotm-hero-name">Lucas Moon</div>
-        <div class="cotm-tier-badge" id="cotmTierBadge">🌙 RISING CURATOR</div>
-      </div>
-    </div>
+    <!-- Hero image -->
+    <img class="rc-img" src="https://undeniablehittheory.com/wp-content/uploads/2026/04/Lucas-moon-Large-format.png" alt="Lucas Moon"/>
 
-    <!-- Live stats — hidden until votes exist -->
-    <div class="cotm-stats" id="cotmStatsBar" style="display:none">
-      <div class="cotm-stat">
-        <div class="cotm-stat-num" id="cotmHitRate">—</div>
-        <div class="cotm-stat-lbl">HIT RATE</div>
-      </div>
-      <div class="cotm-stat">
-        <div class="cotm-stat-num" id="cotmHits">0</div>
-        <div class="cotm-stat-lbl">HITS</div>
-      </div>
-      <div class="cotm-stat">
-        <div class="cotm-stat-num" id="cotmDenies">0</div>
-        <div class="cotm-stat-lbl">DENIED</div>
-      </div>
-    </div>
+    <!-- Body -->
+    <div class="rc-body">
+      <div class="rc-name" id="rcName">Lucas Moon</div>
+      <div class="rc-tier" id="rcTier">🌙 Rising Curator</div>
+      <div class="rc-bio">Raised between late-night radio and underground shows — an ear trained on what moves people when no one is watching.</div>
 
-    <!-- Bio -->
-    <div class="cotm-bio">
-      <p class="cotm-bio-lead">Raised between late-night radio and underground shows, he developed an instinct for songs that linger.</p>
-      <p class="cotm-bio-body">He listens for emotion first, production second, and hype last. Like the moon itself, Lucas moves quietly — no algorithm, no trend.</p>
-      <p class="cotm-bio-quote">"If it doesn't move you, it's not a hit."</p>
-    </div>
-
-    <!-- Theme + current pick -->
-    <div class="cotm-theme">
-      <div class="cotm-theme-eyebrow">APRIL THEME · WEEK 1 OF 4</div>
-      <div class="cotm-theme-title">Songs to Ride Your Bike To</div>
-      <div class="cotm-song-eyebrow">HIT OF THE WEEK</div>
-      <div class="cotm-song-title">Walking on a Pretty Day</div>
-      <div class="cotm-song-artist">Kurt Vile</div>
+      <!-- Follow button -->
+      <div class="rc-actions">
+        <button class="rc-follow-btn" id="rcFollowBtn" onclick="rcFollowClick()">+ Follow · Monday Drops</button>
+      </div>
+      <div class="rc-follow-input" id="rcFollowInput">
+        <input type="tel" id="rcFollowPhone" placeholder="+1 (___) ___-____" autocomplete="tel"/>
+        <button class="rc-follow-confirm" onclick="rcConfirmFollow()">Confirm Follow</button>
+        <div class="rc-follow-legal">📱 Monday drops · 🔥 Vote on every pick · Reply STOP anytime</div>
+      </div>
+      <div class="rc-follow-perks" id="rcFollowPerks">
+        ✓ Following Lucas Moon &nbsp;·&nbsp; 📱 Monday drops &nbsp;·&nbsp; 🔔 Drop alerts &nbsp;·&nbsp; 🔥 Vote on picks
+      </div>
     </div>
 
     <!-- Player tabs -->
-    <div class="cotm-tabs">
-      <button class="cotm-tab cotm-tab-yt" id="cotmTabYT" onclick="cotmShow('yt')">YOUTUBE</button>
-      <button class="cotm-tab cotm-tab-sp" id="cotmTabSP" onclick="cotmShow('sp')">SPOTIFY</button>
+    <div class="rc-tabs">
+      <button class="rc-tab rc-tab-yt" id="rcTabYT" onclick="rcShow('yt')">YouTube</button>
+      <button class="rc-tab rc-tab-sp" id="rcTabSP" onclick="rcShow('sp')">Spotify</button>
     </div>
 
-    <!-- YouTube player -->
-    <div class="cotm-player-yt" id="cotmYT">
-      <div class="cotm-player-yt-inner">
+    <!-- YouTube -->
+    <div class="rc-player-yt" id="rcYT">
+      <div class="rc-player-yt-inner">
         <iframe src="https://www.youtube.com/embed/tVL02_LghE4?rel=0&modestbranding=1&playsinline=1"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
       </div>
     </div>
 
-    <!-- Spotify player -->
-    <div class="cotm-player-sp" id="cotmSP">
+    <!-- Spotify -->
+    <div class="rc-player-sp" id="rcSP">
       <iframe src="https://open.spotify.com/embed/track/4cCoZML1dPIQxNjOwDmJGf" height="152"
         allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
     </div>
 
-    <!-- Archive of picks -->
-    <div class="cotm-archive" id="cotmArchive"></div>
-
-    <!-- Follow = subscribe to Monday drops -->
-    <div class="cotm-follow">
-      <button class="cotm-follow-btn" id="cotmFollowBtn" onclick="cotmFollowClick()">+ Follow Lucas · Get Monday Drops</button>
-      <div class="cotm-follow-input" id="cotmFollowInput">
-        <input type="tel" id="cotmFollowPhone" placeholder="+1 (___) ___-____" autocomplete="tel"/>
-        <button class="cotm-follow-confirm" onclick="cotmConfirmFollow()">SEND ME MONDAY DROPS</button>
-        <div class="cotm-follow-legal">By continuing you agree to receive weekly SMS. Reply STOP anytime.</div>
-      </div>
-      <div class="cotm-follow-success" id="cotmFollowSuccess">
-        ✓ Following Lucas Moon &nbsp;·&nbsp; 📱 Monday drops &nbsp;·&nbsp; 🔥 Vote on every pick
-      </div>
+    <!-- Live scorecard -->
+    <div class="rc-scorecard" id="rcScorecard">
+      <div style="font-family:var(--rc-mono);font-size:11px;letter-spacing:2px;opacity:.3;text-transform:uppercase">Loading picks…</div>
     </div>
 
-    <!-- Footer link -->
-    <div class="cotm-footer">
-      <a href="https://undeniablehittheory.com/curator-of-the-month/">FULL BIO + ALL PICKS →</a>
+    <!-- Footer -->
+    <div class="rc-footer">
+      <a href="https://undeniablehittheory.com/curator-of-the-month/">Full bio + all picks →</a>
     </div>
 
   </div>
 </div>
 
-<!-- Curator Slider — grows as more curators are added each month -->
-<div class="cotm-slider-wrap" id="cotmSliderWrap" style="display:none">
-  <div class="cotm-slider-label">PAST CURATORS</div>
-  <div class="cotm-slider" id="cotmSlider"></div>
+<!-- Curator slider — shows when more curators are added -->
+<div class="rc-slider-wrap" id="rcSliderWrap">
+  <div class="rc-slider-lbl">Past Curators</div>
+  <div class="rc-slider" id="rcSlider"></div>
 </div>
 
 <script>
-function cotmShow(tab) {
-  document.getElementById('cotmYT').style.display = tab==='yt' ? 'block' : 'none';
-  document.getElementById('cotmSP').style.display = tab==='sp' ? 'block' : 'none';
-  var yt=document.getElementById('cotmTabYT'), sp=document.getElementById('cotmTabSP');
-  yt.className = 'cotm-tab cotm-tab-yt';
-  sp.className = 'cotm-tab cotm-tab-sp';
-  yt.style.opacity = tab==='yt' ? '1' : '0.55';
-  sp.style.opacity = tab==='sp' ? '1' : '0.55';
+function rcShow(tab) {
+  document.getElementById('rcYT').style.display = tab==='yt' ? 'block' : 'none';
+  document.getElementById('rcSP').style.display = tab==='sp' ? 'block' : 'none';
+  var yt=document.getElementById('rcTabYT'), sp=document.getElementById('rcTabSP');
+  yt.style.background = tab==='yt' ? 'var(--rc-light)' : 'transparent';
+  yt.style.color = tab==='yt' ? '#000' : 'var(--rc-light)';
+  yt.style.border = tab==='yt' ? 'none' : '1px solid rgba(255,255,255,.2)';
+  yt.style.opacity = '1';
   sp.style.background = tab==='sp' ? '#1DB954' : 'transparent';
-  sp.style.color = tab==='sp' ? '#000' : '#f3f1ea';
+  sp.style.color = tab==='sp' ? '#000' : 'var(--rc-light)';
+  sp.style.border = tab==='sp' ? 'none' : '1px solid rgba(255,255,255,.2)';
+  sp.style.opacity = tab==='sp' ? '1' : '0.55';
 }
 
-function cotmFollowClick() {
-  var inp = document.getElementById('cotmFollowInput');
-  inp.style.display = inp.style.display === 'none' ? 'block' : 'none';
-  if(inp.style.display === 'block') document.getElementById('cotmFollowPhone').focus();
+function rcFollowClick() {
+  var inp = document.getElementById('rcFollowInput');
+  inp.style.display = inp.style.display==='block' ? 'none' : 'block';
+  if(inp.style.display==='block') document.getElementById('rcFollowPhone').focus();
 }
 
-function cotmConfirmFollow() {
-  var phone = document.getElementById('cotmFollowPhone').value.trim();
-  if(!phone) { document.getElementById('cotmFollowPhone').style.borderColor='rgba(243,241,234,.6)'; return; }
-  var btn = document.querySelector('.cotm-follow-confirm');
-  btn.disabled = true; btn.textContent = 'SENDING...';
+function rcConfirmFollow() {
+  var phone = document.getElementById('rcFollowPhone').value.trim();
+  if(!phone) { document.getElementById('rcFollowPhone').style.borderColor='rgba(255,255,255,.6)'; return; }
+  var btn = document.querySelector('.rc-follow-confirm');
+  btn.disabled=true; btn.textContent='Sending...';
   fetch('/api/subscribe', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ phone: phone, curator_id: 1 })
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ phone:phone, curator_id:1 })
   })
   .then(function(r){ return r.json(); })
   .then(function(d){
-    if(d.message || d.ok) {
-      document.getElementById('cotmFollowInput').style.display = 'none';
-      document.getElementById('cotmFollowBtn').style.display = 'none';
-      document.getElementById('cotmFollowSuccess').style.display = 'block';
+    if(d.message||d.ok||d.subscriber) {
+      document.getElementById('rcFollowInput').style.display='none';
+      document.getElementById('rcFollowBtn').className='rc-follow-btn following';
+      document.getElementById('rcFollowBtn').textContent='✓ Following';
+      document.getElementById('rcFollowBtn').onclick=null;
+      document.getElementById('rcFollowPerks').style.display='block';
     } else {
-      btn.disabled = false; btn.textContent = 'SEND ME MONDAY DROPS';
-      alert(d.error || 'Something went wrong. Try again.');
+      btn.disabled=false; btn.textContent='Confirm Follow';
+      alert(d.error||'Something went wrong.');
     }
   })
-  .catch(function(){
-    btn.disabled = false; btn.textContent = 'SEND ME MONDAY DROPS';
-    alert('Something went wrong. Try again.');
-  });
+  .catch(function(){ btn.disabled=false; btn.textContent='Confirm Follow'; alert('Something went wrong.'); });
 }
 
-// Load live scorecard
+// Load live scorecard from API
 fetch('/api/curators/1/scorecard')
   .then(function(r){ return r.json(); })
   .then(function(d){
-    var s = d.stats || {};
-    var total = parseInt(s.total) || 0;
+    var st = d.stats||{};
+    var subs = d.submissions||[];
+    var total = parseInt(st.total)||0;
+    var hitRate = parseFloat(st.hit_rate)||0;
+    var rateColor = hitRate>=70 ? '#4ade80' : hitRate>=40 ? '#facc15' : '#f87171';
 
-    // Update tier badge
-    if(d.tier) document.getElementById('cotmTierBadge').textContent = d.tier.toUpperCase();
+    // Update tier
+    if(d.tier) document.getElementById('rcTier').textContent = d.tier;
 
-    // Only show stats bar if there are votes
+    var html = '';
+
+    // Hit rate badge — only if votes exist
     if(total > 0) {
-      document.getElementById('cotmStatsBar').style.display = 'flex';
-      document.getElementById('cotmHitRate').textContent = s.hit_rate ? s.hit_rate + '%' : '—';
-      document.getElementById('cotmHits').textContent = (parseInt(s.hits)||0) + (parseInt(s.mega_hits)||0);
-      document.getElementById('cotmDenies').textContent = parseInt(s.denies)||0;
+      html += '<div class="rc-hit-badge">'
+        +'<div class="rc-hit-rate" style="color:'+rateColor+'">'+hitRate+'%</div>'
+        +'<div><div class="rc-hit-lbl">Hit Rate</div>'
+        +'<div class="rc-hit-detail">🔥 '+(st.mega_hits||0)+' Mega · 🎯 '+(st.hits||0)+' Hit · 💀 '+(st.denies||0)+' Denied</div>'
+        +'</div></div>';
     }
 
-    // Render archive
-    var subs = d.submissions || [];
-    var archiveEl = document.getElementById('cotmArchive');
+    // Archive
     if(subs.length) {
-      var html = '<div class="cotm-archive-lbl">APRIL PICKS</div>';
-      subs.forEach(function(s) {
-        var total = (parseInt(s.mega_hits)||0)+(parseInt(s.hits)||0)+(parseInt(s.denies)||0);
-        var votesHtml = total > 0
-          ? '<div class="cotm-pick-votes"><span>🔥 '+(parseInt(s.mega_hits)||0)+' Mega</span><span>🎯 '+(parseInt(s.hits)||0)+' Hit</span><span>💀 '+(parseInt(s.denies)||0)+' Denied</span></div>'
-          : '<div style="font-size:11px;opacity:.3;color:#f3f1ea;margin-top:4px;font-family:Georgia,serif">no votes yet</div>';
-        html += '<div class="cotm-pick">'
-          +'<div class="cotm-pick-week">WEEK '+(s.week_number||'?')+' PICK</div>'
-          +'<div class="cotm-pick-title">'+s.title+'</div>'
-          +'<div class="cotm-pick-artist">'+s.artist+'</div>'
-          +(s.curator_note ? '<div class="cotm-pick-note">"'+s.curator_note+'"</div>' : '')
-          +votesHtml
-          +'</div>';
+      html += '<div class="rc-archive-lbl">Archive</div>';
+      subs.forEach(function(s){
+        var vTotal=(parseInt(s.mega_hits)||0)+(parseInt(s.hits)||0)+(parseInt(s.denies)||0);
+        var votesHtml = vTotal>0
+          ? '<div class="rc-pick-votes"><span>🔥 '+(s.mega_hits||0)+' Mega</span><span>🎯 '+(s.hits||0)+' Hit</span><span>💀 '+(s.denies||0)+' Denied</span></div>'
+          : '<div class="rc-no-votes">no votes yet</div>';
+        html += '<div class="rc-pick">'
+          +(s.theme?'<div class="rc-pick-theme">'+s.theme+'</div>':'')
+          +'<div class="rc-pick-week">Week '+(s.week_number||'?')+' Pick</div>'
+          +'<div class="rc-pick-title">'+s.title+'</div>'
+          +'<div class="rc-pick-artist">'+s.artist+'</div>'
+          +(s.curator_note?'<div class="rc-pick-note">"'+s.curator_note+'"</div>':'')
+          +votesHtml+'</div>';
       });
-      archiveEl.innerHTML = html;
+    } else {
+      html += '<div class="rc-no-votes" style="padding:8px 0">No picks yet.</div>';
     }
-  })
-  .catch(function(){});
 
-// Load all curators for slider
+    document.getElementById('rcScorecard').innerHTML = html;
+  })
+  .catch(function(){ document.getElementById('rcScorecard').innerHTML=''; });
+
+// Curator slider
 fetch('/api/curators')
   .then(function(r){ return r.json(); })
   .then(function(d){
-    var curators = d.curators || [];
-    // Only show slider if more than 1 curator
-    if(curators.length <= 1) return;
-    var sliderEl = document.getElementById('cotmSlider');
-    var wrapEl = document.getElementById('cotmSliderWrap');
-    var html = '';
-    curators.forEach(function(c) {
-      html += '<div class="cotm-slide" onclick="window.location.href='https://undeniablehittheory.com/curator-of-the-month/'">'
-        +(c.image_url ? '<img class="cotm-slide-img" src="'+c.image_url+'" alt="'+c.name+'"/>' : '<div style="width:100%;aspect-ratio:3/2;background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;font-size:28px">🌙</div>')
-        +'<div class="cotm-slide-body">'
-        +'<div class="cotm-slide-month">APRIL 2026</div>'
-        +'<div class="cotm-slide-name">'+c.name+'</div>'
-        +(c.monthly_theme ? '<div class="cotm-slide-theme">'+c.monthly_theme+'</div>' : '')
-        +'<div class="cotm-slide-tier">🌙 Rising Curator</div>'
+    var curators = d.curators||[];
+    if(curators.length<=1) return;
+    var html='';
+    curators.forEach(function(c){
+      html+='<div class="rc-slide" onclick="window.location.href='https://undeniablehittheory.com/curator-of-the-month/'">'
+        +(c.image_url?'<img src="'+c.image_url+'" alt="'+c.name+'"/>':'<div style="width:100%;aspect-ratio:3/2;background:var(--rc-darker);display:flex;align-items:center;justify-content:center;font-size:32px;font-family:var(--rc-display);color:var(--rc-ring)">'+c.name.charAt(0)+'</div>')
+        +'<div class="rc-slide-body">'
+        +'<div class="rc-slide-month">April 2026</div>'
+        +'<div class="rc-slide-name">'+c.name+'</div>'
+        +(c.monthly_theme?'<div class="rc-slide-theme">'+c.monthly_theme+'</div>':'')
         +'</div></div>';
     });
-    sliderEl.innerHTML = html;
-    wrapEl.style.display = 'block';
+    document.getElementById('rcSlider').innerHTML=html;
+    document.getElementById('rcSliderWrap').style.display='block';
   })
   .catch(function(){});
 </script>
+
 
 
 <div class="wrap">
