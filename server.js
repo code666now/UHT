@@ -1938,20 +1938,7 @@ app.get('/api/curators/:id/scorecard', async (req, res) => {
 
 app.get('/api/test-new', (req, res) => res.json({ ok: true }));
 require('./curator-scheduler');
-
-// Temp debug route
-app.get('/api/debug/users-schema', async (req, res) => {
-  try {
-    const { rows } = await db.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'users' ORDER BY ordinal_position`);
-    res.json({ columns: rows.map(r => r.column_name) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-
-// One-time migration: add name + email to users
-app.get('/api/debug/migrate-users', async (req, res) => {
-  try {
-    await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS name TEXT`);
-    await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT`);
-    res.json({ ok: true, message: 'name + email columns added to users' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
