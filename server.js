@@ -1419,24 +1419,25 @@ app.get('/api/curators/:id/scorecard', async (req, res) => {
     const id = req.params.id;
     const stats = await db.query(`
       SELECT
-        COUNT(*) FILTER (WHERE vote_type='mega_hit') AS mega_hits,
-        COUNT(*) FILTER (WHERE vote_type='hit')       AS hits,
-        COUNT(*) FILTER (WHERE vote_type='deny')      AS denies,
-        COUNT(*)                                       AS total,
+        COUNT(*) FILTER (WHERE v.vote='hit')    AS mega_hits,
+        COUNT(*) FILTER (WHERE v.vote='hit')    AS hits,
+        COUNT(*) FILTER (WHERE v.vote='denied') AS denies,
+        COUNT(*)                                AS total,
         ROUND(
-          100.0 * COUNT(*) FILTER (WHERE vote_type IN ('hit','mega_hit'))
+          100.0 * COUNT(*) FILTER (WHERE v.vote='hit')
           / NULLIF(COUNT(*),0), 1
         ) AS hit_rate
-      FROM song_votes WHERE curator_id=$1`, [id]);
+      FROM curator_submissions cs
+      LEFT JOIN curator_submission_votes v ON v.submission_id = cs.id
+      WHERE cs.curator_id=$1`, [id]);
 
     const submissions = await db.query(`
       SELECT cs.*,
-        COUNT(*) FILTER (WHERE sv.vote_type='mega_hit') AS mega_hits,
-        COUNT(*) FILTER (WHERE sv.vote_type='hit')       AS hits,
-        COUNT(*) FILTER (WHERE sv.vote_type='deny')      AS denies
+        COUNT(*) FILTER (WHERE v.vote='hit')    AS mega_hits,
+        COUNT(*) FILTER (WHERE v.vote='hit')    AS hits,
+        COUNT(*) FILTER (WHERE v.vote='denied') AS denies
       FROM curator_submissions cs
-      LEFT JOIN songs s ON LOWER(s.title)=LOWER(cs.title) AND LOWER(s.artist)=LOWER(cs.artist)
-      LEFT JOIN song_votes sv ON sv.song_id=s.id AND sv.curator_id=cs.curator_id
+      LEFT JOIN curator_submission_votes v ON v.submission_id = cs.id
       WHERE cs.curator_id=$1
       GROUP BY cs.id
       ORDER BY cs.week_number DESC, cs.submitted_at DESC`, [id]);
