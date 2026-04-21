@@ -1274,9 +1274,98 @@ app.get('/api/curators/:id/stats', async (req, res) => {
 // ── GET /api/curators/leaderboard ────────────────────────────
 app.get('/api/curators/leaderboard', async (req, res) => {
   try {
-    const { rows } = await db.query('SELECT * FROM curator_stats WHERE total_votes >= 5 ORDER BY hit_rate DESC NULLS LAST');
+    const { rows } = await db.query(`
+      SELECT cs.*, c.image_url
+      FROM curator_stats cs
+      JOIN curators c ON c.id = cs.curator_id
+      WHERE cs.total_votes >= 5
+      ORDER BY cs.hit_rate DESC NULLS LAST
+    `);
     res.json({ leaderboard: rows });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── GET /leaderboard ─────────────────────────────────────────────────────────
+app.get('/leaderboard', async (req, res) => {
+  try {
+    const { rows } = await db.query(`
+      SELECT cs.*, c.image_url
+      FROM curator_stats cs
+      JOIN curators c ON c.id = cs.curator_id
+      WHERE cs.total_votes >= 5
+      ORDER BY cs.hit_rate DESC NULLS LAST
+    `);
+    const cards = rows.map((c, i) => {
+      const slug = c.curator_name.toLowerCase().replace(/\s+/g, '-');
+      const hitPct = c.hit_rate ?? 0;
+      const rank = i + 1;
+      const medal = rank === 1 ? '◈' : rank === 2 ? '◉' : rank === 3 ? '◎' : `${rank}`;
+      return `
+      <a class="card" href="/drop/curator/${slug}">
+        <div class="rank">${medal}</div>
+        <div class="avatar">${c.image_url
+          ? `<img src="${c.image_url}" alt="${c.curator_name}">`
+          : `<span>🎧</span>`}</div>
+        <div class="info">
+          <div class="name">${c.curator_name}</div>
+          <div class="bar-wrap"><div class="bar" style="width:${hitPct}%"></div></div>
+          <div class="votes">${hitPct}% hit rate &middot; ${c.total_votes} votes &middot; ${c.total_hits} HIT &middot; ${c.total_denies} DENIED</div>
+        </div>
+        <div class="pct">${hitPct}<span>%</span></div>
+      </a>`;
+    }).join('');
+
+    const empty = rows.length === 0
+      ? `<p class="empty">Not enough votes yet. Be the first to vote.</p>`
+      : '';
+
+    res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hit Theory Leaderboard — UHT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d0d0d;--surface:#141414;--border:rgba(255,255,255,0.07);--ink:#ede8df;--muted:rgba(237,232,223,0.38);--accent:#c0392b;--green:#27ae60;--serif:'Playfair Display',Georgia,serif;--sans:'Inter',sans-serif}
+html,body{background:var(--bg);color:var(--ink);font-family:var(--sans);min-height:100vh}
+header{padding:48px 24px 12px;text-align:center;border-bottom:1px solid var(--border)}
+.eyebrow{font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
+h1{font-family:var(--serif);font-size:clamp(28px,5vw,48px);font-weight:400;line-height:1.15}
+.subtitle{font-size:13px;color:var(--muted);margin-top:10px;letter-spacing:.04em}
+main{max-width:680px;margin:0 auto;padding:40px 16px 80px}
+.card{display:flex;align-items:center;gap:16px;padding:18px 20px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:12px;text-decoration:none;color:inherit;transition:border-color .2s,background .2s}
+.card:hover{border-color:rgba(255,255,255,0.18);background:#1a1a1a}
+.rank{font-family:var(--serif);font-size:22px;width:32px;text-align:center;color:var(--accent);flex-shrink:0}
+.avatar{width:52px;height:52px;border-radius:50%;overflow:hidden;border:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--bg);font-size:22px}
+.avatar img{width:100%;height:100%;object-fit:cover}
+.info{flex:1;min-width:0}
+.name{font-family:var(--serif);font-size:17px;margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-wrap{height:3px;background:rgba(255,255,255,0.06);border-radius:2px;margin-bottom:7px}
+.bar{height:100%;background:var(--accent);border-radius:2px;transition:width .6s ease}
+.votes{font-size:11px;color:var(--muted);letter-spacing:.03em}
+.pct{font-family:var(--serif);font-size:28px;color:var(--accent);flex-shrink:0;text-align:right;line-height:1}
+.pct span{font-size:14px}
+.empty{text-align:center;color:var(--muted);font-size:14px;padding:60px 0}
+footer{text-align:center;padding:24px;font-size:11px;color:var(--muted);letter-spacing:.1em;border-top:1px solid var(--border)}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">Undeniable Hit Theory</div>
+  <h1>Hit Theory<br><em>Leaderboard</em></h1>
+  <p class="subtitle">Ranked by hit rate &middot; minimum 5 votes to qualify</p>
+</header>
+<main>
+  ${empty}
+  ${cards}
+</main>
+<footer>UHT &mdash; Silver Glider Line &middot; +1 (844) 261-6758</footer>
+</body>
+</html>`);
+  } catch (e) { res.status(500).send('<h1>Error: ' + e.message + '</h1>'); }
 });
 
 // ── POST /api/playlists ───────────────────────────────────────

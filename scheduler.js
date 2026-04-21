@@ -41,8 +41,10 @@ async function runWeeklyDrop() {
       // Find the oldest song for this sub's genre/curator that hasn't
       // been delivered to this user yet
       const { rows: songs } = await db.query(`
-        SELECT s.*
+        SELECT s.*, g.name AS genre_name, c.name AS curator_name
         FROM songs s
+        LEFT JOIN genres   g ON g.id = s.genre_id
+        LEFT JOIN curators c ON c.id = s.curator_id
         WHERE
           (($1::int IS NOT NULL AND s.genre_id   = $1)
         OR ($2::int IS NOT NULL AND s.curator_id = $2))
@@ -94,10 +96,15 @@ async function runWeeklyDrop() {
 function buildDropMessage(song) {
   let msg = `🎵 Your Undeniable Hit of the Week:\n\n`;
   msg += `"${song.title}" by ${song.artist}\n\n`;
-  if (song.url) {
-    msg += `🔗 Listen: ${song.url}\n\n`;
+  const base = process.env.BASE_URL || '';
+  if (base) {
+    const target = song.curator_name
+      ? `/drop/curator/${song.curator_name.toLowerCase().replace(/\s+/g, '-')}`
+      : `/drop/${(song.genre_name || '').toLowerCase().replace(/\s+/g, '-')}`;
+    msg += `🗳 Vote: ${base}${target}`;
+  } else if (song.url) {
+    msg += `🔗 Listen: ${song.url}`;
   }
-  msg += `Reply 1 for HIT 🔥 or 2 for DENIED ❌`;
   return msg;
 }
 

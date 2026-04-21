@@ -114,7 +114,13 @@ function buildCuratorMessage(song, curatorName) {
     msg += `\n🔗 ${song.spotify_url || song.url}\n`;
   }
 
-  msg += `\nVote: Reply 1 🔥 Hit  2 💀 Denied`;
+  const base = process.env.BASE_URL || '';
+  if (base) {
+    const slug = curatorName.toLowerCase().replace(/\s+/g, '-');
+    msg += `\n🗳 Vote: ${base}/drop/curator/${slug}`;
+  } else if (song.spotify_url || song.url) {
+    msg += `\n🔗 ${song.spotify_url || song.url}`;
+  }
   msg += `\nReply STOP to unsubscribe`;
 
   return msg;
