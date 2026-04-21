@@ -4,3 +4,4 @@ patch-*.js
 .env.save
 server.log
 data-dump.sql
+import_subscribers.js
