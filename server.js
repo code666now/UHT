@@ -1157,6 +1157,44 @@ app.post('/api/messages/test', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── POST /api/messages/send  (broadcast to all active subscribers) ────────────
+app.post('/api/messages/send', async (req, res) => {
+  const { message } = req.body;
+  if (!message) return res.status(400).json({ error: 'message required' });
+  try {
+    const { rows } = await db.query(
+      `SELECT DISTINCT u.phone FROM subscriptions sb JOIN users u ON u.id = sb.user_id WHERE sb.is_active = true`
+    );
+    const results = await Promise.allSettled(
+      rows.map(async (row) => {
+        const msg = await twilioClient.messages.create({
+          body: message,
+          from: process.env.TWILIO_FROM,
+          to: row.phone,
+        });
+        await db.query(
+          `INSERT INTO sms_log (to_phone, body, status) VALUES ($1, $2, $3)`,
+          [row.phone, message, msg.status]
+        );
+        return msg.sid;
+      })
+    );
+    const sent = results.filter(r => r.status === 'fulfilled').length;
+    const failed = results.filter(r => r.status === 'rejected').length;
+    res.json({ ok: true, sent, failed });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── GET /api/messages  (recent broadcast log) ─────────────────────────────────
+app.get('/api/messages', async (req, res) => {
+  try {
+    const { rows } = await db.query(
+      `SELECT to_phone AS "to", body, status, sent_at FROM sms_log ORDER BY sent_at DESC LIMIT 100`
+    );
+    res.json(rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── GET /api/deliveries  (recent 50, joined) ──────────────────────────────────
 app.get('/api/deliveries', async (req, res) => {
   try {
