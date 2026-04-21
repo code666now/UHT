@@ -1271,16 +1271,32 @@ app.get('/api/curators/:id/stats', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── Leaderboard query (aggregates from curator_submission_votes) ──────────────
+function leaderboardQuery() {
+  return `
+    SELECT
+      c.id                                                          AS curator_id,
+      c.name                                                        AS curator_name,
+      c.image_url,
+      COUNT(CASE WHEN v.vote = 'hit'    THEN 1 END)                AS total_hits,
+      COUNT(CASE WHEN v.vote = 'denied' THEN 1 END)                AS total_denies,
+      COUNT(v.id)                                                   AS total_votes,
+      CASE WHEN COUNT(v.id) = 0 THEN 0
+        ELSE ROUND(COUNT(CASE WHEN v.vote = 'hit' THEN 1 END)::NUMERIC / COUNT(v.id) * 100, 1)
+      END                                                           AS hit_rate
+    FROM curators c
+    LEFT JOIN curator_submissions cs ON cs.curator_id = c.id
+    LEFT JOIN curator_submission_votes v ON v.submission_id = cs.id
+    GROUP BY c.id, c.name, c.image_url
+    HAVING COUNT(v.id) >= 1
+    ORDER BY hit_rate DESC
+  `;
+}
+
 // ── GET /api/curators/leaderboard ────────────────────────────
 app.get('/api/curators/leaderboard', async (req, res) => {
   try {
-    const { rows } = await db.query(`
-      SELECT cs.*, c.image_url
-      FROM curator_stats cs
-      JOIN curators c ON c.id = cs.curator_id
-      WHERE cs.total_votes >= 5
-      ORDER BY cs.hit_rate DESC NULLS LAST
-    `);
+    const { rows } = await db.query(leaderboardQuery());
     res.json({ leaderboard: rows });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -1288,13 +1304,7 @@ app.get('/api/curators/leaderboard', async (req, res) => {
 // ── GET /leaderboard ─────────────────────────────────────────────────────────
 app.get('/leaderboard', async (req, res) => {
   try {
-    const { rows } = await db.query(`
-      SELECT cs.*, c.image_url
-      FROM curator_stats cs
-      JOIN curators c ON c.id = cs.curator_id
-      WHERE cs.total_votes >= 5
-      ORDER BY cs.hit_rate DESC NULLS LAST
-    `);
+    const { rows } = await db.query(leaderboardQuery());
     const cards = rows.map((c, i) => {
       const slug = c.curator_name.toLowerCase().replace(/\s+/g, '-');
       const hitPct = c.hit_rate ?? 0;
