@@ -976,13 +976,6 @@ app.post('/api/genre-vote', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`\nUHT server running on port ${PORT}`);
-  console.log(`  API:     GET  http://localhost:${PORT}/api/genres`);
-  console.log(`  API:     GET  http://localhost:${PORT}/api/curators`);
-  console.log(`  API:     POST http://localhost:${PORT}/api/subscribe`);
-  console.log(`  Webhook: POST http://localhost:${PORT}/sms\n`);
-});
 
 
 // =============================================================================
@@ -1477,3 +1470,11 @@ app.get('/api/curators/:id/scorecard', async (req, res) => {
 
 app.get('/api/test-new', (req, res) => res.json({ ok: true }));
 require('./curator-scheduler');
+
+app.listen(PORT, () => {
+  console.log(`\nUHT server running on port ${PORT}`);
+  console.log(`  API:     GET  http://localhost:${PORT}/api/genres`);
+  console.log(`  API:     GET  http://localhost:${PORT}/api/curators`);
+  console.log(`  API:     POST http://localhost:${PORT}/api/subscribe`);
+  console.log(`  Webhook: POST http://localhost:${PORT}/sms\n`);
+});
