@@ -36,7 +36,7 @@ app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "pu
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr22-v3' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr22-v4' });
 });
 
 // ── GET / — Home page ─────────────────────────────────────────────────────────
@@ -44,7 +44,7 @@ app.get('/', async (req, res) => {
   try {
     const [genresResult, curatorsResult, currentDropsResult, communityDropResult] = await Promise.all([
       db.query('SELECT id, name FROM genres ORDER BY name ASC'),
-      db.query('SELECT id, name, bio, image_url, instagram, slug FROM curators ORDER BY name ASC'),
+      db.query('SELECT id, name, bio, image_url, instagram FROM curators ORDER BY name ASC'),
       // Latest drop per genre
       db.query(`
         SELECT DISTINCT ON (LOWER(genre)) LOWER(genre) AS genre_key, title, artist
@@ -277,7 +277,7 @@ ${curators.length ? `
   <h2 class="section-title">Curators</h2>
   <div class="curators-grid">
     ${curators.map(c => `
-    <a class="curator-card" href="${c.slug ? '/drop/curator/' + c.slug : '#subscribe'}">
+    <a class="curator-card" href="#subscribe">
       ${c.image_url
         ? `<img class="curator-avatar" src="${c.image_url}" alt="${c.name}" loading="lazy">`
         : `<div class="curator-avatar-placeholder">🎧</div>`}
