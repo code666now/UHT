@@ -36,7 +36,7 @@ app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "pu
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr22-v4' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr22-v5' });
 });
 
 // ── GET / — Home page ─────────────────────────────────────────────────────────
@@ -91,6 +91,439 @@ app.get('/', async (req, res) => {
 <title>UHT — Undeniable Hit Theory</title>
 <meta name="description" content="A weekly music drop. Vote HIT or DENIED. Subscribe by text.">
 <style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#000;color:#f3f1ea;font-family:Georgia,"Times New Roman",serif;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+
+/* NAV */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:0 40px;height:58px;position:sticky;top:0;z-index:200;background:rgba(0,0,0,0.95);backdrop-filter:blur(10px);border-bottom:1px solid rgba(243,241,234,0.07)}
+.nav-logo{font-size:13px;letter-spacing:.4em;text-transform:uppercase;font-weight:700}
+.nav-links{display:flex;gap:36px;font-size:10px;letter-spacing:.25em;text-transform:uppercase;color:rgba(243,241,234,0.4)}
+.nav-links a:hover{color:#f3f1ea}
+.nav-cta{font-size:10px;letter-spacing:.25em;text-transform:uppercase;padding:9px 22px;border:1px solid rgba(243,241,234,0.28);border-radius:999px;background:transparent;color:#f3f1ea;font-family:Georgia,serif;cursor:pointer;transition:all .2s}
+.nav-cta:hover{background:#f3f1ea;color:#000}
+
+/* HERO */
+.hero{padding:clamp(80px,14vw,160px) 40px clamp(60px,10vw,120px);max-width:1200px;margin:0 auto}
+.hero-eyebrow{font-size:10px;letter-spacing:.5em;text-transform:uppercase;opacity:.28;margin-bottom:36px}
+.hero-h1{font-weight:700;line-height:.9;letter-spacing:-.03em;margin:0}
+.hero-solid{font-size:clamp(64px,12vw,152px);color:#f3f1ea;display:block}
+.hero-outline{font-size:clamp(64px,12vw,152px);color:transparent;-webkit-text-stroke:1px rgba(243,241,234,0.22);display:block}
+.hero-sub{font-size:clamp(16px,2vw,21px);font-style:italic;opacity:.42;margin:36px 0 48px;max-width:460px}
+.hero-btns{display:flex;gap:14px;flex-wrap:wrap}
+.btn-fill{padding:15px 44px;background:#f3f1ea;color:#000;border:none;font-family:Georgia,serif;font-size:15px;letter-spacing:.06em;cursor:pointer;border-radius:3px;transition:background .2s}
+.btn-fill:hover{background:#fff}
+.btn-outline{padding:15px 44px;border:1px solid rgba(243,241,234,0.22);font-family:Georgia,serif;font-size:15px;letter-spacing:.06em;border-radius:3px;color:#f3f1ea;display:inline-block;transition:border-color .2s}
+.btn-outline:hover{border-color:rgba(243,241,234,0.6)}
+.hero-fine{font-size:10px;letter-spacing:.2em;text-transform:uppercase;opacity:.18;margin-top:22px}
+
+/* TICKER */
+.ticker{overflow:hidden;border-top:1px solid rgba(243,241,234,0.07);border-bottom:1px solid rgba(243,241,234,0.07);padding:13px 0}
+.ticker-track{display:flex;width:max-content;animation:marquee 30s linear infinite}
+.ticker-text{font-size:10px;letter-spacing:.4em;text-transform:uppercase;color:#f3f1ea;white-space:nowrap;opacity:.18;font-family:Georgia,serif}
+@keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+/* SECTION HEADERS */
+.sec-head{display:flex;align-items:center;gap:16px;margin-bottom:48px}
+.sec-label{font-size:10px;letter-spacing:.4em;text-transform:uppercase;opacity:.3;white-space:nowrap}
+.sec-line{flex:1;height:1px;background:rgba(243,241,234,0.07)}
+
+/* CURATORS CAROUSEL */
+.curator-track{display:flex;gap:2px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;cursor:grab;padding-bottom:2px}
+.curator-track:active{cursor:grabbing}
+.curator-track::-webkit-scrollbar{display:none}
+.curator-card{flex-shrink:0;width:280px;border:1px solid rgba(243,241,234,0.07);display:block;text-decoration:none;color:#f3f1ea;scroll-snap-align:start;transition:all .25s;overflow:hidden}
+.curator-card:hover{border-color:rgba(243,241,234,0.22);background:rgba(243,241,234,0.03);transform:translateY(-3px)}
+.curator-card:hover .curator-see{opacity:.7}
+.curator-img{width:100%;aspect-ratio:1/1;object-fit:cover;display:block;filter:brightness(.85);transition:filter .3s}
+.curator-card:hover .curator-img{filter:brightness(1)}
+.curator-img-placeholder{width:100%;aspect-ratio:1/1;background:rgba(243,241,234,0.06);display:flex;align-items:center;justify-content:center;font-size:48px}
+.curator-body{padding:20px 22px 24px}
+.curator-name{font-size:17px;font-weight:600;margin-bottom:6px}
+.curator-bio{font-size:13px;opacity:.4;line-height:1.6;margin-bottom:10px}
+.curator-insta{font-size:10px;letter-spacing:.2em;text-transform:uppercase;opacity:.28}
+.curator-see{font-size:11px;letter-spacing:.2em;text-transform:uppercase;opacity:.28;margin-top:14px;transition:opacity .2s}
+.curator-placeholder{flex-shrink:0;width:280px;border:1px solid rgba(243,241,234,0.07);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;opacity:.12;min-height:360px}
+.curator-placeholder-icon{font-size:32px}
+.curator-placeholder-label{font-size:10px;letter-spacing:.3em;text-transform:uppercase}
+
+/* GENRE GRID */
+.genre-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:2px;max-width:1100px;margin:0 auto}
+.genre-card{display:flex;flex-direction:column;justify-content:space-between;padding:32px 28px 28px;border:1px solid rgba(243,241,234,0.07);border-top:3px solid rgba(243,241,234,0.1);min-height:220px;transition:all .25s;color:#f3f1ea;text-decoration:none;position:relative;overflow:hidden}
+.genre-card:hover{background:rgba(243,241,234,0.03);transform:translateY(-4px)}
+.genre-card:hover .genre-arrow{opacity:1}
+.genre-card-top{display:flex;justify-content:space-between;margin-bottom:18px}
+.genre-emoji{font-size:22px}
+.genre-arrow{font-size:16px;opacity:0;transition:opacity .2s}
+.genre-name{font-size:clamp(26px,4vw,42px);font-weight:700;letter-spacing:-.01em;line-height:1;margin-bottom:18px}
+.genre-song{font-size:13px;font-weight:600;opacity:.9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.genre-artist{font-size:11px;opacity:.35;letter-spacing:.08em;margin-top:4px}
+.genre-coming{font-size:10px;letter-spacing:.3em;text-transform:uppercase;opacity:.22}
+.genre-glow{position:absolute;top:0;left:0;right:0;height:60px;pointer-events:none;opacity:0;transition:opacity .25s}
+.genre-card:hover .genre-glow{opacity:1}
+
+/* HOW IT WORKS */
+.how-row{display:grid;grid-template-columns:100px 1fr;gap:0 40px;align-items:start;padding:40px 0;border-top:1px solid rgba(243,241,234,0.07)}
+.how-row:last-child{border-bottom:1px solid rgba(243,241,234,0.07)}
+.how-num{font-size:clamp(52px,7vw,88px);font-weight:700;color:rgba(243,241,234,0.07);line-height:1;letter-spacing:-.03em}
+.how-title{font-size:clamp(22px,3vw,34px);font-weight:600;margin-bottom:12px;line-height:1.1;padding-top:8px}
+.how-desc{font-size:16px;opacity:.38;line-height:1.7}
+
+/* SUBSCRIBE */
+.sub-wrap{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:0 80px;align-items:start}
+.sub-eyebrow{font-size:10px;letter-spacing:.4em;text-transform:uppercase;opacity:.3;margin-bottom:20px}
+.sub-headline{font-size:clamp(36px,5vw,64px);font-weight:700;line-height:.95;letter-spacing:-.02em;margin-bottom:24px}
+.sub-outline{color:transparent;-webkit-text-stroke:1px rgba(243,241,234,0.2)}
+.sub-desc{font-size:16px;opacity:.38;line-height:1.7}
+.sub-form{display:flex;flex-direction:column;gap:10px;padding-top:4px}
+.sub-input{width:100%;padding:15px 18px;background:rgba(243,241,234,0.05);border:1px solid rgba(243,241,234,0.12);border-radius:8px;color:#f3f1ea;font-family:Georgia,serif;font-size:15px;outline:none;transition:border-color .2s}
+.sub-input:focus{border-color:rgba(243,241,234,0.4)}
+.sub-input::placeholder{color:rgba(243,241,234,0.25)}
+select.sub-input option{background:#111;color:#f3f1ea}
+.sub-toggle{display:flex;border:1px solid rgba(243,241,234,0.14);border-radius:999px;overflow:hidden;width:fit-content}
+.sub-pill{padding:10px 26px;background:transparent;border:none;color:rgba(243,241,234,0.4);font-family:Georgia,serif;font-size:11px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:all .2s}
+.sub-pill.active{background:#f3f1ea;color:#000}
+.sub-check-row{display:flex;align-items:flex-start;gap:12px;cursor:pointer;margin-top:4px}
+.sub-checkbox{width:18px;height:18px;flex-shrink:0;margin-top:2px;border:1px solid rgba(243,241,234,0.3);border-radius:3px;display:flex;align-items:center;justify-content:center;transition:all .2s;cursor:pointer}
+.sub-checkbox.checked{background:#f3f1ea;border-color:#f3f1ea}
+.sub-check-label{font-size:12px;opacity:.42;line-height:1.6}
+.sub-btn{padding:17px;background:rgba(243,241,234,0.15);color:rgba(243,241,234,0.3);border:none;border-radius:8px;font-family:Georgia,serif;font-size:15px;cursor:default;transition:all .2s;margin-top:4px}
+.sub-btn.ready{background:#f3f1ea;color:#000;cursor:pointer}
+.sub-btn.ready:hover{background:#fff}
+.sub-msg{font-size:11px;color:#ff6b6b;letter-spacing:.1em;text-transform:uppercase;min-height:16px}
+
+/* FOOTER */
+.footer{padding:48px 40px;text-align:center}
+.footer-logo{font-size:13px;letter-spacing:.4em;text-transform:uppercase;opacity:.28;margin-bottom:18px}
+.footer-links{display:flex;justify-content:center;gap:28px;font-size:10px;letter-spacing:.2em;text-transform:uppercase;opacity:.18;flex-wrap:wrap;margin-bottom:18px}
+.footer-links a:hover{opacity:.4}
+.footer-copy{font-size:10px;letter-spacing:.12em;text-transform:uppercase;opacity:.11}
+
+/* FIRE MODE */
+.fire-btn{position:fixed;bottom:24px;right:24px;z-index:300;display:flex;align-items:center;gap:8px;padding:10px 18px;background:rgba(243,241,234,0.08);border:1px solid rgba(243,241,234,0.2);border-radius:999px;color:#f3f1ea;font-family:Georgia,serif;font-size:12px;letter-spacing:.15em;text-transform:uppercase;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
+.fire-btn.on{background:#ff4500;border-color:#ff4500;box-shadow:0 0 24px rgba(255,69,0,.5)}
+.fire-overlay{position:fixed;inset:0;pointer-events:none;z-index:50;background:radial-gradient(ellipse at center,transparent 40%,rgba(180,60,0,.18) 100%)}
+.ember{position:fixed;bottom:-10%;font-size:20px;animation:emberRise 4s ease-in forwards;opacity:.7}
+@keyframes emberRise{0%{transform:translateY(0) rotate(0deg);opacity:.8}100%{transform:translateY(-110vh) rotate(20deg);opacity:0}}
+
+/* MOBILE */
+@media(max-width:768px){
+  .nav{padding:0 20px}
+  .nav-links{display:none}
+  .hero{padding:60px 20px 60px}
+  .sec-head{padding:0 20px}
+  .sub-wrap{grid-template-columns:1fr;gap:48px}
+  .how-row{grid-template-columns:70px 1fr;gap:0 24px}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <a href="/" class="nav-logo">UHT</a>
+  <div class="nav-links">
+    <a href="#curators">Curators</a>
+    <a href="#drops">Drops</a>
+    <a href="#how-it-works">How It Works</a>
+  </div>
+  <button class="nav-cta" onclick="document.getElementById('subscribe').scrollIntoView({behavior:'smooth'})">Subscribe</button>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-eyebrow">Weekly SMS · Vote Hit or Denied</div>
+  <h1 class="hero-h1">
+    <span class="hero-solid">UNDENIABLE</span>
+    <span class="hero-outline">HIT THEORY</span>
+  </h1>
+  <p class="hero-sub">Your weekly music verdict.</p>
+  <div class="hero-btns">
+    <button class="btn-fill" onclick="document.getElementById('subscribe').scrollIntoView({behavior:'smooth'})">Get the weekly drop</button>
+    <a class="btn-outline" href="#drops">See this week's picks</a>
+  </div>
+  <div class="hero-fine">Free · Text only · Unsubscribe anytime</div>
+</section>
+
+<!-- TICKER -->
+<div class="ticker">
+  <div class="ticker-track">
+    <span class="ticker-text">· HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · </span>
+    <span class="ticker-text">· HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · </span>
+  </div>
+</div>
+
+<!-- CURATORS OF THE MONTH -->
+<section style="padding:80px 0 80px 40px" id="curators">
+  <div class="sec-head" style="padding-right:40px">
+    <span class="sec-label">Curators of the Month</span>
+    <div class="sec-line"></div>
+  </div>
+  <div class="curator-track" id="curatorTrack">
+    ${curators.map(c => {
+      const slug = c.name.toLowerCase().replace(/ /g, '-');
+      return `
+    <a class="curator-card" href="/drop/curator/${slug}">
+      ${c.image_url
+        ? `<img class="curator-img" src="${c.image_url}" alt="${c.name}" loading="lazy">`
+        : `<div class="curator-img-placeholder">🎧</div>`}
+      <div class="curator-body">
+        <div class="curator-name">${c.name}</div>
+        ${c.bio ? `<div class="curator-bio">${c.bio}</div>` : ''}
+        ${c.instagram ? `<div class="curator-insta">@${c.instagram}</div>` : ''}
+        <div class="curator-see">See drops →</div>
+      </div>
+    </a>`;
+    }).join('')}
+    <div class="curator-placeholder"><div class="curator-placeholder-icon">🎧</div><div class="curator-placeholder-label">Coming Soon</div></div>
+    <div class="curator-placeholder"><div class="curator-placeholder-icon">🎧</div><div class="curator-placeholder-label">Coming Soon</div></div>
+    <div class="curator-placeholder"><div class="curator-placeholder-icon">🎧</div><div class="curator-placeholder-label">Coming Soon</div></div>
+  </div>
+</section>
+
+<!-- TICKER -->
+<div class="ticker">
+  <div class="ticker-track">
+    <span class="ticker-text">· HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · </span>
+    <span class="ticker-text">· HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · </span>
+  </div>
+</div>
+
+<!-- GENRE DROPS -->
+<section style="padding:80px 40px" id="drops">
+  <div class="sec-head" style="max-width:1100px;margin:0 auto 48px">
+    <span class="sec-label">This Week's Drops</span>
+    <div class="sec-line"></div>
+  </div>
+  <div class="genre-grid">
+    ${allGenres.map(g => {
+      const drop = currentDrops[g.key];
+      const accentMap = { rock:'#ff3b3b', pop:'#ff85c8', country:'#E8B84B', punk:'#7DF9FF', community:'#f3f1ea' };
+      const accent = accentMap[g.key] || '#f3f1ea';
+      return `
+    <a class="genre-card" href="${g.path}" style="border-top-color:rgba(243,241,234,0.1)" onmouseover="this.style.borderTopColor='${accent}';this.querySelector('.genre-arrow').style.color='${accent}';this.querySelector('.genre-glow').style.background='linear-gradient(to bottom,${accent}22,transparent)'" onmouseout="this.style.borderTopColor='rgba(243,241,234,0.1)';this.querySelector('.genre-arrow').style.color='inherit'">
+      <div class="genre-glow"></div>
+      <div>
+        <div class="genre-card-top">
+          <span class="genre-emoji">${g.emoji}</span>
+          <span class="genre-arrow">↗</span>
+        </div>
+        <div class="genre-name">${g.label.toUpperCase()}</div>
+      </div>
+      <div>
+        ${drop
+          ? `<div class="genre-song">${drop.title}</div><div class="genre-artist">${drop.artist}</div>`
+          : `<div class="genre-coming">Drop coming Friday</div>`}
+      </div>
+    </a>`;
+    }).join('')}
+  </div>
+</section>
+
+<!-- TICKER -->
+<div class="ticker">
+  <div class="ticker-track">
+    <span class="ticker-text">· HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · </span>
+    <span class="ticker-text">· HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · </span>
+  </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<section style="padding:80px 40px" id="how-it-works">
+  <div class="sec-head" style="max-width:1100px;margin:0 auto 56px">
+    <span class="sec-label">The Process</span>
+    <div class="sec-line"></div>
+  </div>
+  <div style="max-width:1100px;margin:0 auto">
+    <div class="how-row">
+      <div class="how-num">01</div>
+      <div><div class="how-title">You subscribe</div><div class="how-desc">Drop your number. Choose your genre or follow a curator.</div></div>
+    </div>
+    <div class="how-row">
+      <div class="how-num">02</div>
+      <div><div class="how-title">Friday drop</div><div class="how-desc">Every Friday at 10 AM: one song via text. No albums. No playlists.</div></div>
+    </div>
+    <div class="how-row">
+      <div class="how-num">03</div>
+      <div><div class="how-title">Vote</div><div class="how-desc">Reply HIT or DENIED. Your vote feeds the leaderboard.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- TICKER -->
+<div class="ticker">
+  <div class="ticker-track">
+    <span class="ticker-text">· HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · </span>
+    <span class="ticker-text">· HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · </span>
+  </div>
+</div>
+
+<!-- SUBSCRIBE -->
+<section style="padding:80px 40px" id="subscribe">
+  <div class="sub-wrap">
+    <div>
+      <div class="sub-eyebrow">Get the Drop</div>
+      <h2 class="sub-headline">Subscribe.<br><span class="sub-outline">Vote.</span></h2>
+      <p class="sub-desc">One text. Every Friday. Vote HIT or DENIED and see how the world hears it.</p>
+    </div>
+    <div>
+      <form class="sub-form" id="subForm" onsubmit="handleSubscribe(event)">
+        <input class="sub-input" id="subPhone" type="tel" placeholder="Phone number *" autocomplete="tel">
+        <input class="sub-input" id="subName" type="text" placeholder="Name (optional)">
+        <input class="sub-input" id="subEmail" type="email" placeholder="Email (optional)">
+        <div class="sub-toggle">
+          <button type="button" class="sub-pill active" id="pillGenre" onclick="switchPill('genre')">By Genre</button>
+          <button type="button" class="sub-pill" id="pillCurator" onclick="switchPill('curator')">By Curator</button>
+        </div>
+        <div id="genrePanel">
+          <select class="sub-input" id="subGenre">
+            <option value="">Choose a genre...</option>
+            ${allGenres.map(g => `<option value="${g.key}" data-id="${g.id||''}">${g.emoji} ${g.label}</option>`).join('')}
+          </select>
+        </div>
+        <div id="curatorPanel" style="display:none">
+          <select class="sub-input" id="subCurator">
+            <option value="">Choose a curator...</option>
+            ${curators.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
+          </select>
+        </div>
+        <label class="sub-check-row" onclick="toggleAgree()">
+          <div class="sub-checkbox" id="agreeBox"></div>
+          <span class="sub-check-label">I agree to receive weekly SMS messages from UHT. Reply STOP at any time to unsubscribe. Standard rates may apply.</span>
+        </label>
+        <button class="sub-btn" type="submit" id="subBtn">Send me the drop</button>
+        <div class="sub-msg" id="subMsg"></div>
+      </form>
+      <div id="verifyWrap" style="display:none;flex-direction:column;gap:10px">
+        <div style="font-size:13px;opacity:.4;margin-bottom:4px">Code sent — check your texts.</div>
+        <input class="sub-input" id="verifyCode" type="text" placeholder="Verification code" maxlength="6" inputmode="numeric">
+        <button class="sub-btn ready" onclick="handleVerify()">Verify</button>
+        <div class="sub-msg" id="verifyMsg"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-logo">UHT</div>
+  <div class="footer-links">
+    <a href="#curators">Curators</a>
+    <a href="#drops">Drops</a>
+    <a href="#how-it-works">How It Works</a>
+    <a href="/admin">Admin</a>
+  </div>
+  <div class="footer-copy">© ${new Date().getFullYear()} Undeniable Hit Theory · +1 (844) 261-6758</div>
+</footer>
+
+<!-- FIRE MODE -->
+<button class="fire-btn" id="fireBtn" onclick="toggleFire()">🔥 Fire Mode</button>
+<div id="fireOverlay" class="fire-overlay" style="display:none"></div>
+
+<script>
+// ── Curator drag scroll ──
+(function(){
+  var t=document.getElementById('curatorTrack');
+  if(!t) return;
+  var down=false, startX=0, sl=0;
+  t.addEventListener('mousedown',function(e){down=true;startX=e.pageX-t.offsetLeft;sl=t.scrollLeft;t.style.cursor='grabbing'});
+  document.addEventListener('mouseup',function(){down=false;t.style.cursor='grab'});
+  t.addEventListener('mousemove',function(e){if(!down)return;e.preventDefault();t.scrollLeft=sl-(e.pageX-t.offsetLeft-startX)});
+})();
+
+// ── Subscribe ──
+var _subPhone='', _agreed=false, _activePill='genre';
+
+function toggleAgree(){
+  _agreed=!_agreed;
+  var b=document.getElementById('agreeBox');
+  b.className='sub-checkbox'+(_agreed?' checked':'');
+  b.innerHTML=_agreed?'<span style="color:#000;font-size:11px;font-weight:700">✓</span>':'';
+  document.getElementById('subBtn').className='sub-btn'+(_agreed?' ready':'');
+}
+
+function switchPill(type){
+  _activePill=type;
+  document.getElementById('pillGenre').className='sub-pill'+(type==='genre'?' active':'');
+  document.getElementById('pillCurator').className='sub-pill'+(type==='curator'?' active':'');
+  document.getElementById('genrePanel').style.display=type==='genre'?'block':'none';
+  document.getElementById('curatorPanel').style.display=type==='curator'?'block':'none';
+}
+
+function handleSubscribe(e){
+  e.preventDefault();
+  var phone=document.getElementById('subPhone').value.trim();
+  var msg=document.getElementById('subMsg');
+  var btn=document.getElementById('subBtn');
+  if(!phone){msg.textContent='Phone number required.';return}
+  if(!_agreed){msg.textContent='Please agree to receive SMS messages.';return}
+  if(_activePill==='genre'&&!document.getElementById('subGenre').value){msg.textContent='Choose a genre.';return}
+  if(_activePill==='curator'&&!document.getElementById('subCurator').value){msg.textContent='Choose a curator.';return}
+  btn.disabled=true;btn.textContent='Sending...';msg.textContent='';
+  _subPhone=phone;
+  var genreEl=document.getElementById('subGenre');
+  var genreId=_activePill==='genre'?(genreEl.options[genreEl.selectedIndex]&&genreEl.options[genreEl.selectedIndex].dataset.id):'';
+  var curatorId=_activePill==='curator'?document.getElementById('subCurator').value:'';
+  var body={phone:phone,name:document.getElementById('subName').value||undefined,email:document.getElementById('subEmail').value||undefined};
+  if(curatorId)body.curator_id=parseInt(curatorId);
+  else if(genreId)body.genre_id=parseInt(genreId);
+  fetch('/api/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+    .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d}})})
+    .then(function(res){
+      if(res.ok){
+        fetch('/api/send_code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone:phone})});
+        document.getElementById('subForm').style.display='none';
+        var vw=document.getElementById('verifyWrap');vw.style.display='flex';
+      } else {msg.textContent=res.data.error||'Something went wrong.';btn.disabled=false;btn.textContent='Send me the drop';}
+    })
+    .catch(function(){msg.textContent='Network error.';btn.disabled=false;btn.textContent='Send me the drop';});
+}
+
+function handleVerify(){
+  var code=document.getElementById('verifyCode').value.trim();
+  var msg=document.getElementById('verifyMsg');
+  if(!code){msg.textContent='Enter the code from your text.';return}
+  fetch('/api/verify_code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone:_subPhone,code:code})})
+    .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d}})})
+    .then(function(res){
+      if(res.ok){document.getElementById('verifyWrap').innerHTML='<div style="font-size:24px;color:#E8B84B;margin-bottom:10px">HIT.</div><div style="font-size:17px;margin-bottom:6px">You\\'re in.</div><div style="font-size:13px;opacity:.4">First drop arrives Friday.</div>';}
+      else{msg.textContent=res.data.error||'Invalid code.';}
+    }).catch(function(){msg.textContent='Network error.';});
+}
+
+// ── Fire mode ──
+var _fireOn=false, _embers=[];
+function toggleFire(){
+  _fireOn=!_fireOn;
+  var btn=document.getElementById('fireBtn');
+  var overlay=document.getElementById('fireOverlay');
+  btn.className='fire-btn'+(_fireOn?' on':'');
+  btn.innerHTML=_fireOn?'🔥 On Fire':'🔥 Fire Mode';
+  overlay.style.display=_fireOn?'block':'none';
+  if(_fireOn){spawnEmbers();}else{_embers.forEach(function(e){if(e.parentNode)e.parentNode.removeChild(e)});_embers=[];}
+}
+function spawnEmbers(){
+  if(!_fireOn)return;
+  for(var i=0;i<3;i++){
+    var e=document.createElement('div');
+    e.className='ember';
+    e.textContent='🔥';
+    e.style.left=(5+Math.random()*88)+'%';
+    e.style.fontSize=(14+Math.random()*16)+'px';
+    e.style.animationDuration=(3+Math.random()*3)+'s';
+    e.style.animationDelay=(Math.random()*1)+'s';
+    document.body.appendChild(e);
+    _embers.push(e);
+    e.addEventListener('animationend',function(){if(this.parentNode)this.parentNode.removeChild(this);_embers=_embers.filter(function(x){return x.parentNode});if(_fireOn)setTimeout(spawnEmbers,0);});
+  }
+}
+</script>
+</body>
+</html>`);
+  } catch(e) {
+    res.status(500).send('<h1 style="font-family:sans-serif;color:#f3f1ea;background:#000;padding:40px">Error: ' + e.message + '</h1>');
+  }
+});
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{background:#000;color:#f3f1ea;font-family:Georgia,"Times New Roman",serif;overflow-x:hidden}
 a{color:inherit;text-decoration:none}
