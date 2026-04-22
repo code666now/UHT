@@ -1479,6 +1479,28 @@ app.get('/api/curators/:id/scorecard', async (req, res) => {
 
 app.get('/api/test-new', (req, res) => res.json({ ok: true }));
 
+// ── One-time migration: create genre_submissions table ───────────────────────
+app.post('/api/migrate-genre-submissions', async (req, res) => {
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS genre_submissions (
+        id          SERIAL PRIMARY KEY,
+        genre       TEXT NOT NULL,
+        week_title  TEXT,
+        title       TEXT NOT NULL,
+        artist      TEXT NOT NULL,
+        note        TEXT,
+        youtube_url TEXT,
+        spotify_url TEXT,
+        week_number INT DEFAULT 1,
+        drop_date   DATE,
+        created_at  TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── One-time migration: add curator_month + monthly_theme columns ─────────────
 app.post('/api/migrate-curator-fields', async (req, res) => {
   try {
