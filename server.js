@@ -727,7 +727,7 @@ ${allSubs && allSubs.length > 0 ? `
   <div class="archive-label">Archive · ${curator.name.split(' ')[0]}'s Picks</div>
   ${allSubs.map((sub, i) => `
   <div class="archive-item">
-    <div class="archive-week">Week ${sub.week_number} of ${allSubs.length}</div>
+    <div class="archive-week">Week ${sub.week_number} of 4</div>
     <div class="archive-title">${sub.title}</div>
     <div class="archive-artist">${sub.artist}</div>
     ${sub.curator_note ? `<div class="archive-note">"${sub.curator_note}"</div>` : ''}
