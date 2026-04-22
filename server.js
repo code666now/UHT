@@ -1478,6 +1478,15 @@ app.get('/api/curators/:id/scorecard', async (req, res) => {
 });
 
 app.get('/api/test-new', (req, res) => res.json({ ok: true }));
+
+// ── One-time migration: add curator_month + monthly_theme columns ─────────────
+app.post('/api/migrate-curator-fields', async (req, res) => {
+  try {
+    await db.query(`ALTER TABLE curators ADD COLUMN IF NOT EXISTS curator_month TEXT`);
+    await db.query(`ALTER TABLE curators ADD COLUMN IF NOT EXISTS monthly_theme TEXT`);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
 require('./curator-scheduler');
 
 app.listen(PORT, () => {
