@@ -36,7 +36,7 @@ app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "pu
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr22-v7' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr22-v8' });
 });
 
 // ── GET / — Home page ─────────────────────────────────────────────────────────
@@ -206,6 +206,38 @@ select.sub-input option{background:#111;color:#f3f1ea}
 .ember{position:fixed;bottom:-10%;font-size:20px;animation:emberRise 4s ease-in forwards;opacity:.7}
 @keyframes emberRise{0%{transform:translateY(0) rotate(0deg);opacity:.8}100%{transform:translateY(-110vh) rotate(20deg);opacity:0}}
 
+
+/* CURATOR MODAL */
+.cm-bg{position:fixed;inset:0;z-index:400;background:rgba(0,0,0,0.82);display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px)}
+.cm-bg.open{display:flex}
+.cm{position:relative;background:#0a0a0a;border:1px solid rgba(243,241,234,0.12);max-width:420px;width:100%;max-height:90vh;overflow-y:auto;border-radius:4px}
+.cm-close{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;background:rgba(243,241,234,0.08);border:none;color:#f3f1ea;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10;transition:background .2s}
+.cm-close:hover{background:rgba(243,241,234,0.18)}
+.cm-img{width:100%;aspect-ratio:1/1;object-fit:cover;display:block;filter:brightness(.9)}
+.cm-img-ph{width:100%;aspect-ratio:1/1;background:rgba(243,241,234,0.06);display:flex;align-items:center;justify-content:center;font-size:56px;color:rgba(243,241,234,0.2);font-family:Georgia,serif;letter-spacing:.1em}
+.cm-body{padding:24px 28px 32px}
+.cm-name{font-size:22px;font-weight:700;letter-spacing:.02em;margin-bottom:6px}
+.cm-bio{font-size:14px;opacity:.4;line-height:1.6;margin-bottom:6px}
+.cm-ig{font-size:10px;letter-spacing:.2em;text-transform:uppercase;opacity:.28;margin-bottom:20px}
+.cm-actions{display:flex;gap:10px;align-items:center;margin-bottom:0}
+.cm-follow-btn{padding:11px 24px;background:#f3f1ea;color:#000;border:none;border-radius:6px;font-family:Georgia,serif;font-size:13px;letter-spacing:.08em;cursor:pointer;transition:all .2s}
+.cm-follow-btn:hover{background:#fff}
+.cm-follow-btn.following{background:rgba(100,220,120,0.12);color:rgba(100,220,120,0.9);border:1px solid rgba(100,220,120,0.25);cursor:default}
+.cm-phone-wrap{margin-top:16px;display:none}
+.cm-phone-label{font-size:11px;letter-spacing:.2em;text-transform:uppercase;opacity:.4;margin-bottom:8px}
+.cm-phone-row{display:flex;gap:8px}
+.cm-phone-input{flex:1;padding:11px 14px;background:rgba(243,241,234,0.06);border:1px solid rgba(243,241,234,0.15);border-radius:6px;color:#f3f1ea;font-family:Georgia,serif;font-size:14px;outline:none}
+.cm-phone-input:focus{border-color:rgba(243,241,234,0.4)}
+.cm-phone-confirm{padding:11px 18px;background:#f3f1ea;color:#000;border:none;border-radius:6px;font-family:Georgia,serif;font-size:13px;cursor:pointer;white-space:nowrap}
+.cm-phone-note{font-size:11px;opacity:.3;margin-top:8px;line-height:1.7;letter-spacing:.05em}
+.cm-following-perks{margin-top:16px;padding:12px 16px;border-radius:8px;background:rgba(100,220,120,0.06);border:1px solid rgba(100,220,120,0.18);font-size:13px;color:rgba(100,220,120,0.8);line-height:1.8;display:none}
+.cm-scorecard{margin-top:20px;padding-top:20px;border-top:1px solid rgba(243,241,234,0.07)}
+.cm-score-label{font-size:10px;letter-spacing:.3em;text-transform:uppercase;opacity:.3;margin-bottom:14px}
+.cm-score-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px}
+.cm-score-cell{padding:14px 12px;background:rgba(243,241,234,0.03);text-align:center}
+.cm-score-num{font-size:26px;font-weight:700;margin-bottom:4px}
+.cm-score-key{font-size:9px;letter-spacing:.25em;text-transform:uppercase;opacity:.3}
+
 /* MOBILE */
 @media(max-width:768px){
   .nav{padding:0 20px}
@@ -274,9 +306,9 @@ select.sub-input option{background:#111;color:#f3f1ea}
   </div>
   <div class="curator-track" id="curatorTrack">
     ${curators.map(c => {
-      const slug = c.name.toLowerCase().replace(/ /g, '-');
+      const dataStr = JSON.stringify({ id: c.id, name: c.name, bio: c.bio || '', instagram: c.instagram || '', image_url: c.image_url || '' }).replace(/'/g, "&#39;");
       return `
-    <a class="curator-card" href="/drop/curator/${slug}">
+    <div class="curator-card" onclick="openCuratorModal(${c.id})" style="cursor:pointer">
       ${c.image_url
         ? `<img class="curator-img" src="${c.image_url}" alt="${c.name}" loading="lazy">`
         : `<div class="curator-img-placeholder">🎧</div>`}
@@ -284,9 +316,9 @@ select.sub-input option{background:#111;color:#f3f1ea}
         <div class="curator-name">${c.name}</div>
         ${c.bio ? `<div class="curator-bio">${c.bio}</div>` : ''}
         ${c.instagram ? `<div class="curator-insta">@${c.instagram}</div>` : ''}
-        <div class="curator-see">See drops →</div>
+        <div class="curator-see">+ Follow</div>
       </div>
-    </a>`;
+    </div>`;
     }).join('')}
     <div class="curator-placeholder"><div class="curator-placeholder-icon">🎧</div><div class="curator-placeholder-label">Coming Soon</div></div>
     <div class="curator-placeholder"><div class="curator-placeholder-icon">🎧</div><div class="curator-placeholder-label">Coming Soon</div></div>
@@ -429,6 +461,39 @@ select.sub-input option{background:#111;color:#f3f1ea}
   <div class="footer-copy">© ${new Date().getFullYear()} Undeniable Hit Theory · +1 (844) 261-6758</div>
 </footer>
 
+
+<!-- CURATOR MODAL -->
+<div class="cm-bg" id="cmBg" onclick="if(event.target===this)closeCuratorModal()">
+  <div class="cm" id="cmBox">
+    <button class="cm-close" onclick="closeCuratorModal()">✕</button>
+    <div id="cmImgWrap"></div>
+    <div class="cm-body">
+      <div class="cm-name" id="cmName"></div>
+      <div class="cm-bio"  id="cmBio"></div>
+      <div class="cm-ig"   id="cmIg"></div>
+      <div class="cm-actions">
+        <button class="cm-follow-btn" id="cmFollowBtn" onclick="handleCuratorFollow()">+ Follow</button>
+      </div>
+      <div class="cm-phone-wrap" id="cmPhoneWrap">
+        <div class="cm-phone-label">Enter your number to follow</div>
+        <div class="cm-phone-row">
+          <input class="cm-phone-input" id="cmPhone" type="tel" placeholder="+1 (555) 000-0000" onkeydown="if(event.key==='Enter')confirmCuratorFollow()">
+          <button class="cm-phone-confirm" onclick="confirmCuratorFollow()">✓ Follow</button>
+        </div>
+        <div class="cm-phone-note">📱 Weekly drops to your phone &nbsp;·&nbsp; 🔥 Vote on every pick</div>
+      </div>
+      <div class="cm-following-perks" id="cmFollowingPerks">
+        ✓ Following &nbsp;·&nbsp; 📱 Weekly drops &nbsp;·&nbsp; 🔔 Drop alerts &nbsp;·&nbsp; 🔥 Vote on picks
+        <div style="margin-top:6px;font-size:11px;opacity:.4;cursor:pointer" onclick="handleCuratorUnfollow()">Unfollow</div>
+      </div>
+      <div class="cm-scorecard" id="cmScorecard" style="display:none">
+        <div class="cm-score-label">Track Record</div>
+        <div class="cm-score-grid" id="cmScoreGrid"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- FIRE MODE -->
 <button class="fire-btn" id="fireBtn" onclick="toggleFire()">🔥 Fire Mode</button>
 <div id="fireOverlay" class="fire-overlay" style="display:none"></div>
@@ -507,6 +572,117 @@ function handleVerify(){
       if(res.ok){document.getElementById('verifyWrap').innerHTML='<div style="font-size:24px;color:#E8B84B;margin-bottom:10px">HIT.</div><div style="font-size:17px;margin-bottom:6px">You\\'re in.</div><div style="font-size:13px;opacity:.4">First drop arrives Friday.</div>';}
       else{msg.textContent=res.data.error||'Invalid code.';}
     }).catch(function(){msg.textContent='Network error.';});
+}
+
+
+// ── Curator data (server-rendered) ──
+var _curators = ${JSON.stringify(curators.map(c => ({id:c.id,name:c.name,bio:c.bio||'',instagram:c.instagram||'',image_url:c.image_url||''})))};
+var _cmCuratorId = null;
+
+function openCuratorModal(id) {
+  var c = _curators.find(function(x){ return x.id === id; });
+  if(!c) return;
+  _cmCuratorId = id;
+  // Image
+  var imgWrap = document.getElementById('cmImgWrap');
+  if(c.image_url) {
+    imgWrap.innerHTML = '<img class="cm-img" src="'+c.image_url+'" alt="'+c.name+'" onerror="this.parentNode.innerHTML=\'<div class=cm-img-ph>'+initials(c.name)+'</div>\'">';
+  } else {
+    imgWrap.innerHTML = '<div class="cm-img-ph">'+initials(c.name)+'</div>';
+  }
+  document.getElementById('cmName').textContent = c.name;
+  document.getElementById('cmBio').textContent = c.bio || '';
+  document.getElementById('cmIg').textContent = c.instagram ? '@'+c.instagram : '';
+  // Reset state
+  document.getElementById('cmPhoneWrap').style.display = 'none';
+  document.getElementById('cmFollowBtn').style.display = 'inline-block';
+  document.getElementById('cmFollowBtn').className = 'cm-follow-btn';
+  document.getElementById('cmFollowBtn').textContent = '+ Follow';
+  document.getElementById('cmFollowingPerks').style.display = 'none';
+  // Check if already following
+  var saved = localStorage.getItem('uht_phone');
+  if(saved) {
+    fetch('/api/follows/check?phone='+encodeURIComponent(saved)+'&curator_id='+id)
+      .then(function(r){ return r.json(); })
+      .then(function(d){ if(d.following) showCuratorFollowingState(); })
+      .catch(function(){});
+  }
+  // Load scorecard
+  loadCuratorScorecard(id);
+  // Open
+  document.getElementById('cmBg').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeCuratorModal() {
+  document.getElementById('cmBg').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function initials(name) {
+  return name.split(' ').map(function(w){ return w[0]; }).join('').toUpperCase();
+}
+
+function handleCuratorFollow() {
+  document.getElementById('cmPhoneWrap').style.display = 'block';
+  document.getElementById('cmFollowBtn').style.display = 'none';
+  setTimeout(function(){ document.getElementById('cmPhone').focus(); }, 100);
+}
+
+function confirmCuratorFollow() {
+  var raw = document.getElementById('cmPhone').value.trim();
+  if(!raw) return;
+  var phone = raw.replace(/\D/g,'');
+  if(phone.length===10) phone='+1'+phone;
+  else if(phone.length===11&&phone[0]==='1') phone='+'+phone;
+  else phone='+'+phone;
+  fetch('/api/follows',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({phone:phone,curator_id:_cmCuratorId})
+  }).then(function(r){
+    if(r.ok){
+      localStorage.setItem('uht_phone', phone);
+      showCuratorFollowingState();
+    }
+  }).catch(function(){});
+}
+
+function showCuratorFollowingState() {
+  document.getElementById('cmPhoneWrap').style.display = 'none';
+  document.getElementById('cmFollowBtn').style.display = 'none';
+  document.getElementById('cmFollowingPerks').style.display = 'block';
+}
+
+function handleCuratorUnfollow() {
+  var phone = localStorage.getItem('uht_phone');
+  if(!phone) return;
+  fetch('/api/follows',{
+    method:'DELETE',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({phone:phone,curator_id:_cmCuratorId})
+  }).then(function(){
+    document.getElementById('cmFollowingPerks').style.display = 'none';
+    document.getElementById('cmFollowBtn').style.display = 'inline-block';
+  }).catch(function(){});
+}
+
+function loadCuratorScorecard(id) {
+  var sc = document.getElementById('cmScorecard');
+  var grid = document.getElementById('cmScoreGrid');
+  sc.style.display = 'none';
+  fetch('/api/curators/'+id+'/stats')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(!d) return;
+      var hits = d.hits||0, denies = d.denies||0, total = hits+denies;
+      var hitPct = total ? Math.round(hits/total*100) : 0;
+      grid.innerHTML =
+        '<div class="cm-score-cell"><div class="cm-score-num">'+total+'</div><div class="cm-score-key">Votes</div></div>'+
+        '<div class="cm-score-cell"><div class="cm-score-num" style="color:#E8B84B">'+hitPct+'%</div><div class="cm-score-key">Hit Rate</div></div>'+
+        '<div class="cm-score-cell"><div class="cm-score-num">'+hits+'</div><div class="cm-score-key">HITs</div></div>';
+      sc.style.display = 'block';
+    }).catch(function(){});
 }
 
 // ── Fire mode ──
