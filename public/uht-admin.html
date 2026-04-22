@@ -1088,7 +1088,10 @@ async function loadSubmissions() {
           ${s.youtube_url ? `<a href="${esc(s.youtube_url)}" target="_blank" style="color:var(--accent);font-size:11px">▶ YT</a>` : ''}
           ${!s.spotify_url && !s.youtube_url ? '<span style="color:var(--muted)">—</span>' : ''}
         </td>
-        <td><button class="btn btn-danger" onclick="deleteSubmission(${s.id})">Delete</button></td>
+        <td style="display:flex;gap:6px">
+          <button class="btn" onclick="clearVotes(${s.id})">Clear Votes</button>
+          <button class="btn btn-danger" onclick="deleteSubmission(${s.id})">Delete</button>
+        </td>
       </tr>
     `).join('');
   } catch(e) {
@@ -1122,6 +1125,12 @@ async function submitSubmission() {
     document.getElementById('sub-week').value = '1';
     loadSubmissions();
   } catch(e) { toast(e.message, 'err'); }
+}
+
+async function clearVotes(id) {
+  if (!confirm('Clear all votes for this submission?')) return;
+  try { await api('DELETE', `/api/curator-submissions/${id}/votes`); toast('Votes cleared.', 'ok'); loadSubmissions(); }
+  catch(e) { toast(e.message, 'err'); }
 }
 
 async function deleteSubmission(id) {

@@ -305,6 +305,14 @@ app.delete('/api/curator-submissions/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── DELETE /api/curator-submissions/:id/votes ────────────────
+app.delete('/api/curator-submissions/:id/votes', async (req, res) => {
+  try {
+    await db.query('DELETE FROM curator_submission_votes WHERE submission_id=$1', [req.params.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── GET /api/curator-submissions/by-curator/:curatorId ────────
 app.get('/api/curator-submissions/by-curator/:curatorId', async (req, res) => {
   try {
