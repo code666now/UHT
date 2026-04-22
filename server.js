@@ -36,7 +36,7 @@ app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "pu
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr22-v6' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr22-v7' });
 });
 
 // ── GET / — Home page ─────────────────────────────────────────────────────────
@@ -210,10 +210,23 @@ select.sub-input option{background:#111;color:#f3f1ea}
 @media(max-width:768px){
   .nav{padding:0 20px}
   .nav-links{display:none}
-  .hero{padding:60px 20px 60px}
-  .sec-head{padding:0 20px}
-  .sub-wrap{grid-template-columns:1fr;gap:48px}
-  .how-row{grid-template-columns:70px 1fr;gap:0 24px}
+  .hero{padding:52px 20px 52px}
+  .hero-btns{flex-direction:column;align-items:flex-start}
+  .btn-fill,.btn-outline{width:100%;text-align:center;padding:16px 24px;box-sizing:border-box}
+  section{padding-left:20px!important;padding-right:20px!important}
+  .sec-head{padding-left:0!important;padding-right:0!important}
+  .genre-grid{grid-template-columns:1fr 1fr}
+  .genre-name{font-size:22px!important}
+  .sub-wrap{grid-template-columns:1fr;gap:40px}
+  .how-row{grid-template-columns:56px 1fr;gap:0 16px;padding:28px 0}
+  .how-num{font-size:42px!important}
+  .how-title{font-size:20px!important}
+  .curator-card{width:220px}
+  .footer{padding:40px 20px}
+  .fire-btn{bottom:16px;right:16px;font-size:11px;padding:8px 14px}
+}
+@media(max-width:400px){
+  .genre-grid{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -421,14 +434,19 @@ select.sub-input option{background:#111;color:#f3f1ea}
 <div id="fireOverlay" class="fire-overlay" style="display:none"></div>
 
 <script>
-// ── Curator drag scroll ──
+// ── Curator drag + touch scroll ──
 (function(){
   var t=document.getElementById('curatorTrack');
   if(!t) return;
+  // Mouse drag
   var down=false, startX=0, sl=0;
   t.addEventListener('mousedown',function(e){down=true;startX=e.pageX-t.offsetLeft;sl=t.scrollLeft;t.style.cursor='grabbing'});
-  document.addEventListener('mouseup',function(){down=false;t.style.cursor='grab'});
+  document.addEventListener('mouseup',function(){down=false;if(t)t.style.cursor='grab'});
   t.addEventListener('mousemove',function(e){if(!down)return;e.preventDefault();t.scrollLeft=sl-(e.pageX-t.offsetLeft-startX)});
+  // Touch swipe
+  var touchX=0, touchSl=0;
+  t.addEventListener('touchstart',function(e){touchX=e.touches[0].pageX;touchSl=t.scrollLeft;},{passive:true});
+  t.addEventListener('touchmove',function(e){t.scrollLeft=touchSl-(e.touches[0].pageX-touchX);},{passive:true});
 })();
 
 // ── Subscribe ──
