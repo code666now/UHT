@@ -36,18 +36,38 @@ app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "pu
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr22-v2' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr22-v3' });
 });
 
 // ── GET / — Home page ─────────────────────────────────────────────────────────
 app.get('/', async (req, res) => {
   try {
-    const [genresResult, curatorsResult] = await Promise.all([
+    const [genresResult, curatorsResult, currentDropsResult, communityDropResult] = await Promise.all([
       db.query('SELECT id, name FROM genres ORDER BY name ASC'),
-      db.query('SELECT id, name, bio, image_url, instagram, slug FROM curators ORDER BY name ASC')
+      db.query('SELECT id, name, bio, image_url, instagram, slug FROM curators ORDER BY name ASC'),
+      // Latest drop per genre
+      db.query(`
+        SELECT DISTINCT ON (LOWER(genre)) LOWER(genre) AS genre_key, title, artist
+        FROM genre_submissions
+        WHERE is_community_pick IS NOT TRUE
+        ORDER BY LOWER(genre), drop_date DESC NULLS LAST, created_at DESC
+      `),
+      // Community pick
+      db.query(`
+        SELECT title, artist FROM genre_submissions
+        WHERE is_community_pick = TRUE
+        ORDER BY drop_date DESC NULLS LAST, created_at DESC LIMIT 1
+      `)
     ]);
     const genres = genresResult.rows;
     const curators = curatorsResult.rows;
+
+    // Build current drop lookup: genre_key -> {title, artist}
+    const currentDrops = {};
+    currentDropsResult.rows.forEach(r => { currentDrops[r.genre_key] = { title: r.title, artist: r.artist }; });
+    if (communityDropResult.rows.length) {
+      currentDrops['community'] = { title: communityDropResult.rows[0].title, artist: communityDropResult.rows[0].artist };
+    }
 
     // Genre display config
     const genreConfig = {
@@ -104,13 +124,16 @@ a{color:inherit;text-decoration:none}
 
 /* ── GENRES ── */
 .genres-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:2px;max-width:1100px;margin:0 auto}
-.genre-card{position:relative;padding:52px 40px;border:1px solid rgba(243,241,234,0.07);cursor:pointer;transition:all .25s;overflow:hidden;display:block}
+.genre-card{padding:44px 40px;border:1px solid rgba(243,241,234,0.07);cursor:pointer;transition:all .25s;overflow:hidden;display:block}
 .genre-card:hover{background:rgba(243,241,234,0.04);border-color:rgba(243,241,234,0.2)}
 .genre-card:hover .genre-arrow{opacity:1;transform:translate(2px,-2px)}
-.genre-emoji{font-size:28px;margin-bottom:20px;display:block}
-.genre-name{font-size:clamp(26px,4vw,38px);font-weight:600;margin-bottom:10px;line-height:1}
-.genre-tag{font-size:9px;letter-spacing:.3em;text-transform:uppercase;opacity:.3;margin-bottom:0}
-.genre-arrow{font-size:18px;position:absolute;top:28px;right:32px;opacity:0;transition:all .2s;color:rgba(243,241,234,0.6)}
+.genre-card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px}
+.genre-emoji{font-size:28px}
+.genre-name{font-size:clamp(26px,4vw,38px);font-weight:600;margin-bottom:14px;line-height:1}
+.genre-tag{font-size:9px;letter-spacing:.3em;text-transform:uppercase;opacity:.3}
+.genre-drop-title{font-size:15px;font-weight:600;opacity:.85;margin-bottom:4px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.genre-drop-artist{font-size:12px;opacity:.4;letter-spacing:.05em}
+.genre-arrow{font-size:18px;opacity:0;transition:all .2s;color:rgba(243,241,234,0.6);margin-top:4px;flex-shrink:0}
 
 /* ── HOW IT WORKS ── */
 .how-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:48px;max-width:900px;margin:0 auto;text-align:center}
@@ -146,6 +169,10 @@ select.sub-input option{background:#111;color:#f3f1ea}
 .sub-msg.success{color:#a8e6a3;opacity:1}
 .verify-wrap{display:none;flex-direction:column;gap:14px;margin-top:4px}
 .sub-fine{font-size:10px;letter-spacing:.15em;text-transform:uppercase;opacity:.2;margin-top:16px;line-height:1.6}
+.sub-toggle{display:flex;gap:0;border:1px solid rgba(243,241,234,0.15);border-radius:999px;overflow:hidden;width:fit-content;margin:0 auto}
+.sub-pill{flex:1;padding:12px 32px;background:none;border:none;color:rgba(243,241,234,0.4);font-family:Georgia,serif;font-size:13px;letter-spacing:.08em;cursor:pointer;transition:all .2s;white-space:nowrap}
+.sub-pill.active{background:#f3f1ea;color:#000}
+.sub-pill:not(.active):hover{color:rgba(243,241,234,0.8)}
 
 /* ── FOOTER ── */
 .footer{padding:60px 32px;text-align:center;border-top:1px solid rgba(243,241,234,0.07)}
@@ -198,13 +225,21 @@ select.sub-input option{background:#111;color:#f3f1ea}
   <div class="section-label">This Week's Drops</div>
   <h2 class="section-title">Pick your genre</h2>
   <div class="genres-grid">
-    ${allGenres.map(g => `
+    ${allGenres.map(g => {
+      const drop = currentDrops[g.key];
+      return `
     <a class="genre-card" href="${g.path}">
-      <span class="genre-emoji">${g.emoji}</span>
+      <div class="genre-card-top">
+        <span class="genre-emoji">${g.emoji}</span>
+        <span class="genre-arrow">↗</span>
+      </div>
       <div class="genre-name">${g.label}</div>
-      <div class="genre-tag">Hit of the Week</div>
-      <span class="genre-arrow">↗</span>
-    </a>`).join('')}
+      ${drop
+        ? `<div class="genre-drop-title">${drop.title}</div>
+           <div class="genre-drop-artist">${drop.artist}</div>`
+        : `<div class="genre-tag">Hit of the Week</div>`}
+    </a>`;
+    }).join('')}
   </div>
 </section>
 
@@ -263,15 +298,27 @@ ${curators.length ? `
     <p class="subscribe-desc">One text. Every Friday. Vote HIT or DENIED and see how the world hears it.</p>
     <form class="subscribe-form" id="subForm" onsubmit="handleSubscribe(event)">
       <input class="sub-input" id="subPhone" type="tel" placeholder="Your phone number" autocomplete="tel" required>
-      <select class="sub-input" id="subGenre">
-        <option value="">Choose a genre drop...</option>
-        ${allGenres.map(g => `<option value="${g.key}" data-id="${g.id||''}">${g.emoji} ${g.label}</option>`).join('')}
-      </select>
-      <div style="font-size:10px;letter-spacing:.2em;text-transform:uppercase;opacity:.2;text-align:center;margin:2px 0">or follow a curator</div>
-      <select class="sub-input" id="subCurator">
-        <option value="">No curator preference</option>
-        ${curators.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
-      </select>
+
+      <!-- Toggle pills -->
+      <div class="sub-toggle">
+        <button type="button" class="sub-pill active" id="pillGenre" onclick="switchPill('genre')">By Genre</button>
+        <button type="button" class="sub-pill" id="pillCurator" onclick="switchPill('curator')">By Curator</button>
+      </div>
+
+      <div id="genrePanel">
+        <select class="sub-input" id="subGenre">
+          <option value="">Choose a genre...</option>
+          ${allGenres.map(g => `<option value="${g.key}" data-id="${g.id||''}">${g.emoji} ${g.label}</option>`).join('')}
+        </select>
+      </div>
+
+      <div id="curatorPanel" style="display:none">
+        <select class="sub-input" id="subCurator">
+          <option value="">Choose a curator...</option>
+          ${curators.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
+        </select>
+      </div>
+
       <button class="sub-btn" type="submit" id="subBtn">Send me the drop</button>
       <div class="sub-msg" id="subMsg"></div>
     </form>
@@ -298,21 +345,31 @@ ${curators.length ? `
 
 <script>
 var _subPhone = '';
+var _activePill = 'genre';
+
+function switchPill(type) {
+  _activePill = type;
+  document.getElementById('pillGenre').className = 'sub-pill' + (type === 'genre' ? ' active' : '');
+  document.getElementById('pillCurator').className = 'sub-pill' + (type === 'curator' ? ' active' : '');
+  document.getElementById('genrePanel').style.display = type === 'genre' ? 'block' : 'none';
+  document.getElementById('curatorPanel').style.display = type === 'curator' ? 'block' : 'none';
+}
 
 function handleSubscribe(e) {
   e.preventDefault();
   var phone = document.getElementById('subPhone').value.trim();
-  var genreEl = document.getElementById('subGenre');
-  var curatorEl = document.getElementById('subCurator');
-  var genreKey = genreEl.value;
-  var genreId = genreEl.options[genreEl.selectedIndex]?.dataset?.id;
-  var curatorId = curatorEl.value;
   var msg = document.getElementById('subMsg');
   var btn = document.getElementById('subBtn');
 
+  var genreEl = document.getElementById('subGenre');
+  var curatorEl = document.getElementById('subCurator');
+  var genreKey = _activePill === 'genre' ? genreEl.value : '';
+  var genreId = _activePill === 'genre' ? (genreEl.options[genreEl.selectedIndex] && genreEl.options[genreEl.selectedIndex].dataset.id) : '';
+  var curatorId = _activePill === 'curator' ? curatorEl.value : '';
+
   if (!phone) { showMsg(msg, 'Phone number is required.', 'error'); return; }
-  if (!genreKey && !curatorId) { showMsg(msg, 'Choose a genre or curator.', 'error'); return; }
-  if (genreKey && curatorId) { showMsg(msg, 'Choose a genre OR a curator, not both.', 'error'); return; }
+  if (_activePill === 'genre' && !genreKey) { showMsg(msg, 'Choose a genre.', 'error'); return; }
+  if (_activePill === 'curator' && !curatorId) { showMsg(msg, 'Choose a curator.', 'error'); return; }
 
   btn.disabled = true;
   btn.textContent = 'Sending...';
@@ -323,7 +380,6 @@ function handleSubscribe(e) {
   if (curatorId) { body.curator_id = parseInt(curatorId); }
   else if (genreId) { body.genre_id = parseInt(genreId); }
   else {
-    // community — no genre_id in DB, use genre_id=null workaround: just subscribe without genre for now
     body.genre_id = null;
   }
 
