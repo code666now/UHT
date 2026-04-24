@@ -36,7 +36,7 @@ app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "pu
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr23-v1' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr23-v2' });
 });
 
 // ── GET / — Home page ─────────────────────────────────────────────────────────
@@ -44,7 +44,7 @@ app.get('/', async (req, res) => {
   try {
     const [genresResult, curatorsResult, currentDropsResult, communityDropResult] = await Promise.all([
       db.query('SELECT id, name FROM genres ORDER BY name ASC'),
-      db.query('SELECT id, name, bio, image_url, instagram FROM curators ORDER BY name ASC'),
+      db.query('SELECT id, name, bio, image_url, instagram, curator_month FROM curators ORDER BY name ASC'),
       // Latest drop per genre
       db.query(`
         SELECT DISTINCT ON (LOWER(genre)) LOWER(genre) AS genre_key, title, artist
@@ -146,6 +146,12 @@ a{color:inherit;text-decoration:none}
 .curator-placeholder{flex-shrink:0;width:280px;border:1px solid rgba(243,241,234,0.07);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;opacity:.12;min-height:360px}
 .curator-placeholder-icon{font-size:32px}
 .curator-placeholder-label{font-size:10px;letter-spacing:.3em;text-transform:uppercase}
+.curator-carousel-wrap{position:relative}
+.curator-nav-btn{position:absolute;top:50%;transform:translateY(-50%);z-index:10;background:none;border:1px solid rgba(243,241,234,0.14);color:rgba(243,241,234,0.35);width:38px;height:38px;border-radius:50%;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;font-family:Georgia,serif;padding:0}
+.curator-nav-btn:hover{border-color:rgba(243,241,234,0.45);color:#f3f1ea}
+.curator-nav-prev{left:8px}
+.curator-nav-next{right:8px}
+.curator-month-tag{font-size:9px;letter-spacing:.32em;text-transform:uppercase;color:rgba(243,241,234,0.32);margin-bottom:10px;line-height:1.6}
 
 /* GENRE GRID */
 .genre-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:2px;max-width:1400px;margin:0 auto}
@@ -155,7 +161,7 @@ a{color:inherit;text-decoration:none}
 .genre-card-top{display:flex;justify-content:space-between;margin-bottom:18px}
 .genre-emoji{font-size:22px}
 .genre-arrow{font-size:16px;opacity:0;transition:opacity .2s}
-.genre-name{font-size:clamp(18px,2.2vw,30px);font-weight:700;letter-spacing:-.01em;line-height:1;margin-bottom:18px;white-space:nowrap}
+.genre-name{font-size:clamp(13px,1.8vw,28px);font-weight:700;letter-spacing:-.01em;line-height:1;margin-bottom:18px;white-space:nowrap;overflow:hidden;text-overflow:clip}
 .genre-song{font-size:13px;font-weight:600;opacity:.9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .genre-artist{font-size:11px;opacity:.35;letter-spacing:.08em;margin-top:4px}
 .genre-coming{font-size:10px;letter-spacing:.3em;text-transform:uppercase;opacity:.22}
@@ -299,30 +305,32 @@ select.sub-input option{background:#111;color:#f3f1ea}
 </div>
 
 <!-- CURATORS OF THE MONTH -->
-<section style="padding:80px 0 80px 40px" id="curators">
-  <div class="sec-head" style="padding-right:40px">
+<section style="padding:80px 0 80px" id="curators">
+  <div class="sec-head" style="padding:0 40px">
     <span class="sec-label">Curators of the Month</span>
     <div class="sec-line"></div>
   </div>
-  <div class="curator-track" id="curatorTrack">
-    ${curators.map(c => {
-      const dataStr = JSON.stringify({ id: c.id, name: c.name, bio: c.bio || '', instagram: c.instagram || '', image_url: c.image_url || '' }).replace(/'/g, "&#39;");
-      return `
-    <div class="curator-card" onclick="openCuratorModal(${c.id})" style="cursor:pointer">
-      ${c.image_url
-        ? `<img class="curator-img" src="${c.image_url}" alt="${c.name}" loading="lazy">`
-        : `<div class="curator-img-placeholder">🎧</div>`}
-      <div class="curator-body">
-        <div class="curator-name">${c.name}</div>
-        ${c.bio ? `<div class="curator-bio">${c.bio}</div>` : ''}
-        ${c.instagram ? `<div class="curator-insta">@${c.instagram}</div>` : ''}
-        <div class="curator-see">+ Follow</div>
-      </div>
-    </div>`;
-    }).join('')}
-    <div class="curator-placeholder"><div class="curator-placeholder-icon">🎧</div><div class="curator-placeholder-label">Coming Soon</div></div>
-    <div class="curator-placeholder"><div class="curator-placeholder-icon">🎧</div><div class="curator-placeholder-label">Coming Soon</div></div>
-    <div class="curator-placeholder"><div class="curator-placeholder-icon">🎧</div><div class="curator-placeholder-label">Coming Soon</div></div>
+  <div class="curator-carousel-wrap" style="margin-top:32px">
+    <button class="curator-nav-btn curator-nav-prev" onclick="scrollCurators(-1)" aria-label="Previous">&#8592;</button>
+    <div class="curator-track" id="curatorTrack" style="${curators.length <= 1 ? 'justify-content:center;padding:0 60px' : 'padding-left:60px'}">
+      ${curators.map(c => {
+        const monthLabel = c.curator_month || 'May 2026';
+        return `
+      <div class="curator-card" onclick="openCuratorModal(${c.id})" style="cursor:pointer">
+        ${c.image_url
+          ? `<img class="curator-img" src="${c.image_url}" alt="${c.name}" loading="lazy">`
+          : `<div class="curator-img-placeholder">🎧</div>`}
+        <div class="curator-body">
+          <div class="curator-month-tag">${monthLabel} · Founding Curator</div>
+          <div class="curator-name">${c.name}</div>
+          ${c.bio ? `<div class="curator-bio">${c.bio}</div>` : ''}
+          ${c.instagram ? `<div class="curator-insta">@${c.instagram}</div>` : ''}
+          <div class="curator-see">+ Follow</div>
+        </div>
+      </div>`;
+      }).join('')}
+    </div>
+    <button class="curator-nav-btn curator-nav-next" onclick="scrollCurators(1)" aria-label="Next">&#8594;</button>
   </div>
 </section>
 
@@ -513,6 +521,12 @@ select.sub-input option{background:#111;color:#f3f1ea}
   t.addEventListener('touchstart',function(e){touchX=e.touches[0].pageX;touchSl=t.scrollLeft;},{passive:true});
   t.addEventListener('touchmove',function(e){t.scrollLeft=touchSl-(e.touches[0].pageX-touchX);},{passive:true});
 })();
+
+// ── Curator nav arrows ──
+function scrollCurators(dir){
+  var t=document.getElementById('curatorTrack');
+  if(t) t.scrollBy({left:dir*300,behavior:'smooth'});
+}
 
 // ── Subscribe ──
 var _subPhone='', _agreed=false, _activePill='genre';
