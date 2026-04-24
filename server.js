@@ -36,7 +36,7 @@ app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "pu
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr23-v2' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr23-v3' });
 });
 
 // ── GET / — Home page ─────────────────────────────────────────────────────────
@@ -312,24 +312,39 @@ select.sub-input option{background:#111;color:#f3f1ea}
   </div>
   <div class="curator-carousel-wrap" style="margin-top:32px">
     <button class="curator-nav-btn curator-nav-prev" onclick="scrollCurators(-1)" aria-label="Previous">&#8592;</button>
-    <div class="curator-track" id="curatorTrack" style="${curators.length <= 1 ? 'justify-content:center;padding:0 60px' : 'padding-left:60px'}">
-      ${curators.map(c => {
-        const monthLabel = c.curator_month || 'May 2026';
-        return `
-      <div class="curator-card" onclick="openCuratorModal(${c.id})" style="cursor:pointer">
+    ${curators.length === 1 ? `
+    <div style="display:flex;justify-content:center;align-items:flex-start;padding:0 60px">
+      ${(c => `
+      <div class="curator-card" onclick="openCuratorModal(${c.id})" style="cursor:pointer;width:280px">
         ${c.image_url
           ? `<img class="curator-img" src="${c.image_url}" alt="${c.name}" loading="lazy">`
           : `<div class="curator-img-placeholder">🎧</div>`}
         <div class="curator-body">
-          <div class="curator-month-tag">${monthLabel} · Founding Curator</div>
+          <div class="curator-month-tag">${c.curator_month || 'May 2026'} · Founding Curator</div>
           <div class="curator-name">${c.name}</div>
           ${c.bio ? `<div class="curator-bio">${c.bio}</div>` : ''}
           ${c.instagram ? `<div class="curator-insta">@${c.instagram}</div>` : ''}
           <div class="curator-see">+ Follow</div>
         </div>
-      </div>`;
-      }).join('')}
+      </div>`)(curators[0])}
     </div>
+    ` : `
+    <div class="curator-track" id="curatorTrack" style="padding-left:60px">
+      ${curators.map(c => `
+      <div class="curator-card" onclick="openCuratorModal(${c.id})" style="cursor:pointer">
+        ${c.image_url
+          ? `<img class="curator-img" src="${c.image_url}" alt="${c.name}" loading="lazy">`
+          : `<div class="curator-img-placeholder">🎧</div>`}
+        <div class="curator-body">
+          <div class="curator-month-tag">${c.curator_month || 'May 2026'} · Founding Curator</div>
+          <div class="curator-name">${c.name}</div>
+          ${c.bio ? `<div class="curator-bio">${c.bio}</div>` : ''}
+          ${c.instagram ? `<div class="curator-insta">@${c.instagram}</div>` : ''}
+          <div class="curator-see">+ Follow</div>
+        </div>
+      </div>`).join('')}
+    </div>
+    `}
     <button class="curator-nav-btn curator-nav-next" onclick="scrollCurators(1)" aria-label="Next">&#8594;</button>
   </div>
 </section>
