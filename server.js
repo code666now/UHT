@@ -36,7 +36,7 @@ app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "pu
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr22-v9' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr23-v1' });
 });
 
 // ── GET / — Home page ─────────────────────────────────────────────────────────
@@ -148,14 +148,14 @@ a{color:inherit;text-decoration:none}
 .curator-placeholder-label{font-size:10px;letter-spacing:.3em;text-transform:uppercase}
 
 /* GENRE GRID */
-.genre-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:2px;max-width:1100px;margin:0 auto}
-.genre-card{display:flex;flex-direction:column;justify-content:space-between;padding:32px 28px 28px;border:1px solid rgba(243,241,234,0.07);border-top:3px solid rgba(243,241,234,0.1);min-height:220px;transition:all .25s;color:#f3f1ea;text-decoration:none;position:relative;overflow:visible}
+.genre-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:2px;max-width:1400px;margin:0 auto}
+.genre-card{display:flex;flex-direction:column;justify-content:space-between;padding:32px 28px 28px;border:1px solid rgba(243,241,234,0.07);border-top:3px solid rgba(243,241,234,0.1);min-height:220px;transition:all .25s;color:#f3f1ea;text-decoration:none;position:relative;overflow:hidden}
 .genre-card:hover{background:rgba(243,241,234,0.03);transform:translateY(-4px)}
 .genre-card:hover .genre-arrow{opacity:1}
 .genre-card-top{display:flex;justify-content:space-between;margin-bottom:18px}
 .genre-emoji{font-size:22px}
 .genre-arrow{font-size:16px;opacity:0;transition:opacity .2s}
-.genre-name{font-size:clamp(22px,3.2vw,38px);font-weight:700;letter-spacing:-.01em;line-height:1;margin-bottom:18px;word-break:break-word;hyphens:auto}
+.genre-name{font-size:clamp(18px,2.2vw,30px);font-weight:700;letter-spacing:-.01em;line-height:1;margin-bottom:18px;white-space:nowrap}
 .genre-song{font-size:13px;font-weight:600;opacity:.9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .genre-artist{font-size:11px;opacity:.35;letter-spacing:.08em;margin-top:4px}
 .genre-coming{font-size:10px;letter-spacing:.3em;text-transform:uppercase;opacity:.22}
@@ -247,8 +247,8 @@ select.sub-input option{background:#111;color:#f3f1ea}
   .btn-fill,.btn-outline{width:100%;text-align:center;padding:16px 24px;box-sizing:border-box}
   section{padding-left:20px!important;padding-right:20px!important}
   .sec-head{padding-left:0!important;padding-right:0!important}
-  .genre-grid{grid-template-columns:1fr 1fr}
-  .genre-name{font-size:22px!important}
+  .genre-grid{grid-template-columns:1fr 1fr!important}
+  .genre-name{font-size:18px!important;white-space:normal!important}
   .sub-wrap{grid-template-columns:1fr;gap:40px}
   .how-row{grid-template-columns:56px 1fr;gap:0 16px;padding:28px 0}
   .how-num{font-size:42px!important}
@@ -1348,6 +1348,17 @@ html,body{background:#080808;color:#ede8df;font-family:'Inter',sans-serif;overfl
 @media(min-width:600px){
   .vote-row{flex-direction:row}
   .vote-btn{flex:1}
+}
+@media(min-width:900px){
+  .page{max-width:1100px}
+  .hero{aspect-ratio:16/9;max-height:72vh}
+  .c-name{font-size:clamp(64px,8vw,110px)}
+  .bio{padding:56px 80px}
+  .pick{padding:64px 80px 48px}
+  .below-player{padding:16px 48px 8px}
+  .vote-section{padding:44px 80px}
+  .archive{padding:56px 80px 28px}
+  .bottom{padding:24px 80px 80px}
 }
 
 /* Archive */
