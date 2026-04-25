@@ -36,7 +36,7 @@ app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "pu
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr24-v12' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr24-v13' });
 });
 
 // ── GET / — Home page ─────────────────────────────────────────────────────────
@@ -391,11 +391,8 @@ select.sub-input option{background:#111;color:#f3f1ea}
 .js-go .footer.in{opacity:1}
 
 /* Custom cursor — 🎯 emoji */
-.uht-cursor{opacity:0;pointer-events:none;position:fixed;top:0;left:0;z-index:9999;font-size:22px;line-height:1;margin:-11px 0 0 -4px;user-select:none;filter:drop-shadow(0 1px 4px rgba(0,0,0,0.5));transition:opacity .15s,font-size .15s}
-.uht-cursor.active{opacity:1}
-.uht-cursor.hover{font-size:30px}
-/* cursor:none only added via JS when real mouse confirmed */
-html.has-mouse *{cursor:none!important}
+*{cursor:none!important}
+.uht-cursor{display:none;pointer-events:none;position:fixed;top:0;left:0;z-index:9999;font-size:22px;line-height:1;user-select:none;filter:drop-shadow(0 1px 4px rgba(0,0,0,0.5));transform:translate(-50%,-50%);transition:font-size .1s}
 </style>
 </head>
 <body>
@@ -918,26 +915,16 @@ function spawnEmbers(){
 (function(){
   var cur=document.getElementById('uhtCursor');
   if(!cur)return;
-  var mx=-200,my=-200,cx=-200,cy=-200,ready=false;
   document.addEventListener('mousemove',function(e){
-    mx=e.clientX;my=e.clientY;
-    if(!ready){
-      ready=true;
-      document.documentElement.classList.add('has-mouse');
-      cur.classList.add('active');
-    }
+    cur.style.display='block';
+    cur.style.left=e.clientX+'px';
+    cur.style.top=e.clientY+'px';
   });
-  (function loop(){
-    cx+=(mx-cx)*.14;cy+=(my-cy)*.14;
-    cur.style.transform='translate('+cx+'px,'+cy+'px)';
-    requestAnimationFrame(loop);
-  })();
+  document.addEventListener('mouseleave',function(){cur.style.display='none';});
   document.querySelectorAll('a,button,.genre-card,.curator-card').forEach(function(el){
-    el.addEventListener('mouseenter',function(){cur.classList.add('hover');});
-    el.addEventListener('mouseleave',function(){cur.classList.remove('hover');});
+    el.addEventListener('mouseenter',function(){cur.style.fontSize='30px';});
+    el.addEventListener('mouseleave',function(){cur.style.fontSize='22px';});
   });
-  document.addEventListener('mouseleave',function(){cur.style.opacity='0';});
-  document.addEventListener('mouseenter',function(){if(ready)cur.style.opacity='1';});
 })();
 
 // ── Smooth anchor scroll ──────────────────────────────────────────
