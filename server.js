@@ -36,7 +36,7 @@ app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "pu
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr24-v7' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr24-v8' });
 });
 
 // ── GET / — Home page ─────────────────────────────────────────────────────────
@@ -402,7 +402,7 @@ select.sub-input option{background:#111;color:#f3f1ea}
 </head>
 <body>
 <!-- Custom cursor -->
-<div class="uht-cursor" id="uhtCursor">🎵</div>
+<div class="uht-cursor" id="uhtCursor">🎯</div>
 
 <!-- NAV -->
 <nav class="nav">
