@@ -243,9 +243,10 @@ select.sub-input option{background:#111;color:#f3f1ea}
 .footer-links a:hover{opacity:1}
 .footer-copy{font-size:10px;letter-spacing:.12em;text-transform:uppercase;opacity:.4}
 
-/* FIRE MODE */
-.fire-btn{position:fixed;bottom:24px;right:24px;z-index:300;display:flex;align-items:center;gap:8px;padding:10px 18px;background:rgba(243,241,234,0.08);border:1px solid rgba(243,241,234,0.2);border-radius:999px;color:#f3f1ea;font-family:Georgia,serif;font-size:12px;letter-spacing:.15em;text-transform:uppercase;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
-.fire-btn.on{background:#ff4500;border-color:#ff4500;box-shadow:0 0 24px rgba(255,69,0,.5)}
+/* FIRE MODE — now lives in nav */
+.fire-btn{display:flex;align-items:center;gap:6px;padding:7px 14px;background:rgba(243,241,234,0.06);border:1px solid rgba(243,241,234,0.15);border-radius:999px;color:rgba(243,241,234,0.55);font-family:Georgia,serif;font-size:10px;letter-spacing:.18em;text-transform:uppercase;cursor:pointer;transition:all .25s;white-space:nowrap}
+.fire-btn:hover{background:rgba(243,241,234,0.1);color:#f3f1ea;border-color:rgba(243,241,234,0.3)}
+.fire-btn.on{background:#ff4500;border-color:#ff4500;color:#fff;box-shadow:0 0 18px rgba(255,69,0,.45)}
 .fire-overlay{position:fixed;inset:0;pointer-events:none;z-index:50;background:radial-gradient(ellipse at center,transparent 40%,rgba(180,60,0,.18) 100%)}
 .ember{position:fixed;bottom:-10%;font-size:20px;animation:emberRise 4s ease-in forwards;opacity:.7}
 @keyframes emberRise{0%{transform:translateY(0) rotate(0deg);opacity:.8}100%{transform:translateY(-110vh) rotate(20deg);opacity:0}}
@@ -311,7 +312,11 @@ select.sub-input option{background:#111;color:#f3f1ea}
   .curator-carousel-wrap [style*="align-items:center"]{padding:0 20px!important}
   /* Footer */
   .footer{padding:40px 20px}
-  .fire-btn{bottom:16px;right:16px;font-size:11px;padding:8px 14px}
+  .fire-btn{font-size:9px;padding:6px 10px}
+}
+@media(max-width:480px){
+  /* Fix UNDENIABLE clipping — clamp min was 64px, too wide at small widths */
+  .hero-solid,.hero-outline{font-size:clamp(36px,11.5vw,64px)!important}
 }
 @media(max-width:400px){
   .genre-grid{grid-template-columns:1fr}
@@ -442,6 +447,7 @@ select.sub-input option{background:#111;color:#f3f1ea}
     <a href="#drops" data-section="drops">Genres</a>
     <a href="#how-it-works" data-section="how-it-works">How It Works</a>
   </div>
+  <button class="fire-btn" id="fireBtn" onclick="toggleFire()">🔥 Fire Mode</button>
   <button class="nav-cta" onclick="document.getElementById('subscribe').scrollIntoView({behavior:'smooth'})">Subscribe</button>
   <button class="nav-ham" id="navHam" onclick="toggleMobNav()" aria-label="Menu">
     <span></span><span></span><span></span>
@@ -721,8 +727,6 @@ ${fd && fdYtId ? `
   </div>
 </div>
 
-<!-- FIRE MODE -->
-<button class="fire-btn" id="fireBtn" onclick="toggleFire()">🔥 Fire Mode</button>
 <div id="fireOverlay" class="fire-overlay" style="display:none"></div>
 
 <script>
@@ -1086,16 +1090,14 @@ function closeMobNav(){
   });
 })();
 
-// ── Hero parallax ────────────────────────────────────────────────
+// ── Hero parallax — subtle drift only, no opacity fade (prevents scroll sticking) ──
 (function(){
   var hero = document.querySelector('.hero');
   if(!hero || window.matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+  if(window.matchMedia('(hover:none)').matches) return; // skip on touch/mobile
   window.addEventListener('scroll', function(){
     var y = window.scrollY;
-    var fade = Math.max(0, 1 - y / (window.innerHeight * 0.65));
-    var shift = y * 0.18;
-    hero.style.transform = 'translateY('+shift+'px)';
-    hero.style.opacity = fade;
+    hero.style.transform = 'translateY('+( y * 0.12)+'px)';
   }, {passive:true});
 })();
 
