@@ -36,7 +36,7 @@ app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "pu
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr23-v6' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr23-v7' });
 });
 
 // ── GET / — Home page ─────────────────────────────────────────────────────────
@@ -98,24 +98,24 @@ a{color:inherit;text-decoration:none}
 /* NAV */
 .nav{display:flex;align-items:center;justify-content:space-between;padding:0 40px;height:58px;position:sticky;top:0;z-index:200;background:rgba(0,0,0,0.95);backdrop-filter:blur(10px);border-bottom:1px solid rgba(243,241,234,0.07)}
 .nav-logo{font-size:13px;letter-spacing:.4em;text-transform:uppercase;font-weight:700}
-.nav-links{display:flex;gap:36px;font-size:10px;letter-spacing:.25em;text-transform:uppercase;color:rgba(243,241,234,0.4)}
-.nav-links a:hover{color:#f3f1ea}
+.nav-links{display:flex;gap:36px;font-size:10px;letter-spacing:.25em;text-transform:uppercase;color:#f3f1ea}
+.nav-links a:hover{opacity:.7}
 .nav-cta{font-size:10px;letter-spacing:.25em;text-transform:uppercase;padding:9px 22px;border:1px solid rgba(243,241,234,0.28);border-radius:999px;background:transparent;color:#f3f1ea;font-family:Georgia,serif;cursor:pointer;transition:all .2s}
 .nav-cta:hover{background:#f3f1ea;color:#000}
 
 /* HERO */
 .hero{padding:clamp(80px,14vw,160px) 40px clamp(60px,10vw,120px);max-width:1200px;margin:0 auto}
-.hero-eyebrow{font-size:10px;letter-spacing:.5em;text-transform:uppercase;opacity:.28;margin-bottom:36px}
+.hero-eyebrow{font-size:10px;letter-spacing:.5em;text-transform:uppercase;color:#f3f1ea;margin-bottom:36px}
 .hero-h1{font-weight:700;line-height:.9;letter-spacing:-.03em;margin:0}
 .hero-solid{font-size:clamp(64px,12vw,152px);color:#f3f1ea;display:block}
 .hero-outline{font-size:clamp(64px,12vw,152px);color:transparent;-webkit-text-stroke:1px rgba(243,241,234,0.22);display:block}
-.hero-sub{font-size:clamp(16px,2vw,21px);font-style:italic;opacity:.42;margin:36px 0 48px;max-width:460px}
+.hero-sub{font-size:clamp(16px,2vw,21px);font-style:italic;opacity:.65;margin:36px 0 48px;max-width:460px}
 .hero-btns{display:flex;gap:14px;flex-wrap:wrap}
 .btn-fill{padding:15px 44px;background:#f3f1ea;color:#000;border:none;font-family:Georgia,serif;font-size:15px;letter-spacing:.06em;cursor:pointer;border-radius:3px;transition:background .2s}
 .btn-fill:hover{background:#fff}
 .btn-outline{padding:15px 44px;border:1px solid rgba(243,241,234,0.22);font-family:Georgia,serif;font-size:15px;letter-spacing:.06em;border-radius:3px;color:#f3f1ea;display:inline-block;transition:border-color .2s}
 .btn-outline:hover{border-color:rgba(243,241,234,0.6)}
-.hero-fine{font-size:10px;letter-spacing:.2em;text-transform:uppercase;opacity:.18;margin-top:22px}
+.hero-fine{font-size:10px;letter-spacing:.2em;text-transform:uppercase;opacity:.55;margin-top:22px}
 
 /* TICKER */
 .ticker{overflow:hidden;border-top:1px solid rgba(243,241,234,0.07);border-bottom:1px solid rgba(243,241,234,0.07);padding:13px 0}
@@ -177,10 +177,10 @@ a{color:inherit;text-decoration:none}
 
 /* SUBSCRIBE */
 .sub-wrap{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:0 80px;align-items:start}
-.sub-eyebrow{font-size:10px;letter-spacing:.4em;text-transform:uppercase;opacity:.3;margin-bottom:20px}
+.sub-eyebrow{font-size:10px;letter-spacing:.4em;text-transform:uppercase;color:#f3f1ea;margin-bottom:20px}
 .sub-headline{font-size:clamp(36px,5vw,64px);font-weight:700;line-height:.95;letter-spacing:-.02em;margin-bottom:24px}
 .sub-outline{color:transparent;-webkit-text-stroke:1px rgba(243,241,234,0.2)}
-.sub-desc{font-size:16px;opacity:.38;line-height:1.7}
+.sub-desc{font-size:16px;opacity:.6;line-height:1.7}
 .sub-form{display:flex;flex-direction:column;gap:10px;padding-top:4px}
 .sub-input{width:100%;padding:15px 18px;background:rgba(243,241,234,0.05);border:1px solid rgba(243,241,234,0.12);border-radius:8px;color:#f3f1ea;font-family:Georgia,serif;font-size:15px;outline:none;transition:border-color .2s}
 .sub-input:focus{border-color:rgba(243,241,234,0.4)}
@@ -200,10 +200,10 @@ select.sub-input option{background:#111;color:#f3f1ea}
 
 /* FOOTER */
 .footer{padding:48px 40px;text-align:center}
-.footer-logo{font-size:13px;letter-spacing:.4em;text-transform:uppercase;opacity:.28;margin-bottom:18px}
-.footer-links{display:flex;justify-content:center;gap:28px;font-size:10px;letter-spacing:.2em;text-transform:uppercase;opacity:.18;flex-wrap:wrap;margin-bottom:18px}
-.footer-links a:hover{opacity:.4}
-.footer-copy{font-size:10px;letter-spacing:.12em;text-transform:uppercase;opacity:.11}
+.footer-logo{font-size:13px;letter-spacing:.4em;text-transform:uppercase;color:#f3f1ea;margin-bottom:18px}
+.footer-links{display:flex;justify-content:center;gap:28px;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#f3f1ea;opacity:.7;flex-wrap:wrap;margin-bottom:18px}
+.footer-links a:hover{opacity:1}
+.footer-copy{font-size:10px;letter-spacing:.12em;text-transform:uppercase;opacity:.4}
 
 /* FIRE MODE */
 .fire-btn{position:fixed;bottom:24px;right:24px;z-index:300;display:flex;align-items:center;gap:8px;padding:10px 18px;background:rgba(243,241,234,0.08);border:1px solid rgba(243,241,234,0.2);border-radius:999px;color:#f3f1ea;font-family:Georgia,serif;font-size:12px;letter-spacing:.15em;text-transform:uppercase;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
@@ -314,7 +314,7 @@ select.sub-input option{background:#111;color:#f3f1ea}
     <button class="curator-nav-btn curator-nav-prev" onclick="scrollCurators(-1)" aria-label="Previous">&#8592;</button>
     ${curators.length === 1 ? `
     <div style="display:flex;flex-direction:column;align-items:center;padding:0 40px;position:relative">
-      <div style="font-size:clamp(40px,6vw,80px);font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(243,241,234,0.13);text-align:center;line-height:1;margin-bottom:16px;pointer-events:none;user-select:none;font-family:Georgia,serif;text-shadow:0 0 40px rgba(232,184,75,0.08)">FOUNDING CURATOR</div>
+      <div style="font-size:clamp(40px,6vw,80px);font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(243,241,234,0.28);text-align:center;line-height:1;margin-bottom:16px;pointer-events:none;user-select:none;font-family:Georgia,serif;text-shadow:0 0 60px rgba(232,184,75,0.12)">FOUNDING CURATOR</div>
       ${(c => `
       <div class="curator-card" onclick="openCuratorModal(${c.id})" style="cursor:pointer;width:340px;border-color:rgba(232,184,75,0.18);box-shadow:0 0 80px rgba(232,184,75,0.05)">
         ${c.image_url
