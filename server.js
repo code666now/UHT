@@ -1669,10 +1669,10 @@ app.delete('/api/genre-submissions/:id', async (req, res) => {
 // ── GET /drop/curator/:slug ──────────────────────────────────────────────────
 app.get('/drop/curator/:slug', async (req, res) => {
   if(req.query.ref !== 'sms') return res.redirect('/?src=drop#subscribe');
-  const slug = req.params.slug.toLowerCase();
+  const slug = req.params.slug.toLowerCase().replace(/-/g, '');
   try {
     const curatorRes = await db.query(
-      `SELECT * FROM curators WHERE LOWER(REPLACE(name,' ','-'))=$1 LIMIT 1`,
+      `SELECT * FROM curators WHERE LOWER(REPLACE(name,' ',''))=$1 LIMIT 1`,
       [slug]
     );
     if (!curatorRes.rows.length) return res.status(404).send('<h1>Curator not found.</h1>');

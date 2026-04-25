@@ -102,7 +102,7 @@ async function runCuratorDrop() {
 // Week 1: intro message ("Meet the curator"). Week 2-4: shorter drop notice.
 function buildCuratorMessage(song, curatorName, curatorImage, curatorMonth) {
   const base = process.env.BASE_URL || '';
-  const slug = curatorName.toLowerCase().replace(/\s+/g, '-');
+  const slug = curatorName.toLowerCase().replace(/\s+/g, '');
   const link = base ? `${base}/drop/curator/${slug}?ref=sms` : null;
   const firstName = curatorName.split(' ')[0];
   const month = curatorMonth || 'this month';
