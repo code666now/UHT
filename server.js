@@ -36,7 +36,7 @@ app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "pu
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr23-v4' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr23-v5' });
 });
 
 // ── GET / — Home page ─────────────────────────────────────────────────────────
@@ -314,7 +314,7 @@ select.sub-input option{background:#111;color:#f3f1ea}
     <button class="curator-nav-btn curator-nav-prev" onclick="scrollCurators(-1)" aria-label="Previous">&#8592;</button>
     ${curators.length === 1 ? `
     <div style="display:flex;flex-direction:column;align-items:center;padding:0 40px;position:relative">
-      <div style="font-size:clamp(48px,7vw,96px);font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(243,241,234,0.03);text-align:center;line-height:1;margin-bottom:-32px;pointer-events:none;user-select:none;font-family:Georgia,serif">FOUNDING CURATOR</div>
+      <div style="font-size:clamp(40px,6vw,80px);font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(243,241,234,0.13);text-align:center;line-height:1;margin-bottom:16px;pointer-events:none;user-select:none;font-family:Georgia,serif;text-shadow:0 0 40px rgba(232,184,75,0.08)">FOUNDING CURATOR</div>
       ${(c => `
       <div class="curator-card" onclick="openCuratorModal(${c.id})" style="cursor:pointer;width:340px;border-color:rgba(232,184,75,0.18);box-shadow:0 0 80px rgba(232,184,75,0.05)">
         ${c.image_url
