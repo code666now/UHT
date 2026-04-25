@@ -36,7 +36,7 @@ app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "pu
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr24-v4-motion' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr24-v5' });
 });
 
 // ── GET / — Home page ─────────────────────────────────────────────────────────
@@ -327,17 +327,17 @@ select.sub-input option{background:#111;color:#f3f1ea}
 .hero-btns{opacity:0;animation:uht-fadeUp .65s cubic-bezier(.16,1,.3,1) both;animation-delay:.78s}
 .hero-fine{opacity:0;animation:uht-fadeUp .5s ease both;animation-delay:.95s}
 
-/* Scroll-reveal base */
-.reveal{opacity:0;transform:translateY(30px);transition:opacity .75s cubic-bezier(.16,1,.3,1),transform .75s cubic-bezier(.16,1,.3,1)}
-.reveal.in{opacity:1;transform:translateY(0)}
+/* Scroll-reveal base — only active when JS has run (.js-go on <html>) */
+.js-go .reveal{opacity:0;transform:translateY(30px);transition:opacity .75s cubic-bezier(.16,1,.3,1),transform .75s cubic-bezier(.16,1,.3,1)}
+.js-go .reveal.in{opacity:1;transform:translateY(0)}
 
-/* Stagger container — children animate in sequence */
-.stagger>*{opacity:0;transform:translateY(22px);transition:opacity .65s cubic-bezier(.16,1,.3,1),transform .65s cubic-bezier(.16,1,.3,1)}
-.stagger.in>*:nth-child(1){opacity:1;transform:none;transition-delay:.04s}
-.stagger.in>*:nth-child(2){opacity:1;transform:none;transition-delay:.13s}
-.stagger.in>*:nth-child(3){opacity:1;transform:none;transition-delay:.22s}
-.stagger.in>*:nth-child(4){opacity:1;transform:none;transition-delay:.31s}
-.stagger.in>*:nth-child(5){opacity:1;transform:none;transition-delay:.40s}
+/* Stagger container — only active with JS */
+.js-go .stagger>*{opacity:0;transform:translateY(22px);transition:opacity .65s cubic-bezier(.16,1,.3,1),transform .65s cubic-bezier(.16,1,.3,1)}
+.js-go .stagger.in>*:nth-child(1){opacity:1;transform:none;transition-delay:.04s}
+.js-go .stagger.in>*:nth-child(2){opacity:1;transform:none;transition-delay:.13s}
+.js-go .stagger.in>*:nth-child(3){opacity:1;transform:none;transition-delay:.22s}
+.js-go .stagger.in>*:nth-child(4){opacity:1;transform:none;transition-delay:.31s}
+.js-go .stagger.in>*:nth-child(5){opacity:1;transform:none;transition-delay:.40s}
 
 /* Genre card — enhanced hover */
 .genre-card{transition:border-color .3s ease,background .3s ease,transform .3s cubic-bezier(.16,1,.3,1),box-shadow .3s ease}
@@ -358,8 +358,8 @@ select.sub-input option{background:#111;color:#f3f1ea}
 .fc-watermark{animation:uht-float 7s ease-in-out infinite}
 
 /* Featured video — scale in on reveal */
-.featured-video{opacity:0;transform:scale(.975);transition:opacity .9s cubic-bezier(.16,1,.3,1),transform .9s cubic-bezier(.16,1,.3,1)}
-.featured-video.in{opacity:1;transform:scale(1)}
+.js-go .featured-video{opacity:0;transform:scale(.975);transition:opacity .9s cubic-bezier(.16,1,.3,1),transform .9s cubic-bezier(.16,1,.3,1)}
+.js-go .featured-video.in{opacity:1;transform:scale(1)}
 
 /* Subscribe button — pulse when ready */
 .sub-btn.ready{animation:uht-pulse 2.4s ease infinite}
@@ -372,12 +372,12 @@ select.sub-input option{background:#111;color:#f3f1ea}
 .ticker-rev .ticker-track{animation:uht-marqueeRev 38s linear infinite}
 
 /* Sec-line reveal */
-.sec-line{transform-origin:left;transform:scaleX(0);transition:transform .9s cubic-bezier(.16,1,.3,1) .2s}
-.sec-head.in .sec-line{transform:scaleX(1)}
+.js-go .sec-line{transform-origin:left;transform:scaleX(0);transition:transform .9s cubic-bezier(.16,1,.3,1) .2s}
+.js-go .sec-head.in .sec-line{transform:scaleX(1)}
 
 /* Footer fade */
-.footer{opacity:0;transition:opacity .8s ease}
-.footer.in{opacity:1}
+.js-go .footer{opacity:0;transition:opacity .8s ease}
+.js-go .footer.in{opacity:1}
 
 /* Custom cursor (desktop only) */
 @media(hover:hover){
@@ -675,6 +675,8 @@ ${fd && fdYtId ? `
 <div id="fireOverlay" class="fire-overlay" style="display:none"></div>
 
 <script>
+// Signal JS is running — activates all motion CSS
+document.documentElement.classList.add('js-go');
 // ── Curator drag + touch scroll ──
 (function(){
   var t=document.getElementById('curatorTrack');
