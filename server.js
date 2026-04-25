@@ -36,7 +36,7 @@ app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "pu
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr24-v9' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr24-v10' });
 });
 
 // ── GET / — Home page ─────────────────────────────────────────────────────────
@@ -392,7 +392,7 @@ select.sub-input option{background:#111;color:#f3f1ea}
 
 /* Custom cursor — HIT emoji (desktop only) */
 @media(hover:hover){
-  body,a,button,input,select,textarea,label,[onclick]{cursor:none!important}
+  *{cursor:none!important}
   .uht-cursor{pointer-events:none;position:fixed;top:0;left:0;z-index:9999;font-size:22px;line-height:1;margin:-11px 0 0 -4px;transition:opacity .2s;user-select:none;filter:drop-shadow(0 1px 4px rgba(0,0,0,0.5))}
   .uht-cursor.hover{font-size:30px}
   .uht-cursor.hidden{opacity:0}
