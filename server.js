@@ -36,7 +36,7 @@ app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "pu
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr24-v13' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr24-v14' });
 });
 
 // ── GET / — Home page ─────────────────────────────────────────────────────────
@@ -392,7 +392,7 @@ select.sub-input option{background:#111;color:#f3f1ea}
 
 /* Custom cursor — 🎯 emoji */
 *{cursor:none!important}
-.uht-cursor{display:none;pointer-events:none;position:fixed;top:0;left:0;z-index:9999;font-size:22px;line-height:1;user-select:none;filter:drop-shadow(0 1px 4px rgba(0,0,0,0.5));transform:translate(-50%,-50%);transition:font-size .1s}
+.uht-cursor{display:none;pointer-events:none;position:fixed;top:0;left:0;z-index:2147483647;font-size:22px;line-height:1;user-select:none;transform:translate(-50%,-50%)}
 </style>
 </head>
 <body>
@@ -915,14 +915,14 @@ function spawnEmbers(){
 (function(){
   var cur=document.getElementById('uhtCursor');
   if(!cur)return;
-  document.addEventListener('mousemove',function(e){
-    cur.style.display='block';
+  window.addEventListener('mousemove',function(e){
     cur.style.left=e.clientX+'px';
     cur.style.top=e.clientY+'px';
+    cur.style.display='block';
   });
-  document.addEventListener('mouseleave',function(){cur.style.display='none';});
+  window.addEventListener('mouseleave',function(){cur.style.display='none';});
   document.querySelectorAll('a,button,.genre-card,.curator-card').forEach(function(el){
-    el.addEventListener('mouseenter',function(){cur.style.fontSize='30px';});
+    el.addEventListener('mouseenter',function(){cur.style.fontSize='32px';});
     el.addEventListener('mouseleave',function(){cur.style.fontSize='22px';});
   });
 })();
