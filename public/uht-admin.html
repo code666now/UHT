@@ -319,7 +319,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
       <div class="section-header"><div class="section-title">Vote Results</div></div>
       <div class="table-wrap"><table>
         <thead><tr><th>Phone</th><th>Name</th><th>Email</th><th>Song</th><th>Artist</th><th>Vote</th><th>Date</th></tr></thead>
-        <tbody id="votes-tbody"><tr class="empty-row"><td colspan="5">Loading…</td></tr></tbody>
+        <tbody id="votes-tbody"><tr class="empty-row"><td colspan="7">Loading…</td></tr></tbody>
       </table></div>
     </div>
 
@@ -826,11 +826,15 @@ async function loadVotes() {
     const {votes} = await api('GET','/api/votes');
     tbody.innerHTML = votes.length
       ? votes.map(v=>`<tr>
-          <td>${esc(v.phone)}</td><td>${esc(v.title)}</td><td>${esc(v.artist)}</td>
+          <td>${esc(v.phone)}</td>
+          <td>${esc(v.name||'—')}</td>
+          <td>${esc(v.email||'—')}</td>
+          <td>${esc(v.title)}</td>
+          <td>${esc(v.artist)}</td>
           <td><span class="tag tag-${v.vote}">${v.vote.toUpperCase()}</span></td>
           <td>${fmtDate(v.updated_at)}</td>
         </tr>`).join('')
-      : '<tr class="empty-row"><td colspan="5">No votes yet.</td></tr>';
+      : '<tr class="empty-row"><td colspan="7">No votes yet.</td></tr>';
   } catch(e) { tbody.innerHTML=`<tr class="empty-row"><td colspan="5">${esc(e.message)}</td></tr>`; }
 }
 

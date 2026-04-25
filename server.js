@@ -2587,7 +2587,7 @@ app.get('/api/deliveries', async (req, res) => {
 app.get('/api/votes', async (req, res) => {
   try {
     const { rows } = await db.query(`
-      SELECT v.*, u.phone, s.title, s.artist
+      SELECT v.*, u.phone, u.name, u.email, s.title, s.artist
       FROM votes v
       JOIN users u ON u.id = v.user_id
       JOIN songs s ON s.id = v.song_id
