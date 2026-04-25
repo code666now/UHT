@@ -36,7 +36,7 @@ app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "pu
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr24-v14' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr24-v15' });
 });
 
 // ── GET / — Home page ─────────────────────────────────────────────────────────
@@ -392,7 +392,7 @@ select.sub-input option{background:#111;color:#f3f1ea}
 
 /* Custom cursor — 🎯 emoji */
 *{cursor:none!important}
-.uht-cursor{display:none;pointer-events:none;position:fixed;top:0;left:0;z-index:2147483647;font-size:22px;line-height:1;user-select:none;transform:translate(-50%,-50%)}
+.uht-cursor{display:none;pointer-events:none;position:fixed;top:0;left:0;z-index:2147483647;font-size:22px;line-height:1;user-select:none;will-change:transform;isolation:isolate}
 </style>
 </head>
 <body>
@@ -916,8 +916,7 @@ function spawnEmbers(){
   var cur=document.getElementById('uhtCursor');
   if(!cur)return;
   window.addEventListener('mousemove',function(e){
-    cur.style.left=e.clientX+'px';
-    cur.style.top=e.clientY+'px';
+    cur.style.transform='translate('+(e.clientX-11)+'px,'+(e.clientY-11)+'px)';
     cur.style.display='block';
   });
   window.addEventListener('mouseleave',function(){cur.style.display='none';});
