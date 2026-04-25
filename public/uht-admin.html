@@ -223,6 +223,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
       <div class="nav-item" data-panel="subscribers"><span class="icon">◷</span> Subscribers</div>
       <div class="nav-item" data-panel="votes"><span class="icon">◈</span> Votes</div>
       <div class="nav-item" data-panel="messages"><span class="icon">✉</span> Messages</div>
+      <div class="nav-item" data-panel="featured"><span class="icon">▶</span> Featured Drop</div>
       <div class="nav-item" data-panel="submissions"><span class="icon">♫</span> Submissions</div>
     </nav>
     <div class="sidebar-footer">
@@ -349,6 +350,23 @@ tr:hover td{background:rgba(255,255,255,.025)}
         <thead><tr><th>To</th><th>Message</th><th>Status</th><th>Sent At</th></tr></thead>
         <tbody id="messages-tbody"><tr class="empty-row"><td colspan="4">No messages sent yet.</td></tr></tbody>
       </table></div>
+    </div>
+
+    <!-- Featured Drop Panel -->
+    <div class="panel" id="panel-featured">
+      <div class="section-header"><div class="section-title">Featured Drop</div></div>
+      <div style="max-width:560px;padding:24px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)">
+        <p style="font-size:12px;color:var(--muted);margin-bottom:20px;line-height:1.7">This controls the featured video section on the homepage. Paste a YouTube URL and it will embed automatically.</p>
+        <div class="field"><label>YouTube URL *</label><input type="url" id="fd-youtube" placeholder="https://youtube.com/watch?v=..." style="width:100%"></div>
+        <div class="field"><label>Spotify URL <span style="color:var(--muted)">(optional)</span></label><input type="url" id="fd-spotify" placeholder="https://open.spotify.com/track/..." style="width:100%"></div>
+        <div class="field"><label>Artist</label><input type="text" id="fd-artist" placeholder="Guns N' Roses" style="width:100%"></div>
+        <div class="field"><label>Song Title</label><input type="text" id="fd-title" placeholder="Sweet Child O' Mine" style="width:100%"></div>
+        <div class="field"><label>Curator Note <span style="color:var(--muted)">(2–4 words)</span></label><input type="text" id="fd-note" placeholder="Pure guitar perfection" style="width:100%"></div>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:8px">
+          <button class="btn btn-primary" onclick="saveFeaturedDrop()">Save &amp; Publish</button>
+          <span id="fd-status" style="font-size:11px;color:var(--muted)"></span>
+        </div>
+      </div>
     </div>
 
     <!-- Curator Submissions Panel — FIXED -->
@@ -1429,6 +1447,7 @@ const panelMeta={
   votes:{title:'Vote Results',sub:'HIT vs DENIED breakdown'},
   submissions:{title:'Curator Submissions',sub:'Songs submitted by curators'},
   messages:{title:'Messages',sub:'SMS drops and logs'},
+  featured:{title:'Featured Drop',sub:'Homepage video section'},
 };
 document.querySelectorAll('.nav-item').forEach(item=>{
   item.addEventListener('click',()=>{
@@ -1442,6 +1461,7 @@ document.querySelectorAll('.nav-item').forEach(item=>{
     document.getElementById('topbar-sub').textContent=meta.sub||'';
     if (name === 'submissions') loadSubmissionsPanel();
     if (name === 'messages') loadMessages();
+    if (name === 'featured') loadFeaturedDrop();
   });
 });
 
@@ -1503,6 +1523,39 @@ function normalizePhone(raw) {
   if (digits.length === 10) return '+1' + digits;
   if (digits.length === 11 && digits.startsWith('1')) return '+' + digits;
   return '+' + digits;
+}
+
+// ── Featured Drop ─────────────────────────────────────────────
+async function loadFeaturedDrop() {
+  try {
+    const data = await api('GET', '/api/featured-drop');
+    if (data.youtube_url) document.getElementById('fd-youtube').value = data.youtube_url || '';
+    if (data.spotify_url) document.getElementById('fd-spotify').value = data.spotify_url || '';
+    if (data.artist)      document.getElementById('fd-artist').value  = data.artist || '';
+    if (data.title)       document.getElementById('fd-title').value   = data.title || '';
+    if (data.curator_note) document.getElementById('fd-note').value   = data.curator_note || '';
+    if (data.updated_at) document.getElementById('fd-status').textContent = 'Last saved: ' + fmtDate(data.updated_at);
+  } catch(e) { /* first time — no row yet, fine */ }
+}
+
+async function saveFeaturedDrop() {
+  const youtube_url  = document.getElementById('fd-youtube').value.trim();
+  const spotify_url  = document.getElementById('fd-spotify').value.trim();
+  const artist       = document.getElementById('fd-artist').value.trim();
+  const title        = document.getElementById('fd-title').value.trim();
+  const curator_note = document.getElementById('fd-note').value.trim();
+  if (!youtube_url) return toast('YouTube URL required.', 'err');
+  const st = document.getElementById('fd-status');
+  st.textContent = 'Saving…';
+  try {
+    await api('PUT', '/api/featured-drop', { youtube_url, spotify_url: spotify_url||null, artist, title, curator_note });
+    st.style.color = 'var(--green)';
+    st.textContent = '✓ Published — homepage updated.';
+    toast('Featured drop saved!', 'ok');
+  } catch(e) {
+    st.style.color = 'var(--accent)';
+    st.textContent = 'Error: ' + e.message;
+  }
 }
 
 // ── Boot ──────────────────────────────────────────────────────

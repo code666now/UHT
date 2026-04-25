@@ -36,13 +36,13 @@ app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "pu
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr24-v1' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr24-v2' });
 });
 
 // ── GET / — Home page ─────────────────────────────────────────────────────────
 app.get('/', async (req, res) => {
   try {
-    const [genresResult, curatorsResult, currentDropsResult, communityDropResult] = await Promise.all([
+    const [genresResult, curatorsResult, currentDropsResult, communityDropResult, featuredDropResult] = await Promise.all([
       db.query('SELECT id, name FROM genres ORDER BY name ASC'),
       db.query('SELECT id, name, bio, image_url, instagram, curator_month FROM curators ORDER BY name ASC'),
       // Latest drop per genre
@@ -57,10 +57,14 @@ app.get('/', async (req, res) => {
         SELECT title, artist FROM genre_submissions
         WHERE is_community_pick = TRUE
         ORDER BY drop_date DESC NULLS LAST, created_at DESC LIMIT 1
-      `)
+      `),
+      // Featured drop
+      db.query('SELECT * FROM featured_drop WHERE id=1').catch(() => ({ rows: [] }))
     ]);
     const genres = genresResult.rows;
     const curators = curatorsResult.rows;
+    const fd = featuredDropResult.rows[0] || null;
+    const fdYtId = fd && fd.youtube_url ? (fd.youtube_url.match(/(?:v=|youtu\.be\/)([^&?/]+)/) || [])[1] : null;
 
     // Build current drop lookup: genre_key -> {title, artist}
     const currentDrops = {};
@@ -83,8 +87,6 @@ app.get('/', async (req, res) => {
       { key: 'community', emoji: '🃏', label: 'Community', path: '/drop/community', id: null }
     ].filter((g, i, arr) => g.label && arr.findIndex(x => x.key === g.key) === i);
 
-    // Pick first available drop for sample hit section (no extra query — reuses currentDrops)
-    const featuredDrop = allGenres.map(g => currentDrops[g.key] ? { ...currentDrops[g.key], genre: g } : null).find(Boolean);
 
     res.send(`<!DOCTYPE html>
 <html lang="en">
@@ -121,16 +123,22 @@ a{color:inherit;text-decoration:none}
 .btn-outline:hover{border-color:rgba(243,241,234,0.6)}
 .btn-text-link{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:rgba(243,241,234,0.55);text-decoration:none;display:inline-flex;align-items:center;gap:6px;padding:20px 4px;transition:color .2s;font-family:Georgia,serif;border:none;background:none;cursor:pointer}
 .btn-text-link:hover{color:#f3f1ea}
-.sample-hit{padding:64px 40px;border-top:1px solid rgba(243,241,234,0.07);border-bottom:1px solid rgba(243,241,234,0.07)}
-.sample-inner{max-width:900px;margin:0 auto;display:grid;grid-template-columns:1fr auto;gap:32px;align-items:center}
-.sample-genre{font-size:10px;letter-spacing:.35em;text-transform:uppercase;color:rgba(243,241,234,0.45);margin-bottom:14px}
-.sample-title{font-size:clamp(32px,5vw,58px);font-weight:700;letter-spacing:-.02em;line-height:1.05;margin-bottom:10px}
-.sample-artist{font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:rgba(243,241,234,0.5);margin-bottom:24px}
-.sample-listen{display:inline-flex;align-items:center;gap:8px;padding:13px 28px;border:1px solid rgba(243,241,234,0.28);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#f3f1ea;font-family:Georgia,serif;transition:all .2s}
-.sample-listen:hover{background:rgba(243,241,234,0.06);border-color:rgba(243,241,234,0.5)}
-.sample-ghost{font-size:clamp(80px,12vw,148px);font-weight:700;color:rgba(243,241,234,0.04);letter-spacing:-.03em;line-height:1;user-select:none;pointer-events:none}
-.curator-helper{font-size:13px;color:rgba(243,241,234,0.5);text-align:center;margin-top:18px;font-style:italic}
-@media(max-width:768px){.sample-inner{grid-template-columns:1fr}.sample-ghost{display:none}.btn-fill.btn-primary{font-size:16px;padding:18px 32px;width:100%;text-align:center}}
+.featured-section{padding:72px 40px;border-top:1px solid rgba(243,241,234,0.07)}
+.featured-inner{max-width:860px;margin:0 auto}
+.featured-video{width:100%;aspect-ratio:16/9;background:#0a0a0a;margin-bottom:28px;overflow:hidden}
+.featured-video iframe{width:100%;height:100%;border:none;display:block}
+.featured-meta{display:flex;flex-direction:column;gap:4px;margin-bottom:20px}
+.featured-artist{font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:rgba(243,241,234,0.55)}
+.featured-title{font-size:clamp(22px,3.5vw,36px);font-weight:700;letter-spacing:-.01em;line-height:1.1}
+.featured-note{font-size:13px;font-style:italic;color:rgba(243,241,234,0.5);margin-top:4px}
+.featured-sent{font-size:10px;letter-spacing:.28em;text-transform:uppercase;color:rgba(243,241,234,0.3);margin-bottom:20px}
+.featured-spotify{font-size:12px;color:rgba(243,241,234,0.45);margin-bottom:28px;display:block}
+.featured-spotify:hover{color:#f3f1ea}
+.featured-cta{display:inline-flex;align-items:center;padding:16px 40px;background:#f3f1ea;color:#000;border:none;font-family:Georgia,serif;font-size:15px;letter-spacing:.06em;cursor:pointer;transition:background .2s}
+.featured-cta:hover{background:#fff}
+.curator-helper{font-size:13px;color:rgba(243,241,234,0.55);text-align:center;margin-top:18px;font-style:italic}
+.curator-est{font-size:9px;letter-spacing:.4em;text-transform:uppercase;color:rgba(243,241,234,0.5);margin-top:12px;font-family:Georgia,serif;text-align:center}
+@media(max-width:768px){.featured-section{padding:48px 20px}.btn-fill.btn-primary{font-size:16px;padding:18px 32px;width:100%;text-align:center}}
 .hero-fine{font-size:10px;letter-spacing:.2em;text-transform:uppercase;opacity:.55;margin-top:22px}
 
 /* TICKER */
@@ -327,7 +335,7 @@ select.sub-input option{background:#111;color:#f3f1ea}
     <div class="sec-line"></div>
   </div>
   <div class="curator-carousel-wrap" style="margin-top:32px">
-    <button class="curator-nav-btn curator-nav-prev" onclick="scrollCurators(-1)" aria-label="Previous">&#8592;</button>
+    ${curators.length > 1 ? `<button class="curator-nav-btn curator-nav-prev" onclick="scrollCurators(-1)" aria-label="Previous">&#8592;</button>` : ''}
     ${curators.length === 1 ? `
     <div style="display:flex;flex-direction:column;align-items:center;padding:0 40px;position:relative">
       <div style="font-size:clamp(40px,6vw,80px);font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(243,241,234,0.28);text-align:center;line-height:1;margin-bottom:16px;pointer-events:none;user-select:none;font-family:Georgia,serif;text-shadow:0 0 60px rgba(232,184,75,0.12)">FOUNDING CURATOR</div>
@@ -347,7 +355,7 @@ select.sub-input option{background:#111;color:#f3f1ea}
         </div>
       </div>
       <div class="curator-helper">Follow ${c.name.split(' ')[0]} to get his weekly pick every Monday.</div>
-      <div style="font-size:9px;letter-spacing:.4em;text-transform:uppercase;color:rgba(243,241,234,0.16);margin-top:12px;font-family:Georgia,serif">Est. ${c.curator_month || 'May 2026'} · Undeniable Hit Theory</div>
+      <div class="curator-est">Est. ${c.curator_month || 'May 2026'} · Undeniable Hit Theory</div>
       `)(curators[0])}
     </div>
     ` : `
@@ -367,27 +375,29 @@ select.sub-input option{background:#111;color:#f3f1ea}
       </div>`).join('')}
     </div>
     `}
-    <button class="curator-nav-btn curator-nav-next" onclick="scrollCurators(1)" aria-label="Next">&#8594;</button>
+    ${curators.length > 1 ? `<button class="curator-nav-btn curator-nav-next" onclick="scrollCurators(1)" aria-label="Next">&#8594;</button>` : ''}
   </div>
 </section>
 
-<!-- SAMPLE HIT -->
-${featuredDrop ? `
-<section class="sample-hit">
-  <div style="max-width:900px;margin:0 auto">
-    <div class="sec-head" style="margin-bottom:36px">
-      <span class="sec-label">Sample Drop</span>
+<!-- FEATURED DROP -->
+${fd && fdYtId ? `
+<section class="featured-section" id="featured">
+  <div class="featured-inner">
+    <div class="sec-head" style="margin-bottom:32px">
+      <span class="sec-label">Last Week's Undeniable Rock Hit</span>
       <div class="sec-line"></div>
     </div>
-    <div class="sample-inner">
-      <div>
-        <div class="sample-genre">${featuredDrop.genre.emoji} ${featuredDrop.genre.label.toUpperCase()}</div>
-        <div class="sample-title">${featuredDrop.title}</div>
-        <div class="sample-artist">${featuredDrop.artist}</div>
-        <a class="sample-listen" href="${featuredDrop.genre.path}">Listen ↗</a>
-      </div>
-      <div class="sample-ghost">HIT?</div>
+    <div class="featured-video">
+      <iframe src="https://www.youtube.com/embed/${fdYtId}?rel=0&modestbranding=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>
     </div>
+    <div class="featured-meta">
+      <div class="featured-artist">${fd.artist || ''}</div>
+      <div class="featured-title">${fd.title || ''}</div>
+      ${fd.curator_note ? `<div class="featured-note">"${fd.curator_note}"</div>` : ''}
+    </div>
+    <div class="featured-sent">Sent to subscribers last week</div>
+    ${fd.spotify_url ? `<a class="featured-spotify" href="${fd.spotify_url}" target="_blank" rel="noopener">Prefer Spotify? Listen here ↗</a>` : ''}
+    <button class="featured-cta" onclick="document.getElementById('subscribe').scrollIntoView({behavior:'smooth'})">Get Weekly Hits by Text</button>
   </div>
 </section>
 ` : ''}
@@ -2656,6 +2666,47 @@ app.post('/api/migrate-curator-fields', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 require('./curator-scheduler');
+
+// ── Featured Drop table (auto-create on startup) ──────────────────────────────
+db.query(`
+  CREATE TABLE IF NOT EXISTS featured_drop (
+    id          INTEGER PRIMARY KEY DEFAULT 1,
+    youtube_url TEXT,
+    spotify_url TEXT,
+    artist      TEXT,
+    title       TEXT,
+    curator_note TEXT,
+    updated_at  TIMESTAMPTZ DEFAULT NOW()
+  )
+`).catch(e => console.error('[startup] featured_drop table error:', e.message));
+
+// ── GET /api/featured-drop ────────────────────────────────────────────────────
+app.get('/api/featured-drop', async (req, res) => {
+  try {
+    const { rows } = await db.query('SELECT * FROM featured_drop WHERE id=1');
+    res.json(rows[0] || {});
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── PUT /api/featured-drop ────────────────────────────────────────────────────
+app.put('/api/featured-drop', async (req, res) => {
+  const { youtube_url, spotify_url, artist, title, curator_note } = req.body;
+  try {
+    const { rows } = await db.query(`
+      INSERT INTO featured_drop (id, youtube_url, spotify_url, artist, title, curator_note, updated_at)
+      VALUES (1, $1, $2, $3, $4, $5, NOW())
+      ON CONFLICT (id) DO UPDATE SET
+        youtube_url  = EXCLUDED.youtube_url,
+        spotify_url  = EXCLUDED.spotify_url,
+        artist       = EXCLUDED.artist,
+        title        = EXCLUDED.title,
+        curator_note = EXCLUDED.curator_note,
+        updated_at   = NOW()
+      RETURNING *
+    `, [youtube_url||null, spotify_url||null, artist||null, title||null, curator_note||null]);
+    res.json(rows[0]);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
 
 app.listen(PORT, () => {
   console.log(`\nUHT server running on port ${PORT}`);
