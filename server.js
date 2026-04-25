@@ -401,7 +401,7 @@ select.sub-input option{background:#111;color:#f3f1ea}
   <a href="/" class="nav-logo">UHT</a>
   <div class="nav-links">
     <a href="#curators">Curators</a>
-    <a href="#drops">Drops</a>
+    <a href="#drops">Genres</a>
     <a href="#how-it-works">How It Works</a>
   </div>
   <button class="nav-cta" onclick="document.getElementById('subscribe').scrollIntoView({behavior:'smooth'})">Subscribe</button>
@@ -417,7 +417,7 @@ select.sub-input option{background:#111;color:#f3f1ea}
   <p class="hero-sub">A weekly hit, curated by real people. Delivered by text.</p>
   <div class="hero-btns" style="align-items:center;gap:24px">
     <button class="btn-fill btn-primary" onclick="document.getElementById('subscribe').scrollIntoView({behavior:'smooth'})">Get Weekly Hits by Text</button>
-    <a class="btn-text-link" href="#drops">Explore drops ↓</a>
+    <a class="btn-text-link" href="#drops">Browse genres ↓</a>
   </div>
   <div class="hero-fine">Free · Text only · Unsubscribe anytime</div>
 </section>
@@ -630,7 +630,7 @@ ${fd && fdYtId ? `
   <div class="footer-logo">UHT</div>
   <div class="footer-links">
     <a href="#curators">Curators</a>
-    <a href="#drops">Drops</a>
+    <a href="#drops">Genres</a>
     <a href="#how-it-works">How It Works</a>
     <a href="/admin">Admin</a>
   </div>
@@ -906,8 +906,9 @@ function loadCuratorScorecard(id) {
       var hitRate = st.hit_rate ? parseFloat(st.hit_rate) : 0;
       var rateColor = hitRate >= 70 ? '#4ade80' : hitRate >= 40 ? '#E8B84B' : total > 0 ? '#f87171' : 'rgba(243,241,234,0.3)';
 
-      // Tier badge
-      var tierHtml = '<div style="display:inline-block;font-size:9px;letter-spacing:.28em;text-transform:uppercase;color:#E8B84B;border:1px solid rgba(232,184,75,0.3);padding:3px 10px;border-radius:2px;margin-bottom:14px">'+tier+'</div>';
+      // Tier badge + drop cadence note
+      var tierHtml = '<div style="display:inline-block;font-size:9px;letter-spacing:.28em;text-transform:uppercase;color:#E8B84B;border:1px solid rgba(232,184,75,0.3);padding:3px 10px;border-radius:2px;margin-bottom:8px">'+tier+'</div>'
+        +'<div style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(243,241,234,0.28);margin-bottom:14px">Drops every Monday</div>';
 
       // Stats row
       var statsHtml = '';
