@@ -111,7 +111,7 @@ function buildCuratorMessage(song, curatorName, curatorImage, curatorMonth) {
   let body;
   if (week === 1) {
     // Introduction drop
-    body = `Meet your Curator of the Month · ${month}\n\n${curatorName} is dropping a new hit every Monday this month. Check out his picks and vote.`;
+    body = `Curator of the Month · ${month}\n\n${firstName}'s picks are live. Vote now.`;
   } else {
     // Week 2, 3, 4 — short and direct
     body = `${month} · Week ${week}\n\n${firstName}'s new pick is live. Vote now.`;
