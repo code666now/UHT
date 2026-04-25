@@ -68,7 +68,7 @@ async function runCuratorDrop() {
 
       // Send via Twilio
       await client.messages.create({
-        from: process.env.TWILIO_PHONE_NUMBER,
+        from: process.env.TWILIO_FROM || process.env.TWILIO_PHONE_NUMBER,
         to:   sub.phone,
         body: msg,
       });
@@ -117,7 +117,7 @@ function buildCuratorMessage(song, curatorName) {
   const base = process.env.BASE_URL || '';
   if (base) {
     const slug = curatorName.toLowerCase().replace(/\s+/g, '-');
-    msg += `\n🗳 Vote: ${base}/drop/curator/${slug}`;
+    msg += `\n🗳 Vote: ${base}/drop/curator/${slug}?ref=sms`;
   } else if (song.spotify_url || song.url) {
     msg += `\n🔗 ${song.spotify_url || song.url}`;
   }
@@ -132,9 +132,9 @@ try {
   cron = require('node-cron');
   // 0 10 * * 1  =  10:00am every Monday
   cron.schedule('0 10 * * 1', () => {
-    console.log('[CuratorScheduler] Monday 10am — firing curator drop!');
+    console.log('[CuratorScheduler] Monday 10am ET — firing curator drop!');
     runCuratorDrop().catch(err => console.error('[CuratorScheduler] Drop failed:', err.message));
-  });
+  }, { scheduled: true, timezone: 'America/New_York' });
   console.log('[CuratorScheduler] Monday curator drop scheduled for 10:00am every week.');
 } catch (e) {
   console.log('[CuratorScheduler] node-cron not installed — manual drops only via POST /api/curator-drop/send');

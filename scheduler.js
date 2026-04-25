@@ -68,7 +68,7 @@ async function runWeeklyDrop() {
 
       // Send via Twilio
       await client.messages.create({
-        from: process.env.TWILIO_PHONE_NUMBER,
+        from: process.env.TWILIO_FROM || process.env.TWILIO_PHONE_NUMBER,
         to:   sub.phone,
         body: msg,
       });
@@ -101,7 +101,7 @@ function buildDropMessage(song) {
     const target = song.curator_name
       ? `/drop/curator/${song.curator_name.toLowerCase().replace(/\s+/g, '-')}`
       : `/drop/${(song.genre_name || '').toLowerCase().replace(/\s+/g, '-')}`;
-    msg += `🗳 Vote: ${base}${target}`;
+    msg += `🗳 Vote: ${base}${target}?ref=sms`;
   } else if (song.url) {
     msg += `🔗 Listen: ${song.url}`;
   }
@@ -115,9 +115,9 @@ try {
   // Cron: minute hour day month weekday
   // 0 10 * * 5  =  10:00am every Friday
   cron.schedule('0 10 * * 5', () => {
-    console.log('[Scheduler] Friday 10am — firing weekly drop!');
+    console.log('[Scheduler] Friday 10am ET — firing weekly drop!');
     runWeeklyDrop().catch(err => console.error('[Scheduler] Drop failed:', err.message));
-  });
+  }, { scheduled: true, timezone: 'America/New_York' });
   console.log('[Scheduler] Friday drop scheduled for 10:00am every week.');
 } catch (e) {
   console.log('[Scheduler] node-cron not installed — manual drops only via POST /api/drop/send');
