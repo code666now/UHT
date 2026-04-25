@@ -36,7 +36,7 @@ app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "pu
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr24-v15' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr24-v28' });
 });
 
 // ── GET / — Home page ─────────────────────────────────────────────────────────
@@ -44,7 +44,7 @@ app.get('/', async (req, res) => {
   try {
     const [genresResult, curatorsResult, currentDropsResult, communityDropResult, featuredDropResult] = await Promise.all([
       db.query('SELECT id, name FROM genres ORDER BY name ASC'),
-      db.query('SELECT id, name, bio, image_url, instagram, curator_month FROM curators ORDER BY name ASC'),
+      db.query('SELECT id, name, bio, statement, image_url, instagram, curator_month FROM curators ORDER BY name ASC'),
       // Latest drop per genre
       db.query(`
         SELECT DISTINCT ON (LOWER(genre)) LOWER(genre) AS genre_key, title, artist
@@ -262,7 +262,9 @@ select.sub-input option{background:#111;color:#f3f1ea}
 .cm-body{padding:24px 28px 32px}
 .cm-name{font-size:22px;font-weight:700;letter-spacing:.02em;margin-bottom:6px}
 .cm-bio{font-size:14px;opacity:.4;line-height:1.6;margin-bottom:6px}
-.cm-ig{font-size:10px;letter-spacing:.2em;text-transform:uppercase;opacity:.28;margin-bottom:20px}
+.cm-statement{font-family:Georgia,"Times New Roman",serif;font-size:15px;font-style:italic;color:rgba(243,241,234,0.55);line-height:1.85;margin-top:14px;margin-bottom:6px;white-space:pre-line}
+.cm-ig a{display:inline-flex;align-items:center;gap:7px;font-size:11px;letter-spacing:.1em;color:rgba(243,241,234,0.45);text-decoration:none;margin-bottom:20px;transition:color .2s}
+.cm-ig a:hover{color:#f3f1ea}
 .cm-actions{display:flex;gap:10px;align-items:center;margin-bottom:0}
 .cm-follow-btn{padding:11px 24px;background:#f3f1ea;color:#000;border:none;border-radius:6px;font-family:Georgia,serif;font-size:13px;letter-spacing:.08em;cursor:pointer;transition:all .2s}
 .cm-follow-btn:hover{background:#fff}
@@ -390,15 +392,10 @@ select.sub-input option{background:#111;color:#f3f1ea}
 .js-go .footer{opacity:0;transition:opacity .8s ease}
 .js-go .footer.in{opacity:1}
 
-/* Custom cursor — 🎯 emoji */
-*{cursor:none!important}
-.uht-cursor{display:none;pointer-events:none;position:fixed;top:0;left:0;z-index:2147483647;font-size:22px;line-height:1;user-select:none;will-change:transform;isolation:isolate}
+
 </style>
 </head>
 <body>
-<!-- Custom cursor -->
-<div class="uht-cursor" id="uhtCursor">🎯</div>
-
 <!-- NAV -->
 <nav class="nav">
   <a href="/" class="nav-logo">UHT</a>
@@ -525,7 +522,7 @@ ${fd && fdYtId ? `
       const accentMap = { rock:'#ff3b3b', pop:'#ff85c8', country:'#E8B84B', punk:'#7DF9FF', community:'#f3f1ea' };
       const accent = accentMap[g.key] || '#f3f1ea';
       return `
-    <a class="genre-card" href="${g.path}" style="border-top-color:rgba(243,241,234,0.1)" onmouseover="this.style.borderTopColor='${accent}';this.querySelector('.genre-arrow').style.color='${accent}';this.querySelector('.genre-glow').style.background='linear-gradient(to bottom,${accent}22,transparent)'" onmouseout="this.style.borderTopColor='rgba(243,241,234,0.1)';this.querySelector('.genre-arrow').style.color='inherit'">
+    <div class="genre-card" onclick="pickGenre('${g.key}')" style="border-top-color:rgba(243,241,234,0.1);cursor:pointer" onmouseover="this.style.borderTopColor='${accent}';this.querySelector('.genre-arrow').style.color='${accent}';this.querySelector('.genre-glow').style.background='linear-gradient(to bottom,${accent}22,transparent)'" onmouseout="this.style.borderTopColor='rgba(243,241,234,0.1)';this.querySelector('.genre-arrow').style.color='inherit'">
       <div class="genre-glow"></div>
       <div>
         <div class="genre-card-top">
@@ -539,7 +536,7 @@ ${fd && fdYtId ? `
           ? `<div class="genre-song">${drop.title}</div><div class="genre-artist">${drop.artist}</div>`
           : `<div class="genre-coming">Drop coming Friday</div>`}
       </div>
-    </a>`;
+    </div>`;
     }).join('')}
   </div>
 </section>
@@ -649,6 +646,7 @@ ${fd && fdYtId ? `
     <div class="cm-body">
       <div class="cm-name" id="cmName"></div>
       <div class="cm-bio"  id="cmBio"></div>
+      <div class="cm-statement" id="cmStatement"></div>
       <div class="cm-ig"   id="cmIg"></div>
       <div class="cm-actions">
         <button class="cm-follow-btn" id="cmFollowBtn" onclick="handleCuratorFollow()">+ Follow</button>
@@ -712,6 +710,21 @@ function toggleAgree(){
   document.getElementById('subBtn').className='sub-btn'+(_agreed?' ready':'');
 }
 
+function pickGenre(key) {
+  // Activate genre pill
+  switchPill('genre');
+  // Pre-select the genre in the dropdown
+  var sel = document.getElementById('subGenre');
+  if(sel) {
+    for(var i=0; i<sel.options.length; i++) {
+      if(sel.options[i].value === key) { sel.selectedIndex = i; break; }
+    }
+  }
+  // Scroll to subscribe section
+  var el = document.getElementById('subscribe');
+  if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
 function switchPill(type){
   _activePill=type;
   document.getElementById('pillGenre').className='sub-pill'+(type==='genre'?' active':'');
@@ -763,7 +776,7 @@ function handleVerify(){
 
 
 // ── Curator data (server-rendered) ──
-var _curators = ${JSON.stringify(curators.map(c => ({id:c.id,name:c.name,bio:c.bio||'',instagram:c.instagram||'',image_url:c.image_url||''})))};
+var _curators = ${JSON.stringify(curators.map(c => ({id:c.id,name:c.name,bio:c.bio||'',statement:c.statement||'',instagram:c.instagram||'',image_url:c.image_url||'',curator_month:c.curator_month||''})))};
 var _cmCuratorId = null;
 
 function openCuratorModal(id) {
@@ -772,14 +785,35 @@ function openCuratorModal(id) {
   _cmCuratorId = id;
   // Image
   var imgWrap = document.getElementById('cmImgWrap');
+  imgWrap.style.position = 'relative';
   if(c.image_url) {
-    imgWrap.innerHTML = '<img class="cm-img" src="'+c.image_url+'" alt="'+c.name+'" onerror="this.parentNode.innerHTML=\'<div class=cm-img-ph>'+initials(c.name)+'</div>\'">';
+    var img = document.createElement('img');
+    img.className = 'cm-img';
+    img.src = c.image_url;
+    img.alt = c.name;
+    img.onerror = function(){ imgWrap.innerHTML = '<div class="cm-img-ph">'+initials(c.name)+'</div>'; };
+    imgWrap.innerHTML = '';
+    imgWrap.appendChild(img);
   } else {
     imgWrap.innerHTML = '<div class="cm-img-ph">'+initials(c.name)+'</div>';
   }
+  if(c.curator_month) {
+    var badge = document.createElement('div');
+    badge.style.cssText = 'position:absolute;top:0;left:0;right:0;padding:18px 20px 40px;background:linear-gradient(rgba(0,0,0,0.72),transparent);font-family:Georgia,"Times New Roman",serif;font-size:17px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#f3f1ea;pointer-events:none;line-height:1';
+    badge.textContent = 'Curator · ' + c.curator_month;
+    imgWrap.appendChild(badge);
+  }
   document.getElementById('cmName').textContent = c.name;
   document.getElementById('cmBio').textContent = c.bio || '';
-  document.getElementById('cmIg').textContent = c.instagram ? '@'+c.instagram : '';
+  var stEl = document.getElementById('cmStatement');
+  if(stEl){ stEl.textContent = c.statement || ''; stEl.style.display = c.statement ? 'block' : 'none'; }
+  var igEl = document.getElementById('cmIg');
+  if(c.instagram) {
+    var handle = c.instagram.replace('@','');
+    igEl.innerHTML = '<a href="https://instagram.com/'+handle+'" target="_blank" rel="noopener"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>@'+handle+'</a>';
+  } else {
+    igEl.innerHTML = '';
+  }
   // Reset state
   document.getElementById('cmPhoneWrap').style.display = 'none';
   document.getElementById('cmFollowBtn').style.display = 'inline-block';
@@ -858,16 +892,53 @@ function loadCuratorScorecard(id) {
   var sc = document.getElementById('cmScorecard');
   var grid = document.getElementById('cmScoreGrid');
   sc.style.display = 'none';
-  fetch('/api/curators/'+id+'/stats')
+  fetch('/api/curators/'+id+'/scorecard')
     .then(function(r){ return r.json(); })
     .then(function(d){
       if(!d) return;
-      var hits = d.hits||0, denies = d.denies||0, total = hits+denies;
-      var hitPct = total ? Math.round(hits/total*100) : 0;
-      grid.innerHTML =
-        '<div class="cm-score-cell"><div class="cm-score-num">'+total+'</div><div class="cm-score-key">Votes</div></div>'+
-        '<div class="cm-score-cell"><div class="cm-score-num" style="color:#E8B84B">'+hitPct+'%</div><div class="cm-score-key">Hit Rate</div></div>'+
-        '<div class="cm-score-cell"><div class="cm-score-num">'+hits+'</div><div class="cm-score-key">HITs</div></div>';
+      var st = d.stats || {};
+      var subs = d.submissions || [];
+      var tier = d.tier || '🌙 Rising Curator';
+      var mega = parseInt(st.mega_hits)||0;
+      var hits = parseInt(st.hits)||0;
+      var denies = parseInt(st.denies)||0;
+      var total = parseInt(st.total)||0;
+      var hitRate = st.hit_rate ? parseFloat(st.hit_rate) : 0;
+      var rateColor = hitRate >= 70 ? '#4ade80' : hitRate >= 40 ? '#E8B84B' : total > 0 ? '#f87171' : 'rgba(243,241,234,0.3)';
+
+      // Tier badge
+      var tierHtml = '<div style="display:inline-block;font-size:9px;letter-spacing:.28em;text-transform:uppercase;color:#E8B84B;border:1px solid rgba(232,184,75,0.3);padding:3px 10px;border-radius:2px;margin-bottom:14px">'+tier+'</div>';
+
+      // Stats row
+      var statsHtml = '';
+      if(total > 0) {
+        statsHtml = '<div style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:rgba(255,255,255,0.04);border-radius:8px;margin-bottom:16px">'
+          +'<div style="flex-shrink:0"><div style="font-family:Georgia,serif;font-size:38px;font-weight:700;line-height:1;color:'+rateColor+'">'+hitRate+'%</div><div style="font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:rgba(243,241,234,0.35);margin-top:2px">Hit Rate</div></div>'
+          +'<div style="font-size:13px;color:rgba(243,241,234,0.6);line-height:2">🔥 '+mega+' Mega Hit<br>🎯 '+hits+' Hit<br>💀 '+denies+' Denied</div>'
+          +'</div>';
+      } else {
+        statsHtml = '<div style="font-size:11px;color:rgba(243,241,234,0.25);letter-spacing:.15em;text-transform:uppercase;margin-bottom:16px">No votes yet</div>';
+      }
+
+      // Archive picks
+      var archiveHtml = '';
+      if(subs.length) {
+        archiveHtml += '<div style="font-size:9px;letter-spacing:.32em;text-transform:uppercase;color:rgba(243,241,234,0.2);margin-bottom:14px">Archive · Picks</div>';
+        subs.forEach(function(s) {
+          var smega = parseInt(s.mega_hits)||0, shit = parseInt(s.hits)||0, sdeny = parseInt(s.denies)||0;
+          archiveHtml += '<div style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.05)">'
+            +'<div style="font-size:9px;letter-spacing:.25em;text-transform:uppercase;color:rgba(243,241,234,0.22);margin-bottom:4px">Week '+(s.week_number||'?')+' of 4</div>'
+            +'<div style="font-family:Georgia,serif;font-size:18px;font-weight:700;color:#f3f1ea;margin-bottom:2px">'+s.title+'</div>'
+            +'<div style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:rgba(243,241,234,0.35);margin-bottom:6px">'+s.artist+'</div>'
+            +(s.curator_note ? '<div style="font-family:Georgia,serif;font-size:13px;font-style:italic;color:rgba(243,241,234,0.35);line-height:1.7;margin-bottom:6px">&ldquo;'+s.curator_note+'&rdquo;</div>' : '')
+            +'<div style="font-size:11px;color:rgba(243,241,234,0.25)">🔥 '+smega+' · 🎯 '+shit+' · 💀 '+sdeny+'</div>'
+            +'</div>';
+        });
+      }
+
+      // Override 3-col grid — use full-width single column
+      grid.style.display = 'block';
+      grid.innerHTML = tierHtml + statsHtml + archiveHtml;
       sc.style.display = 'block';
     }).catch(function(){});
 }
@@ -911,21 +982,6 @@ function spawnEmbers(){
   });
 })();
 
-// ── Custom cursor — 🎯 emoji ──────────────────────────────────────
-(function(){
-  var cur=document.getElementById('uhtCursor');
-  if(!cur)return;
-  window.addEventListener('mousemove',function(e){
-    cur.style.transform='translate('+(e.clientX-11)+'px,'+(e.clientY-11)+'px)';
-    cur.style.display='block';
-  });
-  window.addEventListener('mouseleave',function(){cur.style.display='none';});
-  document.querySelectorAll('a,button,.genre-card,.curator-card').forEach(function(el){
-    el.addEventListener('mouseenter',function(){cur.style.fontSize='32px';});
-    el.addEventListener('mouseleave',function(){cur.style.fontSize='22px';});
-  });
-})();
-
 // ── Smooth anchor scroll ──────────────────────────────────────────
 document.querySelectorAll('a[href^="#"]').forEach(function(a){
   a.addEventListener('click',function(e){
@@ -959,7 +1015,7 @@ app.get('/api/genres', async (req, res) => {
 // GET /api/curators  — for future curator-select UI
 app.get('/api/curators', async (req, res) => {
   try {
-    const { rows } = await db.query('SELECT id, name, bio, image_url, instagram FROM curators ORDER BY name ASC');
+    const { rows } = await db.query('SELECT id, name, bio, statement, image_url, instagram, curator_month FROM curators ORDER BY name ASC');
     res.json({ curators: rows });
   } catch (err) {
     console.error('[API] curators error:', err.message);
@@ -1463,6 +1519,7 @@ app.delete('/api/genre-submissions/:id', async (req, res) => {
 
 // ── GET /drop/curator/:slug ──────────────────────────────────────────────────
 app.get('/drop/curator/:slug', async (req, res) => {
+  if(req.query.ref !== 'sms') return res.redirect('/?src=drop#subscribe');
   const slug = req.params.slug.toLowerCase();
   try {
     const curatorRes = await db.query(
@@ -1986,6 +2043,7 @@ app.post('/api/migrate-community-pick', async (req, res) => {
 
 // ── GET /drop/:genre ─────────────────────────────────────────────────────────
 app.get('/drop/:genre', async (req, res) => {
+  if(req.query.ref !== 'sms') return res.redirect('/?src=drop#subscribe');
   const genre = req.params.genre.toLowerCase();
   try {
     const { rows } = await db.query(
@@ -2388,11 +2446,11 @@ app.get('/api/curators-admin', async (req, res) => {
 
 // ── POST /api/curators ────────────────────────────────────────────────────────
 app.post('/api/curators', async (req, res) => {
-  const { name, bio, image_url, instagram, curator_month, monthly_theme } = req.body;
+  const { name, bio, statement, image_url, instagram, curator_month, monthly_theme } = req.body;
   if (!name) return res.status(400).json({ error: 'name required.' });
   try {
     const { rows } = await db.query(
-      `INSERT INTO curators (name, bio, image_url, instagram, curator_month, monthly_theme) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`, [name, bio || null, image_url || null, instagram || null, curator_month || null, monthly_theme || null]
+      `INSERT INTO curators (name, bio, statement, image_url, instagram, curator_month, monthly_theme) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`, [name, bio || null, statement || null, image_url || null, instagram || null, curator_month || null, monthly_theme || null]
     );
     res.json({ curator: rows[0] });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -2422,11 +2480,19 @@ app.get('/api/subscribers', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── PATCH /api/subscribers/:id  (pause/resume) ───────────────────────────────
+// ── PATCH /api/subscribers/:id  (pause/resume + genre/curator update) ────────
 app.patch('/api/subscribers/:id', async (req, res) => {
-  const { is_active } = req.body;
+  const { is_active, genre_id, curator_id } = req.body;
   try {
-    await db.query('UPDATE subscriptions SET is_active=$1 WHERE id=$2', [is_active, req.params.id]);
+    if (is_active !== undefined) {
+      await db.query('UPDATE subscriptions SET is_active=$1 WHERE id=$2', [is_active, req.params.id]);
+    }
+    if (genre_id !== undefined || curator_id !== undefined) {
+      await db.query(
+        'UPDATE subscriptions SET genre_id=$1, curator_id=$2 WHERE id=$3',
+        [genre_id || null, curator_id || null, req.params.id]
+      );
+    }
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -2534,12 +2600,12 @@ app.get('/api/votes', async (req, res) => {
 // ── PATCH /api/curators/:id ───────────────────────────────────────────────────
 app.patch('/api/curators/:id', async (req, res) => {
   console.log('PATCH body:', req.body);
-  const { name, bio, image_url, instagram, curator_month, monthly_theme } = req.body;
+  const { name, bio, statement, image_url, instagram, curator_month, monthly_theme } = req.body;
   if (!name) return res.status(400).json({ error: 'name required.' });
   try {
     const { rows } = await db.query(
-      `UPDATE curators SET name=$1, bio=$2, image_url=$3, instagram=$4, curator_month=$5, monthly_theme=$6 WHERE id=$7 RETURNING *`,
-      [name, bio || null, image_url || null, instagram || null, curator_month || null, monthly_theme || null, req.params.id]
+      `UPDATE curators SET name=$1, bio=$2, statement=$3, image_url=$4, instagram=$5, curator_month=$6, monthly_theme=$7 WHERE id=$8 RETURNING *`,
+      [name, bio || null, statement || null, image_url || null, instagram || null, curator_month || null, monthly_theme || null, req.params.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Curator not found.' });
     res.json({ curator: rows[0] });
@@ -2811,6 +2877,14 @@ app.post('/api/migrate-curator-fields', async (req, res) => {
   try {
     await db.query(`ALTER TABLE curators ADD COLUMN IF NOT EXISTS curator_month TEXT`);
     await db.query(`ALTER TABLE curators ADD COLUMN IF NOT EXISTS monthly_theme TEXT`);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── One-time migration: add statement column to curators ──────────────────────
+app.post('/api/migrate-curator-statement', async (req, res) => {
+  try {
+    await db.query(`ALTER TABLE curators ADD COLUMN IF NOT EXISTS statement TEXT`);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });

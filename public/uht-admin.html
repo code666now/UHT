@@ -658,9 +658,16 @@ tr:hover td{background:rgba(255,255,255,.025)}
   <div class="modal">
     <div class="modal-title">Edit Subscriber</div>
     <input type="hidden" id="edit-sub-user-id">
+    <input type="hidden" id="edit-sub-id">
     <div class="field"><label>Phone (read-only)</label><input type="tel" id="edit-sub-phone" readonly style="opacity:.5;cursor:not-allowed"></div>
     <div class="field"><label>Name</label><input type="text" id="edit-sub-name" placeholder="Jane Smith"></div>
     <div class="field"><label>Email</label><input type="email" id="edit-sub-email" placeholder="jane@example.com"></div>
+    <div style="border-top:1px solid var(--border);margin:14px 0 10px;padding-top:14px;font-size:11px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase">Subscription</div>
+    <small style="color:var(--muted);font-size:11px;display:block;margin-bottom:10px">Choose genre OR curator — not both.</small>
+    <div class="field-row">
+      <div class="field"><label>Genre</label><select id="edit-sub-genre"><option value="">— None —</option></select></div>
+      <div class="field"><label>Curator</label><select id="edit-sub-curator"><option value="">— None —</option></select></div>
+    </div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('edit-subscriber')">Cancel</button>
       <button class="btn btn-primary" onclick="submitEditSub()">Save Changes</button>
@@ -804,7 +811,7 @@ async function loadSubscribers() {
           <td><span class="tag ${s.is_active?'tag-active':'tag-inactive'}">${s.is_active?'active':'paused'}</span></td>
           <td>${fmtDate(s.created_at)}</td>
           <td>
-            <button class="btn" onclick="editSub(${s.user_id||s.id},'${esc(s.phone)}','${esc(s.name||'')}','${esc(s.email||'')}')">Edit</button>
+            <button class="btn" onclick="editSub(${s.id},${s.user_id||s.id},'${esc(s.phone)}','${esc(s.name||'')}','${esc(s.email||'')}',${s.genre_id||'null'},${s.curator_id||'null'})">Edit</button>
             <button class="btn" style="margin-left:4px" onclick="toggleSub(${s.id},${s.is_active})">${s.is_active?'Pause':'Resume'}</button>
             <button class="btn btn-danger" style="margin-left:4px" onclick="deleteSub(${s.id})">Remove</button>
           </td>
@@ -1051,19 +1058,39 @@ async function submitEditCurator() {
 async function deleteSub(id) { if(!confirm('Remove?')) return; try { await api('DELETE',`/api/subscribers/${id}`); toast('Removed.','ok'); loadSubscribers(); loadDashboard(); } catch(e){toast(e.message,'err');} }
 async function toggleSub(id, active) { try { await api('PATCH',`/api/subscribers/${id}`,{is_active:!active}); toast(active?'Paused.':'Resumed.','ok'); loadSubscribers(); } catch(e){toast(e.message,'err');} }
 
-function editSub(userId, phone, name, email) {
+function editSub(subId, userId, phone, name, email, genreId, curatorId) {
+  document.getElementById('edit-sub-id').value = subId;
   document.getElementById('edit-sub-user-id').value = userId;
   document.getElementById('edit-sub-phone').value = phone;
   document.getElementById('edit-sub-name').value = name;
   document.getElementById('edit-sub-email').value = email;
+
+  // Populate genre dropdown
+  var gSel = document.getElementById('edit-sub-genre');
+  gSel.innerHTML = '<option value="">— None —</option>' +
+    GENRES.map(g=>`<option value="${g.id}"${g.id==genreId?' selected':''}>${esc(g.name)}</option>`).join('');
+
+  // Populate curator dropdown
+  var cSel = document.getElementById('edit-sub-curator');
+  cSel.innerHTML = '<option value="">— None —</option>' +
+    CURATORS.map(c=>`<option value="${c.id}"${c.id==curatorId?' selected':''}>${esc(c.name)}</option>`).join('');
+
   openModal('edit-subscriber');
 }
 async function submitEditSub() {
+  const subId  = document.getElementById('edit-sub-id').value;
   const userId = document.getElementById('edit-sub-user-id').value;
   const name   = document.getElementById('edit-sub-name').value.trim();
   const email  = document.getElementById('edit-sub-email').value.trim();
+  const genreId   = document.getElementById('edit-sub-genre').value || null;
+  const curatorId = document.getElementById('edit-sub-curator').value || null;
+  if (genreId && curatorId) return toast('Choose genre OR curator, not both.', 'err');
+  if (!genreId && !curatorId) return toast('Choose at least one genre or curator.', 'err');
   try {
-    await api('PATCH', `/api/users/${userId}`, { name, email });
+    await Promise.all([
+      api('PATCH', `/api/users/${userId}`, { name, email }),
+      api('PATCH', `/api/subscribers/${subId}`, { genre_id: genreId ? +genreId : null, curator_id: curatorId ? +curatorId : null })
+    ]);
     toast('Subscriber updated.', 'ok');
     closeModal('edit-subscriber');
     loadSubscribers();
