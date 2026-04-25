@@ -79,12 +79,12 @@ app.get('/', async (req, res) => {
       pop:       { emoji: '✨', label: 'Pop',       path: '/drop/pop' },
       country:   { emoji: '🤠', label: 'Country',   path: '/drop/country' },
       punk:      { emoji: '⚡', label: 'Punk',      path: '/drop/punk' },
-      community: { emoji: '🃏', label: 'Community', path: '/drop/community' }
+      community: { emoji: '🃏', label: 'Wildcard',  path: '/drop/community' }
     };
 
     const allGenres = [
       ...genres.map(g => ({ key: g.name.toLowerCase(), ...genreConfig[g.name.toLowerCase()], id: g.id })),
-      { key: 'community', emoji: '🃏', label: 'Community', path: '/drop/community', id: null }
+      { key: 'community', emoji: '🃏', label: 'Wildcard',  path: '/drop/community', id: null }
     ].filter((g, i, arr) => g.label && arr.findIndex(x => x.key === g.key) === i);
 
 
@@ -2192,6 +2192,7 @@ app.post('/api/migrate-community-pick', async (req, res) => {
 
 // ── GET /drop/:genre ─────────────────────────────────────────────────────────
 app.get('/drop/:genre', async (req, res) => {
+  if(req.params.genre.toLowerCase() === 'rock') return res.redirect('/?src=drop#subscribe');
   if(req.query.ref !== 'sms') return res.redirect('/?src=drop#subscribe');
   const genre = req.params.genre.toLowerCase();
   try {
