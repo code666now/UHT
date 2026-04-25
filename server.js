@@ -392,20 +392,70 @@ select.sub-input option{background:#111;color:#f3f1ea}
 .js-go .footer{opacity:0;transition:opacity .8s ease}
 .js-go .footer.in{opacity:1}
 
+/* ── Scroll progress bar ── */
+#scroll-bar{position:fixed;top:0;left:0;height:2px;width:0%;background:#E8B84B;z-index:600;pointer-events:none;transition:width .06s linear}
+
+/* ── Hamburger ── */
+.nav-ham{display:none;flex-direction:column;justify-content:center;gap:5px;background:none;border:none;cursor:pointer;padding:8px 4px;z-index:600;flex-shrink:0}
+.nav-ham span{display:block;width:22px;height:1.5px;background:#f3f1ea;transition:transform .35s cubic-bezier(.16,1,.3,1),opacity .25s;transform-origin:center}
+.nav-ham.open span:nth-child(1){transform:translateY(6.5px) rotate(45deg)}
+.nav-ham.open span:nth-child(2){opacity:0;transform:scaleX(0)}
+.nav-ham.open span:nth-child(3){transform:translateY(-6.5px) rotate(-45deg)}
+@media(max-width:768px){.nav-ham{display:flex}}
+
+/* ── Mobile nav overlay ── */
+.mob-nav{position:fixed;inset:0;z-index:400;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transform:translateY(-100%);transition:transform .55s cubic-bezier(.16,1,.3,1);pointer-events:none}
+.mob-nav.open{transform:translateY(0);pointer-events:all}
+.mob-nav a,.mob-nav button.mob-link{font-family:Georgia,"Times New Roman",serif;font-size:clamp(32px,9vw,56px);font-weight:700;letter-spacing:-.02em;color:#f3f1ea;text-decoration:none;background:none;border:none;cursor:pointer;padding:10px 0;opacity:.18;transition:opacity .2s,transform .2s;line-height:1.1;text-align:center}
+.mob-nav.open a,.mob-nav.open button.mob-link{opacity:.18}
+.mob-nav a:hover,.mob-nav button.mob-link:hover{opacity:1;transform:translateX(6px)}
+.mob-nav .mob-cta{margin-top:32px;font-family:Georgia,serif;font-size:12px;letter-spacing:.3em;text-transform:uppercase;color:#f3f1ea;background:none;border:1px solid rgba(243,241,234,0.35);border-radius:999px;padding:16px 44px;cursor:pointer;transition:all .2s;opacity:.7}
+.mob-nav .mob-cta:hover{background:#f3f1ea;color:#000;opacity:1}
+.mob-nav .mob-ticker{position:absolute;bottom:28px;font-size:9px;letter-spacing:.35em;text-transform:uppercase;color:#f3f1ea;opacity:.1}
+
+/* ── Active nav link ── */
+.nav-links a{transition:color .25s,opacity .25s}
+.nav-links a.nav-active{color:#E8B84B;opacity:1}
+
+/* ── How-it-works — brighter number when in view ── */
+.how-num{transition:color .6s ease,text-shadow .6s ease}
+.how-row.in .how-num{color:rgba(232,184,75,0.28);text-shadow:0 0 60px rgba(232,184,75,0.15)}
+.how-row.in .how-title{color:#f3f1ea}
+
+/* ── Magnetic button ripple ── */
+.btn-fill,.btn-outline,.nav-cta{will-change:transform}
+
+/* ── Genre card count badge ── */
+.genre-count{position:absolute;top:12px;right:28px;font-size:8px;letter-spacing:.3em;text-transform:uppercase;color:rgba(243,241,234,0.2);transition:color .25s}
+.genre-card:hover .genre-count{color:rgba(243,241,234,0.5)}
 
 </style>
 </head>
 <body>
+<div id="scroll-bar"></div>
+
 <!-- NAV -->
 <nav class="nav">
   <a href="/" class="nav-logo">UHT</a>
-  <div class="nav-links">
-    <a href="#curators">Curators</a>
-    <a href="#drops">Genres</a>
-    <a href="#how-it-works">How It Works</a>
+  <div class="nav-links" id="navLinks">
+    <a href="#curators" data-section="curators">Curators</a>
+    <a href="#drops" data-section="drops">Genres</a>
+    <a href="#how-it-works" data-section="how-it-works">How It Works</a>
   </div>
   <button class="nav-cta" onclick="document.getElementById('subscribe').scrollIntoView({behavior:'smooth'})">Subscribe</button>
+  <button class="nav-ham" id="navHam" onclick="toggleMobNav()" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
 </nav>
+
+<!-- MOBILE NAV OVERLAY -->
+<div class="mob-nav" id="mobNav">
+  <a href="#curators" onclick="closeMobNav()">Curators</a>
+  <a href="#drops" onclick="closeMobNav()">Genres</a>
+  <a href="#how-it-works" onclick="closeMobNav()">How It Works</a>
+  <button class="mob-cta" onclick="closeMobNav();setTimeout(function(){document.getElementById('subscribe').scrollIntoView({behavior:'smooth'})},300)">Subscribe</button>
+  <div class="mob-ticker">· HIT · DENIED · UNDENIABLE ·</div>
+</div>
 
 <!-- HERO -->
 <section class="hero">
@@ -991,6 +1041,102 @@ document.querySelectorAll('a[href^="#"]').forEach(function(a){
     if(el){e.preventDefault();el.scrollIntoView({behavior:'smooth',block:'start'});}
   });
 });
+
+// ── Scroll progress bar ───────────────────────────────────────────
+(function(){
+  var bar = document.getElementById('scroll-bar');
+  if(!bar) return;
+  window.addEventListener('scroll', function(){
+    var st = window.scrollY;
+    var dh = document.documentElement.scrollHeight - window.innerHeight;
+    bar.style.width = (dh > 0 ? Math.min(100, (st/dh)*100) : 0) + '%';
+  }, {passive:true});
+})();
+
+// ── Mobile nav toggle ─────────────────────────────────────────────
+function toggleMobNav(){
+  var ham = document.getElementById('navHam');
+  var nav = document.getElementById('mobNav');
+  var open = nav.classList.toggle('open');
+  ham.classList.toggle('open', open);
+  document.body.style.overflow = open ? 'hidden' : '';
+}
+function closeMobNav(){
+  document.getElementById('mobNav').classList.remove('open');
+  document.getElementById('navHam').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// ── Active nav link tracking ──────────────────────────────────────
+(function(){
+  var sections = ['curators','drops','how-it-works','subscribe'];
+  var links = document.querySelectorAll('.nav-links a[data-section]');
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){
+        links.forEach(function(l){ l.classList.remove('nav-active'); });
+        var active = document.querySelector('.nav-links a[data-section="'+e.target.id+'"]');
+        if(active) active.classList.add('nav-active');
+      }
+    });
+  },{threshold:0.3});
+  sections.forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) io.observe(el);
+  });
+})();
+
+// ── Hero parallax ────────────────────────────────────────────────
+(function(){
+  var hero = document.querySelector('.hero');
+  if(!hero || window.matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+  window.addEventListener('scroll', function(){
+    var y = window.scrollY;
+    var fade = Math.max(0, 1 - y / (window.innerHeight * 0.65));
+    var shift = y * 0.18;
+    hero.style.transform = 'translateY('+shift+'px)';
+    hero.style.opacity = fade;
+  }, {passive:true});
+})();
+
+// ── Magnetic CTA buttons ──────────────────────────────────────────
+(function(){
+  if(window.matchMedia('(hover:none)').matches) return; // skip touch
+  document.querySelectorAll('.btn-fill, .nav-cta').forEach(function(btn){
+    btn.addEventListener('mousemove', function(e){
+      var r = btn.getBoundingClientRect();
+      var dx = (e.clientX - (r.left + r.width/2)) * 0.22;
+      var dy = (e.clientY - (r.top  + r.height/2)) * 0.22;
+      btn.style.transform = 'translate('+dx+'px,'+dy+'px)';
+    });
+    btn.addEventListener('mouseleave', function(){
+      btn.style.transform = '';
+    });
+  });
+})();
+
+// ── Staggered mobile nav link entrance ───────────────────────────
+(function(){
+  var nav = document.getElementById('mobNav');
+  if(!nav) return;
+  var links = nav.querySelectorAll('a, button');
+  var obs = new MutationObserver(function(){
+    if(nav.classList.contains('open')){
+      links.forEach(function(l, i){
+        l.style.transitionDelay = (i * 0.07 + 0.15) + 's';
+        l.style.opacity = '1';
+        l.style.transform = 'none';
+      });
+    } else {
+      links.forEach(function(l){
+        l.style.transitionDelay = '0s';
+        l.style.opacity = '';
+        l.style.transform = '';
+      });
+    }
+  });
+  obs.observe(nav, {attributes:true, attributeFilter:['class']});
+})();
 </script>
 </body>
 </html>`);
