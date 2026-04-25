@@ -15,14 +15,16 @@ const client = twilio(
 async function runCuratorDrop() {
   console.log(`\n[CuratorDrop] Starting Monday curator drop at ${new Date().toISOString()}`);
 
-  // Get all active curator subscriptions
+  // Get all active curator subscriptions (include curator photo + month for MMS)
   const { rows: subs } = await db.query(`
     SELECT
-      s.id        AS sub_id,
+      s.id           AS sub_id,
       s.user_id,
       s.curator_id,
       u.phone,
-      c.name      AS curator_name
+      c.name         AS curator_name,
+      c.image_url    AS curator_image,
+      c.curator_month
     FROM subscriptions s
     JOIN users    u ON u.id = s.user_id
     JOIN curators c ON c.id = s.curator_id
@@ -64,14 +66,17 @@ async function runCuratorDrop() {
       }
 
       const song = songs[0];
-      const msg  = buildCuratorMessage(song, sub.curator_name);
+      const { body, mediaUrl } = buildCuratorMessage(song, sub.curator_name, sub.curator_image, sub.curator_month);
 
-      // Send via Twilio
-      await client.messages.create({
+      // Send via Twilio — MMS if curator has a photo, SMS otherwise
+      const msgParams = {
         from: process.env.TWILIO_FROM || process.env.TWILIO_PHONE_NUMBER,
         to:   sub.phone,
-        body: msg,
-      });
+        body,
+      };
+      if (mediaUrl) msgParams.mediaUrl = [mediaUrl];
+
+      await client.messages.create(msgParams);
 
       // Record delivery
       await db.query(
@@ -93,37 +98,21 @@ async function runCuratorDrop() {
 }
 
 // ── Curator message builder ───────────────────────────────────────────────────
-// Richer than genre drops — includes curator identity, theme, and personal note.
-function buildCuratorMessage(song, curatorName) {
-  let msg = `🎧 ${curatorName}'s pick this week:\n\n`;
-
-  // Theme line if available
-  if (song.theme) {
-    msg += `Theme: ${song.theme}\n`;
-  }
-
-  msg += `"${song.title}" by ${song.artist}\n`;
-
-  // Curator's personal note
-  if (song.curator_note) {
-    msg += `\n"${song.curator_note}"\n`;
-  }
-
-  // Spotify/listen link
-  if (song.spotify_url || song.url) {
-    msg += `\n🔗 ${song.spotify_url || song.url}\n`;
-  }
-
+// Returns { body, mediaUrl } — mediaUrl is the curator photo for MMS (or null for SMS).
+function buildCuratorMessage(song, curatorName, curatorImage, curatorMonth) {
   const base = process.env.BASE_URL || '';
-  if (base) {
-    const slug = curatorName.toLowerCase().replace(/\s+/g, '-');
-    msg += `\n🗳 Vote: ${base}/drop/curator/${slug}?ref=sms`;
-  } else if (song.spotify_url || song.url) {
-    msg += `\n🔗 ${song.spotify_url || song.url}`;
-  }
-  msg += `\nReply STOP to unsubscribe`;
+  const slug = curatorName.toLowerCase().replace(/\s+/g, '-');
+  const link = base ? `${base}/drop/curator/${slug}?ref=sms` : null;
 
-  return msg;
+  const monthLine = curatorMonth ? `Curator of the Month · ${curatorMonth}` : `Curator of the Month`;
+
+  let body = `${monthLine}\n\nCheck out ${curatorName.split(' ')[0]}'s picks and vote.`;
+  if (link) body += `\n${link}`;
+
+  return {
+    body,
+    mediaUrl: curatorImage || null,
+  };
 }
 
 // ── Schedule: every Monday at 10:00am ────────────────────────────────────────
