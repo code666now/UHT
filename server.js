@@ -36,7 +36,7 @@ app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "pu
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr24-v10' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr24-v12' });
 });
 
 // ── GET / — Home page ─────────────────────────────────────────────────────────
@@ -390,14 +390,12 @@ select.sub-input option{background:#111;color:#f3f1ea}
 .js-go .footer{opacity:0;transition:opacity .8s ease}
 .js-go .footer.in{opacity:1}
 
-/* Custom cursor — HIT emoji (desktop only) */
-@media(hover:hover){
-  *{cursor:none!important}
-  .uht-cursor{pointer-events:none;position:fixed;top:0;left:0;z-index:9999;font-size:22px;line-height:1;margin:-11px 0 0 -4px;transition:opacity .2s;user-select:none;filter:drop-shadow(0 1px 4px rgba(0,0,0,0.5))}
-  .uht-cursor.hover{font-size:30px}
-  .uht-cursor.hidden{opacity:0}
-}
-@media(hover:none){.uht-cursor{display:none}}
+/* Custom cursor — 🎯 emoji */
+.uht-cursor{opacity:0;pointer-events:none;position:fixed;top:0;left:0;z-index:9999;font-size:22px;line-height:1;margin:-11px 0 0 -4px;user-select:none;filter:drop-shadow(0 1px 4px rgba(0,0,0,0.5));transition:opacity .15s,font-size .15s}
+.uht-cursor.active{opacity:1}
+.uht-cursor.hover{font-size:30px}
+/* cursor:none only added via JS when real mouse confirmed */
+html.has-mouse *{cursor:none!important}
 </style>
 </head>
 <body>
@@ -916,12 +914,19 @@ function spawnEmbers(){
   });
 })();
 
-// ── Custom cursor — 🎵 emoji (desktop) ──────────────────────────
+// ── Custom cursor — 🎯 emoji ──────────────────────────────────────
 (function(){
   var cur=document.getElementById('uhtCursor');
-  if(!cur||window.matchMedia('(hover:none)').matches)return;
-  var mx=0,my=0,cx=0,cy=0;
-  document.addEventListener('mousemove',function(e){mx=e.clientX;my=e.clientY;});
+  if(!cur)return;
+  var mx=-200,my=-200,cx=-200,cy=-200,ready=false;
+  document.addEventListener('mousemove',function(e){
+    mx=e.clientX;my=e.clientY;
+    if(!ready){
+      ready=true;
+      document.documentElement.classList.add('has-mouse');
+      cur.classList.add('active');
+    }
+  });
   (function loop(){
     cx+=(mx-cx)*.14;cy+=(my-cy)*.14;
     cur.style.transform='translate('+cx+'px,'+cy+'px)';
@@ -931,8 +936,8 @@ function spawnEmbers(){
     el.addEventListener('mouseenter',function(){cur.classList.add('hover');});
     el.addEventListener('mouseleave',function(){cur.classList.remove('hover');});
   });
-  document.addEventListener('mouseleave',function(){cur.classList.add('hidden');});
-  document.addEventListener('mouseenter',function(){cur.classList.remove('hidden');});
+  document.addEventListener('mouseleave',function(){cur.style.opacity='0';});
+  document.addEventListener('mouseenter',function(){if(ready)cur.style.opacity='1';});
 })();
 
 // ── Smooth anchor scroll ──────────────────────────────────────────
