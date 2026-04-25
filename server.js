@@ -36,7 +36,7 @@ app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "pu
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr23-v3' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr23-v4' });
 });
 
 // ── GET / — Home page ─────────────────────────────────────────────────────────
@@ -313,20 +313,25 @@ select.sub-input option{background:#111;color:#f3f1ea}
   <div class="curator-carousel-wrap" style="margin-top:32px">
     <button class="curator-nav-btn curator-nav-prev" onclick="scrollCurators(-1)" aria-label="Previous">&#8592;</button>
     ${curators.length === 1 ? `
-    <div style="display:flex;justify-content:center;align-items:flex-start;padding:0 60px">
+    <div style="display:flex;flex-direction:column;align-items:center;padding:0 40px;position:relative">
+      <div style="font-size:clamp(48px,7vw,96px);font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(243,241,234,0.03);text-align:center;line-height:1;margin-bottom:-32px;pointer-events:none;user-select:none;font-family:Georgia,serif">FOUNDING CURATOR</div>
       ${(c => `
-      <div class="curator-card" onclick="openCuratorModal(${c.id})" style="cursor:pointer;width:280px">
+      <div class="curator-card" onclick="openCuratorModal(${c.id})" style="cursor:pointer;width:340px;border-color:rgba(232,184,75,0.18);box-shadow:0 0 80px rgba(232,184,75,0.05)">
         ${c.image_url
-          ? `<img class="curator-img" src="${c.image_url}" alt="${c.name}" loading="lazy">`
-          : `<div class="curator-img-placeholder">🎧</div>`}
+          ? `<img class="curator-img" src="${c.image_url}" alt="${c.name}" loading="lazy" style="aspect-ratio:4/5">`
+          : `<div class="curator-img-placeholder" style="aspect-ratio:4/5">🎧</div>`}
         <div class="curator-body">
-          <div class="curator-month-tag">${c.curator_month || 'May 2026'} · Founding Curator</div>
-          <div class="curator-name">${c.name}</div>
+          <div style="display:inline-flex;align-items:center;gap:8px;padding:4px 12px 4px 10px;background:rgba(232,184,75,0.08);border:1px solid rgba(232,184,75,0.28);border-radius:2px;margin-bottom:14px">
+            <span style="color:#E8B84B;font-size:9px;letter-spacing:.32em;text-transform:uppercase;font-family:Georgia,serif">No. 01 · Founding Curator</span>
+          </div>
+          <div class="curator-name" style="font-size:20px">${c.name}</div>
           ${c.bio ? `<div class="curator-bio">${c.bio}</div>` : ''}
           ${c.instagram ? `<div class="curator-insta">@${c.instagram}</div>` : ''}
           <div class="curator-see">+ Follow</div>
         </div>
-      </div>`)(curators[0])}
+      </div>
+      <div style="font-size:9px;letter-spacing:.4em;text-transform:uppercase;color:rgba(243,241,234,0.16);margin-top:20px;font-family:Georgia,serif">Est. ${c.curator_month || 'May 2026'} · Undeniable Hit Theory</div>
+      `)(curators[0])}
     </div>
     ` : `
     <div class="curator-track" id="curatorTrack" style="padding-left:60px">
