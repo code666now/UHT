@@ -749,7 +749,7 @@ async function loadSongs() {
           <td><span class="tag ${s.curator_id?'tag-curator':'tag-genre'}">${s.curator_id?'curator':'genre'}</span></td>
           <td>${esc(s.target_name||'—')}</td>
           <td>${s.url?`<a href="${esc(s.url)}" target="_blank" style="color:var(--muted);font-size:11px">link ↗</a>`:'—'}</td>
-          <td><button class="btn btn-danger" onclick="deleteSong(${s.id})">Delete</button></td>
+          <td><button class="btn btn-danger" onclick="deleteSong(${s.id},'${esc(s.title)} by ${esc(s.artist)}')">Delete</button></td>
         </tr>`).join('')
       : '<tr class="empty-row"><td colspan="7">No songs yet. Add one!</td></tr>';
   } catch(e) { tbody.innerHTML=`<tr class="empty-row"><td colspan="7">${esc(e.message)}</td></tr>`; }
@@ -765,7 +765,7 @@ async function loadGenres() {
           <td style="color:var(--muted)">#${g.id}</td>
           <td><strong>${esc(g.name)}</strong></td>
           <td>${g.song_count??0}</td><td>${g.sub_count??0}</td>
-          <td><button class="btn btn-danger" onclick="deleteGenre(${g.id})">Delete</button></td>
+          <td><button class="btn btn-danger" onclick="deleteGenre(${g.id},'${esc(g.name)}')">Delete</button></td>
         </tr>`).join('')
       : '<tr class="empty-row"><td colspan="5">No genres yet.</td></tr>';
   } catch(e) { tbody.innerHTML=`<tr class="empty-row"><td colspan="5">${esc(e.message)}</td></tr>`; }
@@ -790,7 +790,7 @@ async function loadCurators() {
           <td style="display:flex;gap:6px;flex-wrap:wrap">
             <button class="btn" style="color:#E8B84B;border-color:rgba(232,184,75,0.35)" onclick="featureCurator(${c.id})">📣 Feature</button>
             <button class="btn" onclick="openEditCurator(${c.id})">Edit</button>
-            <button class="btn btn-danger" onclick="deleteCurator(${c.id})">Delete</button>
+            <button class="btn btn-danger" onclick="deleteCurator(${c.id},'${esc(c.name)}')">Delete</button>
           </td>
         </tr>`).join('')
       : '<tr class="empty-row"><td colspan="6">No curators yet.</td></tr>';
@@ -813,7 +813,7 @@ async function loadSubscribers() {
           <td>
             <button class="btn" onclick="editSub(${s.id},${s.user_id||s.id},'${esc(s.phone)}','${esc(s.name||'')}','${esc(s.email||'')}',${s.genre_id||'null'},${s.curator_id||'null'})">Edit</button>
             <button class="btn" style="margin-left:4px" onclick="toggleSub(${s.id},${s.is_active})">${s.is_active?'Pause':'Resume'}</button>
-            <button class="btn btn-danger" style="margin-left:4px" onclick="deleteSub(${s.id})">Remove</button>
+            <button class="btn btn-danger" style="margin-left:4px" onclick="deleteSub(${s.id},'${esc(s.phone)}${s.name ? ' · '+esc(s.name) : ''}')">Remove</button>
           </td>
         </tr>`).join('')
       : '<tr class="empty-row"><td colspan="8">No subscribers yet.</td></tr>';
@@ -931,9 +931,9 @@ async function submitSubscriber() {
 }
 
 // ── Deletes / toggles ─────────────────────────────────────────
-async function deleteSong(id) { if(!confirm('Delete?')) return; try { await api('DELETE',`/api/songs/${id}`); toast('Deleted.','ok'); loadSongs(); loadDashboard(); } catch(e){toast(e.message,'err');} }
-async function deleteGenre(id) { if(!confirm('Delete?')) return; try { await api('DELETE',`/api/genres/${id}`); toast('Deleted.','ok'); loadGenres(); } catch(e){toast(e.message,'err');} }
-async function deleteCurator(id) { if(!confirm('Delete?')) return; try { await api('DELETE',`/api/curators/${id}`); toast('Deleted.','ok'); loadCurators(); } catch(e){toast(e.message,'err');} }
+async function deleteSong(id, label) { if(!confirm(`Delete song:\n"${label}"?\n\nThis cannot be undone.`)) return; try { await api('DELETE',`/api/songs/${id}`); toast('Deleted.','ok'); loadSongs(); loadDashboard(); } catch(e){toast(e.message,'err');} }
+async function deleteGenre(id, label) { if(!confirm(`Delete genre "${label}"?\n\nThis cannot be undone.`)) return; try { await api('DELETE',`/api/genres/${id}`); toast('Deleted.','ok'); loadGenres(); } catch(e){toast(e.message,'err');} }
+async function deleteCurator(id, label) { if(!confirm(`Delete curator "${label}"?\n\nThis cannot be undone.`)) return; try { await api('DELETE',`/api/curators/${id}`); toast('Deleted.','ok'); loadCurators(); } catch(e){toast(e.message,'err');} }
 
 // ── Curator Feature Blast ─────────────────────────────────────
 let _featureCuratorId = null;
@@ -1059,7 +1059,7 @@ async function submitEditCurator() {
   } catch(e) { toast(e.message, 'err'); }
 }
 
-async function deleteSub(id) { if(!confirm('Remove?')) return; try { await api('DELETE',`/api/subscribers/${id}`); toast('Removed.','ok'); loadSubscribers(); loadDashboard(); } catch(e){toast(e.message,'err');} }
+async function deleteSub(id, label) { if(!confirm(`Remove subscriber ${label}?\n\nThis cannot be undone.`)) return; try { await api('DELETE',`/api/subscribers/${id}`); toast('Removed.','ok'); loadSubscribers(); loadDashboard(); } catch(e){toast(e.message,'err');} }
 async function toggleSub(id, active) { try { await api('PATCH',`/api/subscribers/${id}`,{is_active:!active}); toast(active?'Paused.':'Resumed.','ok'); loadSubscribers(); } catch(e){toast(e.message,'err');} }
 
 function editSub(subId, userId, phone, name, email, genreId, curatorId) {
@@ -1311,7 +1311,7 @@ async function loadSubmissions() {
           ${s.youtube_url ? `<a href="${esc(s.youtube_url)}" target="_blank" style="color:var(--accent);font-size:11px">▶ YT</a>` : ''}
           ${!s.spotify_url && !s.youtube_url ? '<span style="color:var(--muted)">—</span>' : ''}
         </td>
-        <td><button class="btn btn-danger" onclick="deleteSubmission(${s.id})">Delete</button></td>
+        <td><button class="btn btn-danger" onclick="deleteSubmission(${s.id},'${esc(s.title)} by ${esc(s.artist)}')">Delete</button></td>
       </tr>
     `).join('');
   } catch(e) {
@@ -1347,8 +1347,8 @@ async function submitSubmission() {
   } catch(e) { toast(e.message, 'err'); }
 }
 
-async function deleteSubmission(id) {
-  if (!confirm('Delete this submission?')) return;
+async function deleteSubmission(id, label) {
+  if (!confirm(`Delete submission:\n"${label}"?\n\nThis cannot be undone.`)) return;
   try {
     await api('DELETE', `/api/curator-submissions/${id}`);
     toast('Deleted.', 'ok');
@@ -1393,7 +1393,7 @@ async function loadCommunitySubmissions() {
         <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)">${esc(s.why||'—')}</td>
         <td>${s.youtube_url ? `<a href="${esc(s.youtube_url)}" target="_blank" style="color:var(--accent);font-size:11px">▶ Watch</a>` : '—'}</td>
         <td style="color:var(--muted);font-size:11px">${s.submitted_at ? s.submitted_at.slice(0,10) : '—'}</td>
-        <td><button class="btn btn-danger" onclick="deleteCommunitySubmission(${s.id})">Delete</button></td>
+        <td><button class="btn btn-danger" onclick="deleteCommunitySubmission(${s.id},'${esc(s.song)} by ${esc(s.artist)}')">Delete</button></td>
       </tr>
     `).join('');
   } catch(e) {
@@ -1402,8 +1402,8 @@ async function loadCommunitySubmissions() {
   }
 }
 
-async function deleteCommunitySubmission(id) {
-  if (!confirm('Delete this submission?')) return;
+async function deleteCommunitySubmission(id, label) {
+  if (!confirm(`Delete community submission:\n"${label}"?\n\nThis cannot be undone.`)) return;
   try {
     await api('DELETE', `/api/community-submissions/${id}`);
     toast('Deleted.', 'ok');
@@ -1436,7 +1436,7 @@ async function loadGenreSubmissions() {
         </td>
         <td style="display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn ${s.is_community_pick ? 'btn-primary' : ''}" onclick="setCommunityPick(${s.id})" title="Feature on Community page">${s.is_community_pick ? '★ Community Pick' : 'Set Community Pick'}</button>
-          <button class="btn btn-danger" onclick="deleteGenreSubmission(${s.id})">Delete</button>
+          <button class="btn btn-danger" onclick="deleteGenreSubmission(${s.id},'${esc(s.title)} by ${esc(s.artist)}')">Delete</button>
         </td>
       </tr>
     `).join('');
@@ -1489,8 +1489,8 @@ async function setCommunityPick(id) {
   } catch(e) { toast(e.message, 'err'); }
 }
 
-async function deleteGenreSubmission(id) {
-  if (!confirm('Delete this genre submission?')) return;
+async function deleteGenreSubmission(id, label) {
+  if (!confirm(`Delete genre submission:\n"${label}"?\n\nThis cannot be undone.`)) return;
   try {
     await api('DELETE', `/api/genre-submissions/${id}`);
     toast('Deleted.', 'ok');
@@ -1509,7 +1509,15 @@ function refreshSelects() {
 }
 
 // ── Modal ─────────────────────────────────────────────────────
-function openModal(n){ document.getElementById(`modal-${n}`).classList.add('open'); }
+function openModal(n){
+  const el = document.getElementById(`modal-${n}`);
+  el.classList.add('open');
+  // Clear all fields in add/create modals — skip edit modals (they pre-fill intentionally)
+  const skipClear = ['curator-edit','curator-profile','feature-curator'];
+  if (!n.startsWith('edit-') && !skipClear.includes(n)) {
+    el.querySelectorAll('input:not([readonly]), select, textarea').forEach(f => { f.value = ''; });
+  }
+}
 function closeModal(n){ document.getElementById(`modal-${n}`).classList.remove('open'); }
 document.querySelectorAll('.modal-overlay').forEach(el=>{
   el.addEventListener('click',e=>{ if(e.target===el) el.classList.remove('open'); });
