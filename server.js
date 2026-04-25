@@ -36,7 +36,7 @@ app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "pu
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr23-v3' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr24-v4-motion' });
 });
 
 // ── GET / — Home page ─────────────────────────────────────────────────────────
@@ -304,9 +304,97 @@ select.sub-input option{background:#111;color:#f3f1ea}
 @media(max-width:400px){
   .genre-grid{grid-template-columns:1fr}
 }
+
+/* ── Motion & Animation ──────────────────────────────────── */
+/* Keyframes */
+@keyframes uht-fadeUp{from{opacity:0;transform:translateY(32px)}to{opacity:1;transform:translateY(0)}}
+@keyframes uht-fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes uht-slideDown{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes uht-revealRight{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0% 0 0)}}
+@keyframes uht-scaleIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
+@keyframes uht-marqueeRev{0%{transform:translateX(-50%)}100%{transform:translateX(0)}}
+@keyframes uht-pulse{0%,100%{box-shadow:0 0 0 0 rgba(232,228,217,0)}50%{box-shadow:0 0 0 8px rgba(232,228,217,0.08)}}
+@keyframes uht-borderGlow{0%,100%{border-color:rgba(232,184,75,0.18)}50%{border-color:rgba(232,184,75,0.5)}}
+
+/* Nav entrance */
+.nav{animation:uht-slideDown .55s cubic-bezier(.16,1,.3,1) both;animation-delay:.05s}
+
+/* Hero entrance — staggered */
+.hero-eyebrow{opacity:0;animation:uht-fadeUp .6s cubic-bezier(.16,1,.3,1) both;animation-delay:.15s}
+.hero-solid{opacity:0;animation:uht-fadeUp .9s cubic-bezier(.16,1,.3,1) both;animation-delay:.28s}
+.hero-outline{opacity:0;animation:uht-fadeUp .9s cubic-bezier(.16,1,.3,1) both;animation-delay:.44s}
+.hero-sub{opacity:0;animation:uht-fadeUp .7s cubic-bezier(.16,1,.3,1) both;animation-delay:.62s}
+.hero-btns{opacity:0;animation:uht-fadeUp .65s cubic-bezier(.16,1,.3,1) both;animation-delay:.78s}
+.hero-fine{opacity:0;animation:uht-fadeUp .5s ease both;animation-delay:.95s}
+
+/* Scroll-reveal base */
+.reveal{opacity:0;transform:translateY(30px);transition:opacity .75s cubic-bezier(.16,1,.3,1),transform .75s cubic-bezier(.16,1,.3,1)}
+.reveal.in{opacity:1;transform:translateY(0)}
+
+/* Stagger container — children animate in sequence */
+.stagger>*{opacity:0;transform:translateY(22px);transition:opacity .65s cubic-bezier(.16,1,.3,1),transform .65s cubic-bezier(.16,1,.3,1)}
+.stagger.in>*:nth-child(1){opacity:1;transform:none;transition-delay:.04s}
+.stagger.in>*:nth-child(2){opacity:1;transform:none;transition-delay:.13s}
+.stagger.in>*:nth-child(3){opacity:1;transform:none;transition-delay:.22s}
+.stagger.in>*:nth-child(4){opacity:1;transform:none;transition-delay:.31s}
+.stagger.in>*:nth-child(5){opacity:1;transform:none;transition-delay:.40s}
+
+/* Genre card — enhanced hover */
+.genre-card{transition:border-color .3s ease,background .3s ease,transform .3s cubic-bezier(.16,1,.3,1),box-shadow .3s ease}
+.genre-card:hover{box-shadow:0 12px 48px rgba(0,0,0,0.5)}
+.genre-name{transition:letter-spacing .35s ease}
+.genre-card:hover .genre-name{letter-spacing:.04em}
+
+/* How-it-works — number lights up when in view */
+.how-num{transition:color .5s ease}
+.how-row.in .how-num{color:rgba(232,184,75,0.13)}
+
+/* Curator solo card — shimmer on hover image */
+.curator-img{transition:filter .45s ease,transform .45s cubic-bezier(.16,1,.3,1)}
+.curator-card:hover .curator-img{filter:brightness(1.05);transform:scale(1.025)}
+
+/* "FOUNDING CURATOR" watermark — slow float */
+@keyframes uht-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.fc-watermark{animation:uht-float 7s ease-in-out infinite}
+
+/* Featured video — scale in on reveal */
+.featured-video{opacity:0;transform:scale(.975);transition:opacity .9s cubic-bezier(.16,1,.3,1),transform .9s cubic-bezier(.16,1,.3,1)}
+.featured-video.in{opacity:1;transform:scale(1)}
+
+/* Subscribe button — pulse when ready */
+.sub-btn.ready{animation:uht-pulse 2.4s ease infinite}
+.sub-btn.ready:hover{animation:none}
+
+/* Solo curator card glow pulse */
+.curator-card[style*="border-color:rgba(232,184,75"]{animation:uht-borderGlow 3.5s ease-in-out infinite}
+
+/* Reversed ticker */
+.ticker-rev .ticker-track{animation:uht-marqueeRev 38s linear infinite}
+
+/* Sec-line reveal */
+.sec-line{transform-origin:left;transform:scaleX(0);transition:transform .9s cubic-bezier(.16,1,.3,1) .2s}
+.sec-head.in .sec-line{transform:scaleX(1)}
+
+/* Footer fade */
+.footer{opacity:0;transition:opacity .8s ease}
+.footer.in{opacity:1}
+
+/* Custom cursor (desktop only) */
+@media(hover:hover){
+  body{cursor:none}
+  .uht-cursor{pointer-events:none;position:fixed;top:0;left:0;z-index:9999;mix-blend-mode:difference;transition:transform .08s linear}
+  .uht-cursor-ring{width:32px;height:32px;border:1px solid rgba(232,228,217,0.6);border-radius:50%;margin:-16px 0 0 -16px;transition:transform .08s linear,width .25s ease,height .25s ease,border-color .25s ease,margin .25s ease}
+  .uht-cursor-dot{width:4px;height:4px;background:var(--ink);border-radius:50%;margin:-2px 0 0 -2px;position:fixed;top:0;left:0;z-index:10000;pointer-events:none;transition:transform .04s linear}
+  .uht-cursor.hover .uht-cursor-ring{width:52px;height:52px;margin:-26px 0 0 -26px;border-color:var(--accent);background:rgba(232,184,75,0.06)}
+  .uht-cursor.text .uht-cursor-ring{width:3px;height:28px;border-radius:2px;margin:-14px 0 0 -1.5px}
+}
+@media(hover:none){.uht-cursor,.uht-cursor-dot{display:none}}
 </style>
 </head>
 <body>
+<!-- Custom cursor -->
+<div class="uht-cursor" id="uhtCursor"><div class="uht-cursor-ring"></div></div>
+<div class="uht-cursor-dot" id="uhtCursorDot"></div>
 
 <!-- NAV -->
 <nav class="nav">
@@ -344,7 +432,7 @@ select.sub-input option{background:#111;color:#f3f1ea}
 
 <!-- CURATORS OF THE MONTH -->
 <section style="padding:80px 0 80px" id="curators">
-  <div class="sec-head" style="padding:0 40px">
+  <div class="sec-head reveal" style="padding:0 40px">
     <span class="sec-label">Curators of the Month</span>
     <div class="sec-line"></div>
   </div>
@@ -352,7 +440,7 @@ select.sub-input option{background:#111;color:#f3f1ea}
     ${curators.length > 1 ? `<button class="curator-nav-btn curator-nav-prev" onclick="scrollCurators(-1)" aria-label="Previous">&#8592;</button>` : ''}
     ${curators.length === 1 ? `
     <div style="display:flex;flex-direction:column;align-items:center;padding:0 40px;position:relative">
-      <div style="font-size:clamp(40px,6vw,80px);font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(243,241,234,0.28);text-align:center;line-height:1;margin-bottom:16px;pointer-events:none;user-select:none;font-family:Georgia,serif;text-shadow:0 0 60px rgba(232,184,75,0.12)">FOUNDING CURATOR</div>
+      <div class="fc-watermark" style="font-size:clamp(40px,6vw,80px);font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(243,241,234,0.28);text-align:center;line-height:1;margin-bottom:16px;pointer-events:none;user-select:none;font-family:Georgia,serif;text-shadow:0 0 60px rgba(232,184,75,0.12)">FOUNDING CURATOR</div>
       ${(c => `
       <div class="curator-card" onclick="openCuratorModal(${c.id})" style="cursor:pointer;width:340px;border-color:rgba(232,184,75,0.18);box-shadow:0 0 80px rgba(232,184,75,0.05)">
         <div style="position:relative">
@@ -403,11 +491,11 @@ select.sub-input option{background:#111;color:#f3f1ea}
 ${fd && fdYtId ? `
 <section class="featured-section" id="featured">
   <div class="featured-inner">
-    <div class="sec-head" style="margin-bottom:32px">
+    <div class="sec-head reveal" style="margin-bottom:32px">
       <span class="sec-label">Last Week's Undeniable Rock Hit</span>
       <div class="sec-line"></div>
     </div>
-    <div class="featured-video">
+    <div class="featured-video reveal">
       <iframe src="https://www.youtube.com/embed/${fdYtId}?rel=0&modestbranding=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>
     </div>
     <div class="featured-meta">
@@ -424,11 +512,11 @@ ${fd && fdYtId ? `
 
 <!-- GENRE DROPS -->
 <section style="padding:80px 40px" id="drops">
-  <div class="sec-head" style="max-width:1100px;margin:0 auto 48px">
+  <div class="sec-head reveal" style="max-width:1100px;margin:0 auto 48px">
     <span class="sec-label">This Week's Drops</span>
     <div class="sec-line"></div>
   </div>
-  <div class="genre-grid">
+  <div class="genre-grid stagger">
     ${allGenres.map(g => {
       const drop = currentDrops[g.key];
       const accentMap = { rock:'#ff3b3b', pop:'#ff85c8', country:'#E8B84B', punk:'#7DF9FF', community:'#f3f1ea' };
@@ -463,28 +551,28 @@ ${fd && fdYtId ? `
 
 <!-- HOW IT WORKS -->
 <section style="padding:80px 40px" id="how-it-works">
-  <div class="sec-head" style="max-width:1100px;margin:0 auto 56px">
+  <div class="sec-head reveal" style="max-width:1100px;margin:0 auto 56px">
     <span class="sec-label">The Process</span>
     <div class="sec-line"></div>
   </div>
   <div style="max-width:1100px;margin:0 auto">
-    <div class="how-row">
+    <div class="how-row reveal">
       <div class="how-num">01</div>
       <div><div class="how-title">You subscribe</div><div class="how-desc">Drop your number. Choose your genre or follow a curator.</div></div>
     </div>
-    <div class="how-row">
+    <div class="how-row reveal" style="transition-delay:.12s">
       <div class="how-num">02</div>
       <div><div class="how-title">Friday drop</div><div class="how-desc">Every Friday at 10 AM: one song via text. No albums. No playlists.</div></div>
     </div>
-    <div class="how-row">
+    <div class="how-row reveal" style="transition-delay:.24s">
       <div class="how-num">03</div>
       <div><div class="how-title">Vote</div><div class="how-desc">Reply HIT or DENIED. Your vote feeds the leaderboard.</div></div>
     </div>
   </div>
 </section>
 
-<!-- TICKER -->
-<div class="ticker">
+<!-- TICKER REVERSED -->
+<div class="ticker ticker-rev">
   <div class="ticker-track">
     <span class="ticker-text">· HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · </span>
     <span class="ticker-text">· HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · </span>
@@ -493,7 +581,7 @@ ${fd && fdYtId ? `
 
 <!-- SUBSCRIBE -->
 <section style="padding:80px 40px" id="subscribe">
-  <div class="sub-wrap">
+  <div class="sub-wrap reveal">
     <div>
       <div class="sub-eyebrow">Get the Drop</div>
       <h2 class="sub-headline">Subscribe.<br><span class="sub-outline">Vote.</span></h2>
@@ -538,7 +626,7 @@ ${fd && fdYtId ? `
 </section>
 
 <!-- FOOTER -->
-<footer class="footer">
+<footer class="footer reveal">
   <div class="footer-logo">UHT</div>
   <div class="footer-links">
     <a href="#curators">Curators</a>
@@ -805,6 +893,50 @@ function spawnEmbers(){
     e.addEventListener('animationend',function(){if(this.parentNode)this.parentNode.removeChild(this);_embers=_embers.filter(function(x){return x.parentNode});if(_fireOn)setTimeout(spawnEmbers,0);});
   }
 }
+
+// ── Motion: Scroll-reveal (IntersectionObserver) ──────────────────
+(function(){
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){ e.target.classList.add('in'); }
+    });
+  },{threshold:0.08,rootMargin:'0px 0px -48px 0px'});
+  document.querySelectorAll('.reveal,.stagger,.featured-video,.sec-head,.how-row').forEach(function(el){
+    io.observe(el);
+  });
+})();
+
+// ── Custom cursor (desktop) ───────────────────────────────────────
+(function(){
+  var cur=document.getElementById('uhtCursor');
+  var dot=document.getElementById('uhtCursorDot');
+  if(!cur||!dot||window.matchMedia('(hover:none)').matches)return;
+  var mx=0,my=0,cx=0,cy=0;
+  document.addEventListener('mousemove',function(e){
+    mx=e.clientX;my=e.clientY;
+    dot.style.transform='translate('+mx+'px,'+my+'px)';
+  });
+  (function loop(){cx+=(mx-cx)*.12;cy+=(my-cy)*.12;cur.style.transform='translate('+cx+'px,'+cy+'px)';requestAnimationFrame(loop);})();
+  document.querySelectorAll('a,button,.genre-card,.curator-card,.sub-pill,.sub-checkbox').forEach(function(el){
+    el.addEventListener('mouseenter',function(){cur.classList.add('hover');cur.classList.remove('text');});
+    el.addEventListener('mouseleave',function(){cur.classList.remove('hover');});
+  });
+  document.querySelectorAll('input,select').forEach(function(el){
+    el.addEventListener('mouseenter',function(){cur.classList.add('text');cur.classList.remove('hover');});
+    el.addEventListener('mouseleave',function(){cur.classList.remove('text');});
+  });
+  document.addEventListener('mouseleave',function(){cur.style.opacity='0';dot.style.opacity='0';});
+  document.addEventListener('mouseenter',function(){cur.style.opacity='1';dot.style.opacity='1';});
+})();
+
+// ── Smooth anchor scroll ──────────────────────────────────────────
+document.querySelectorAll('a[href^="#"]').forEach(function(a){
+  a.addEventListener('click',function(e){
+    var id=this.getAttribute('href').slice(1);
+    var el=document.getElementById(id);
+    if(el){e.preventDefault();el.scrollIntoView({behavior:'smooth',block:'start'});}
+  });
+});
 </script>
 </body>
 </html>`);
