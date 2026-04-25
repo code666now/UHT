@@ -36,7 +36,7 @@ app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "pu
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr24-v5' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr24-v6' });
 });
 
 // ── GET / — Home page ─────────────────────────────────────────────────────────
@@ -287,22 +287,33 @@ select.sub-input option{background:#111;color:#f3f1ea}
   .nav{padding:0 20px}
   .nav-links{display:none}
   .hero{padding:52px 20px 52px}
-  .hero-btns{flex-direction:column;align-items:flex-start}
+  .hero-eyebrow{letter-spacing:.25em;font-size:9px}
+  .hero-btns{flex-direction:column;align-items:stretch}
   .btn-fill,.btn-outline{width:100%;text-align:center;padding:16px 24px;box-sizing:border-box}
   section{padding-left:20px!important;padding-right:20px!important}
   .sec-head{padding-left:0!important;padding-right:0!important}
   .genre-grid{grid-template-columns:1fr 1fr!important}
   .genre-name{font-size:18px!important;white-space:normal!important}
-  .sub-wrap{grid-template-columns:1fr;gap:40px}
+  /* Subscribe */
+  .sub-wrap{grid-template-columns:1fr;gap:32px}
+  .sub-toggle{width:100%;border-radius:8px}
+  .sub-pill{flex:1;text-align:center;padding:12px 10px}
+  .sub-headline{font-size:clamp(32px,8vw,52px)}
+  /* How it works */
   .how-row{grid-template-columns:56px 1fr;gap:0 16px;padding:28px 0}
   .how-num{font-size:42px!important}
   .how-title{font-size:20px!important}
-  .curator-card{width:220px}
+  .how-desc{font-size:14px}
+  /* Curator — prevent fixed width from overflowing */
+  .curator-card{width:100%!important;max-width:340px}
+  .curator-carousel-wrap [style*="align-items:center"]{padding:0 20px!important}
+  /* Footer */
   .footer{padding:40px 20px}
   .fire-btn{bottom:16px;right:16px;font-size:11px;padding:8px 14px}
 }
 @media(max-width:400px){
   .genre-grid{grid-template-columns:1fr}
+  .hero-eyebrow{letter-spacing:.15em}
 }
 
 /* ── Motion & Animation ──────────────────────────────────── */
@@ -726,7 +737,7 @@ function handleSubscribe(e){
   if(!_agreed){msg.textContent='Please agree to receive SMS messages.';return}
   if(_activePill==='genre'&&!document.getElementById('subGenre').value){msg.textContent='Choose a genre.';return}
   if(_activePill==='curator'&&!document.getElementById('subCurator').value){msg.textContent='Choose a curator.';return}
-  btn.disabled=true;btn.textContent='Sending...';msg.textContent='';
+  btn.disabled=true;btn.className='sub-btn';btn.textContent='Sending...';msg.textContent='';
   _subPhone=phone;
   var genreEl=document.getElementById('subGenre');
   var genreId=_activePill==='genre'?(genreEl.options[genreEl.selectedIndex]&&genreEl.options[genreEl.selectedIndex].dataset.id):'';
@@ -741,9 +752,9 @@ function handleSubscribe(e){
         fetch('/api/send_code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone:phone})});
         document.getElementById('subForm').style.display='none';
         var vw=document.getElementById('verifyWrap');vw.style.display='flex';
-      } else {msg.textContent=res.data.error||'Something went wrong.';btn.disabled=false;btn.textContent='Send me the drop';}
+      } else {msg.textContent=res.data.error||'Something went wrong.';btn.disabled=false;btn.className='sub-btn ready';btn.textContent='Send me the drop';}
     })
-    .catch(function(){msg.textContent='Network error.';btn.disabled=false;btn.textContent='Send me the drop';});
+    .catch(function(){msg.textContent='Network error.';btn.disabled=false;btn.className='sub-btn ready';btn.textContent='Send me the drop';});
 }
 
 function handleVerify(){
