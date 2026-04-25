@@ -36,7 +36,7 @@ app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "pu
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr24-v2' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr23-v3' });
 });
 
 // ── GET / — Home page ─────────────────────────────────────────────────────────
@@ -96,8 +96,22 @@ app.get('/', async (req, res) => {
 <title>UHT — Undeniable Hit Theory</title>
 <meta name="description" content="A weekly music drop. Vote HIT or DENIED. Subscribe by text.">
 <style>
+/* ── Design tokens ────────────────────────────────────────── */
+:root{
+  --bg:#0a0a0a;
+  --surface:#111111;
+  --surface2:#181818;
+  --ink:#e8e4d9;
+  --border:rgba(232,228,217,0.07);
+  --border-hi:rgba(232,228,217,0.18);
+  --muted:rgba(232,228,217,0.38);
+  --muted-mid:rgba(232,228,217,0.6);
+  --accent:#E8B84B;
+  --accent-hit:#E8B84B;
+  --green:#27ae60;
+}
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{background:#000;color:#f3f1ea;font-family:Georgia,"Times New Roman",serif;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+html,body{background:var(--bg);color:var(--ink);font-family:Georgia,"Times New Roman",serif;overflow-x:hidden;-webkit-font-smoothing:antialiased}
 a{color:inherit;text-decoration:none}
 
 /* NAV */
@@ -341,9 +355,16 @@ select.sub-input option{background:#111;color:#f3f1ea}
       <div style="font-size:clamp(40px,6vw,80px);font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(243,241,234,0.28);text-align:center;line-height:1;margin-bottom:16px;pointer-events:none;user-select:none;font-family:Georgia,serif;text-shadow:0 0 60px rgba(232,184,75,0.12)">FOUNDING CURATOR</div>
       ${(c => `
       <div class="curator-card" onclick="openCuratorModal(${c.id})" style="cursor:pointer;width:340px;border-color:rgba(232,184,75,0.18);box-shadow:0 0 80px rgba(232,184,75,0.05)">
-        ${c.image_url
-          ? `<img class="curator-img" src="${c.image_url}" alt="${c.name}" loading="lazy" style="aspect-ratio:4/5">`
-          : `<div class="curator-img-placeholder" style="aspect-ratio:4/5">🎧</div>`}
+        <div style="position:relative">
+          ${c.image_url
+            ? `<img class="curator-img" src="${c.image_url}" alt="${c.name}" loading="lazy" style="aspect-ratio:4/5">`
+            : `<div class="curator-img-placeholder" style="aspect-ratio:4/5">🎧</div>`}
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:10px 16px 12px;background:linear-gradient(transparent,rgba(0,0,0,0.78));display:flex;align-items:center;gap:8px">
+            <span style="font-size:8px;letter-spacing:.42em;text-transform:uppercase;color:rgba(232,228,217,0.72);font-family:Georgia,serif;line-height:1">${c.curator_month || 'May 2026'}</span>
+            <span style="width:1px;height:10px;background:rgba(232,228,217,0.2);display:inline-block"></span>
+            <span style="font-size:8px;letter-spacing:.42em;text-transform:uppercase;color:rgba(232,184,75,0.7);font-family:Georgia,serif;line-height:1">Undeniable Hit Theory</span>
+          </div>
+        </div>
         <div class="curator-body">
           <div style="display:inline-flex;align-items:center;gap:8px;padding:4px 12px 4px 10px;background:rgba(232,184,75,0.08);border:1px solid rgba(232,184,75,0.28);border-radius:2px;margin-bottom:14px">
             <span style="color:#E8B84B;font-size:9px;letter-spacing:.32em;text-transform:uppercase;font-family:Georgia,serif">No. 01 · Founding Curator</span>
@@ -355,7 +376,6 @@ select.sub-input option{background:#111;color:#f3f1ea}
         </div>
       </div>
       <div class="curator-helper">Follow ${c.name.split(' ')[0]} to get his weekly pick every Monday.</div>
-      <div class="curator-est">Est. ${c.curator_month || 'May 2026'} · Undeniable Hit Theory</div>
       `)(curators[0])}
     </div>
     ` : `
