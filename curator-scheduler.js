@@ -99,14 +99,24 @@ async function runCuratorDrop() {
 
 // ── Curator message builder ───────────────────────────────────────────────────
 // Returns { body, mediaUrl } — mediaUrl is the curator photo for MMS (or null for SMS).
+// Week 1: intro message ("Meet the curator"). Week 2-4: shorter drop notice.
 function buildCuratorMessage(song, curatorName, curatorImage, curatorMonth) {
   const base = process.env.BASE_URL || '';
   const slug = curatorName.toLowerCase().replace(/\s+/g, '-');
   const link = base ? `${base}/drop/curator/${slug}?ref=sms` : null;
+  const firstName = curatorName.split(' ')[0];
+  const month = curatorMonth || 'this month';
+  const week = parseInt(song.week_number) || 1;
 
-  const monthLine = curatorMonth ? `Curator of the Month · ${curatorMonth}` : `Curator of the Month`;
+  let body;
+  if (week === 1) {
+    // Introduction drop
+    body = `Meet your Curator of the Month · ${month}\n\n${curatorName} is dropping a new hit every Monday this month. Check out his picks and vote.`;
+  } else {
+    // Week 2, 3, 4 — short and direct
+    body = `${month} · Week ${week}\n\n${firstName}'s new pick is live. Vote now.`;
+  }
 
-  let body = `${monthLine}\n\nCheck out ${curatorName.split(' ')[0]}'s picks and vote.`;
   if (link) body += `\n${link}`;
 
   return {
