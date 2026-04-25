@@ -36,7 +36,7 @@ app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "pu
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr23-v5' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr23-v6' });
 });
 
 // ── GET / — Home page ─────────────────────────────────────────────────────────
@@ -125,7 +125,7 @@ a{color:inherit;text-decoration:none}
 
 /* SECTION HEADERS */
 .sec-head{display:flex;align-items:center;gap:16px;margin-bottom:48px}
-.sec-label{font-size:10px;letter-spacing:.4em;text-transform:uppercase;opacity:.3;white-space:nowrap}
+.sec-label{font-size:10px;letter-spacing:.4em;text-transform:uppercase;color:#f3f1ea;white-space:nowrap}
 .sec-line{flex:1;height:1px;background:rgba(243,241,234,0.07)}
 
 /* CURATORS CAROUSEL */
