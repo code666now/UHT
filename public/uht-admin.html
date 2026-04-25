@@ -309,8 +309,8 @@ tr:hover td{background:rgba(255,255,255,.025)}
         <button class="btn btn-primary" onclick="openModal('subscriber')">+ Add Subscriber</button>
       </div>
       <div class="table-wrap"><table>
-        <thead><tr><th>#</th><th>Phone</th><th>Subscribed To</th><th>Type</th><th>Status</th><th>Joined</th><th></th></tr></thead>
-        <tbody id="subs-tbody"><tr class="empty-row"><td colspan="7">Loading…</td></tr></tbody>
+        <thead><tr><th>#</th><th>Phone</th><th>Name</th><th>Subscribed To</th><th>Type</th><th>Status</th><th>Joined</th><th></th></tr></thead>
+        <tbody id="subs-tbody"><tr class="empty-row"><td colspan="8">Loading…</td></tr></tbody>
       </table></div>
     </div>
 
@@ -336,6 +336,16 @@ tr:hover td{background:rgba(255,255,255,.025)}
         </div>
         <span id="test-msg-status" style="font-size:11px;color:var(--muted)"></span>
       </div>
+      <div style="margin-bottom:28px;padding:20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)">
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px">Send Drop Preview — Single Number</div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:14px">Send the real drop SMS (with song + link) to one number to test the full flow. The number must already be a subscriber.</p>
+        <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+          <input id="drop-test-phone" type="tel" placeholder="+1 (212) 555-1234" style="flex:1;min-width:200px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--ink);padding:8px 10px;font-size:13px;font-family:inherit">
+          <button class="btn btn-primary" onclick="sendDropPreview()">Send Drop Preview</button>
+        </div>
+        <span id="drop-preview-status" style="font-size:11px;color:var(--muted)"></span>
+      </div>
+
       <div style="margin-bottom:28px;padding:20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)">
         <div style="font-size:13px;font-weight:600;margin-bottom:10px">Weekly Drop Message</div>
         <p style="font-size:12px;color:var(--muted);margin-bottom:14px">Edit your SMS before sending to all active subscribers.</p>
@@ -478,6 +488,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <div class="modal-title">Add Curator</div>
     <div class="field"><label>Name *</label><input type="text" id="curator-name" placeholder="DJ Undeniable"></div>
     <div class="field"><label>Bio</label><textarea id="curator-bio" placeholder="Straight heat every Friday…"></textarea></div>
+    <div class="field"><label>Curator Statement <span style="font-weight:400;opacity:.5;font-size:11px">— long form, up to 3 paragraphs</span></label><textarea id="curator-statement" placeholder="Write the curator's full statement here…" rows="8" style="min-height:160px;resize:vertical"></textarea></div>
     <div class="field"><label>Instagram</label><input type="text" id="curator-instagram" placeholder="@handle"></div>
     <div class="field">
       <label>Photo</label>
@@ -563,6 +574,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <input type="hidden" id="edit-curator-id">
     <div class="field"><label>Name *</label><input type="text" id="edit-curator-name" placeholder="DJ Undeniable"></div>
     <div class="field"><label>Bio</label><textarea id="edit-curator-bio" placeholder="Straight heat every Friday…"></textarea></div>
+    <div class="field"><label>Curator Statement <span style="font-weight:400;opacity:.5;font-size:11px">— long form, up to 3 paragraphs</span></label><textarea id="edit-curator-statement" placeholder="Write the curator's full statement here…" rows="8" style="min-height:160px;resize:vertical"></textarea></div>
     <div class="field"><label>Instagram</label><input type="text" id="edit-curator-instagram" placeholder="@handle"></div>
     <div class="field-row">
       <div class="field"><label>Curator Month</label><input type="text" id="edit-curator-month" placeholder="April 2026"></div>
@@ -638,6 +650,20 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('subscriber')">Cancel</button>
       <button class="btn btn-primary" onclick="submitSubscriber()">Save Subscriber</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-edit-subscriber">
+  <div class="modal">
+    <div class="modal-title">Edit Subscriber</div>
+    <input type="hidden" id="edit-sub-user-id">
+    <div class="field"><label>Phone (read-only)</label><input type="tel" id="edit-sub-phone" readonly style="opacity:.5;cursor:not-allowed"></div>
+    <div class="field"><label>Name</label><input type="text" id="edit-sub-name" placeholder="Jane Smith"></div>
+    <div class="field"><label>Email</label><input type="email" id="edit-sub-email" placeholder="jane@example.com"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('edit-subscriber')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitEditSub()">Save Changes</button>
     </div>
   </div>
 </div>
@@ -770,18 +796,21 @@ async function loadSubscribers() {
     const {subscribers} = await api('GET','/api/subscribers');
     tbody.innerHTML = subscribers.length
       ? subscribers.map(s=>`<tr>
-          <td style="color:var(--muted)">#${s.id}</td><td>${esc(s.phone)}</td>
+          <td style="color:var(--muted)">#${s.id}</td>
+          <td>${esc(s.phone)}</td>
+          <td>${esc(s.name||'—')}</td>
           <td><strong>${esc(s.target_name||'—')}</strong></td>
           <td><span class="tag ${s.curator_id?'tag-curator':'tag-genre'}">${s.curator_id?'curator':'genre'}</span></td>
           <td><span class="tag ${s.is_active?'tag-active':'tag-inactive'}">${s.is_active?'active':'paused'}</span></td>
           <td>${fmtDate(s.created_at)}</td>
           <td>
-            <button class="btn" onclick="toggleSub(${s.id},${s.is_active})">${s.is_active?'Pause':'Resume'}</button>
-            <button class="btn btn-danger" style="margin-left:6px" onclick="deleteSub(${s.id})">Remove</button>
+            <button class="btn" onclick="editSub(${s.user_id||s.id},'${esc(s.phone)}','${esc(s.name||'')}','${esc(s.email||'')}')">Edit</button>
+            <button class="btn" style="margin-left:4px" onclick="toggleSub(${s.id},${s.is_active})">${s.is_active?'Pause':'Resume'}</button>
+            <button class="btn btn-danger" style="margin-left:4px" onclick="deleteSub(${s.id})">Remove</button>
           </td>
         </tr>`).join('')
-      : '<tr class="empty-row"><td colspan="7">No subscribers yet.</td></tr>';
-  } catch(e) { tbody.innerHTML=`<tr class="empty-row"><td colspan="7">${esc(e.message)}</td></tr>`; }
+      : '<tr class="empty-row"><td colspan="8">No subscribers yet.</td></tr>';
+  } catch(e) { tbody.innerHTML=`<tr class="empty-row"><td colspan="8">${esc(e.message)}</td></tr>`; }
 }
 
 async function loadVotes() {
@@ -850,8 +879,9 @@ async function submitCurator() {
   if (!name) return toast('Name required.', 'err');
   const image_url = _curatorImgBase64 || document.getElementById('curator-img-url').value.trim() || null;
   try {
+    const statement = document.getElementById('curator-statement').value.trim() || null;
     const instagram = document.getElementById('curator-instagram').value.trim();
-    await api('POST', '/api/curators', { name, bio, image_url, instagram });
+    await api('POST', '/api/curators', { name, bio, statement, image_url, instagram });
     toast('Curator created!', 'ok');
     closeModal('curator');
     _curatorImgBase64 = null;
@@ -963,6 +993,7 @@ function openEditCurator(id) {
   document.getElementById('edit-curator-id').value = id;
   document.getElementById('edit-curator-name').value = c.name || '';
   document.getElementById('edit-curator-bio').value = c.bio || '';
+  document.getElementById('edit-curator-statement').value = c.statement || '';
   document.getElementById('edit-curator-instagram').value = c.instagram || '';
   document.getElementById('edit-curator-month').value = c.curator_month || '';
   document.getElementById('edit-monthly-theme').value = c.monthly_theme || '';
@@ -1005,10 +1036,11 @@ async function submitEditCurator() {
   if (!name) return toast('Name required.', 'err');
   const image_url = _editCuratorImgBase64 || document.getElementById('edit-curator-img-url').value.trim() || null;
   try {
+    const statement = document.getElementById('edit-curator-statement').value.trim() || null;
     const instagram = document.getElementById('edit-curator-instagram').value.trim();
     const curator_month = document.getElementById('edit-curator-month').value.trim() || null;
     const monthly_theme = document.getElementById('edit-monthly-theme').value.trim() || null;
-    await api('PATCH', `/api/curators/${id}`, { name, bio, image_url, instagram, curator_month, monthly_theme });
+    await api('PATCH', `/api/curators/${id}`, { name, bio, statement, image_url, instagram, curator_month, monthly_theme });
     toast('Curator updated!', 'ok');
     closeModal('curator-edit');
     _editCuratorImgBase64 = null;
@@ -1018,6 +1050,25 @@ async function submitEditCurator() {
 
 async function deleteSub(id) { if(!confirm('Remove?')) return; try { await api('DELETE',`/api/subscribers/${id}`); toast('Removed.','ok'); loadSubscribers(); loadDashboard(); } catch(e){toast(e.message,'err');} }
 async function toggleSub(id, active) { try { await api('PATCH',`/api/subscribers/${id}`,{is_active:!active}); toast(active?'Paused.':'Resumed.','ok'); loadSubscribers(); } catch(e){toast(e.message,'err');} }
+
+function editSub(userId, phone, name, email) {
+  document.getElementById('edit-sub-user-id').value = userId;
+  document.getElementById('edit-sub-phone').value = phone;
+  document.getElementById('edit-sub-name').value = name;
+  document.getElementById('edit-sub-email').value = email;
+  openModal('edit-subscriber');
+}
+async function submitEditSub() {
+  const userId = document.getElementById('edit-sub-user-id').value;
+  const name   = document.getElementById('edit-sub-name').value.trim();
+  const email  = document.getElementById('edit-sub-email').value.trim();
+  try {
+    await api('PATCH', `/api/users/${userId}`, { name, email });
+    toast('Subscriber updated.', 'ok');
+    closeModal('edit-subscriber');
+    loadSubscribers();
+  } catch(e) { toast(e.message, 'err'); }
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  AI AGENT
@@ -1464,6 +1515,33 @@ document.querySelectorAll('.nav-item').forEach(item=>{
     if (name === 'featured') loadFeaturedDrop();
   });
 });
+
+// ── Drop Preview ───────────────────────────────────────────────
+async function sendDropPreview(){
+  var phone = document.getElementById('drop-test-phone').value.trim();
+  var status = document.getElementById('drop-preview-status');
+  if(!phone){ status.textContent = 'Enter a phone number.'; return; }
+  status.textContent = 'Sending…';
+  try {
+    var r = await fetch(API+'/api/drop/test', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ phone })
+    });
+    var d = await r.json();
+    if(r.ok){
+      status.style.color = 'var(--green, #4ade80)';
+      status.textContent = '✓ Drop sent to ' + phone;
+    } else {
+      status.style.color = 'var(--red, #f87171)';
+      status.textContent = '✗ ' + (d.error || 'Failed');
+    }
+  } catch(e){
+    status.style.color = 'var(--red, #f87171)';
+    status.textContent = '✗ Network error';
+  }
+  setTimeout(function(){ status.textContent = ''; status.style.color = ''; }, 5000);
+}
 
 // ── Messages ──────────────────────────────────────────────────
 function saveDropMessage(){
