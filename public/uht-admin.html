@@ -361,6 +361,23 @@ tr:hover td{background:rgba(255,255,255,.025)}
         <thead><tr><th>#</th><th>Curator</th><th>Title</th><th>Artist</th><th>Theme</th><th>Week</th><th>Note</th><th>Links</th><th></th></tr></thead>
         <tbody id="submissions-tbody"><tr class="empty-row"><td colspan="9">Loading…</td></tr></tbody>
       </table></div>
+
+      <div class="section-header" style="margin-top:24px">
+        <div class="section-title">Community Submissions <span style="font-size:11px;color:var(--muted);font-weight:400">— sent via "Submit a Hit" on drop pages</span></div>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Artist</th><th>Song</th><th>Genre</th><th>Why</th><th>Link</th><th>Date</th><th></th></tr></thead>
+        <tbody id="community-submissions-tbody"><tr class="empty-row"><td colspan="10">Loading…</td></tr></tbody>
+      </table></div>
+
+      <div class="section-header" style="margin-top:24px">
+        <div class="section-title">Genre Submissions</div>
+        <button class="btn btn-primary" onclick="openModal('genre-submission-add')">+ Add Genre Submission</button>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>#</th><th>Genre</th><th>Title</th><th>Artist</th><th>Week Title</th><th>Week</th><th>Drop Date</th><th>Links</th><th></th></tr></thead>
+        <tbody id="genre-submissions-tbody"><tr class="empty-row"><td colspan="9">Loading…</td></tr></tbody>
+      </table></div>
     </div>
 
   </div>
@@ -494,6 +511,33 @@ tr:hover td{background:rgba(255,255,255,.025)}
   </div>
 </div>
 
+<!-- Add Genre Submission Modal -->
+<div class="modal-overlay" id="modal-genre-submission-add">
+  <div class="modal">
+    <div class="modal-title">Add Genre Submission</div>
+    <div class="field">
+      <label>Genre *</label>
+      <select id="gs-genre"></select>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Title *</label><input type="text" id="gs-title" placeholder="Song Title"></div>
+      <div class="field"><label>Artist *</label><input type="text" id="gs-artist" placeholder="Artist Name"></div>
+    </div>
+    <div class="field"><label>Week Title</label><input type="text" id="gs-week-title" placeholder="e.g. Summer Vibes"></div>
+    <div class="field"><label>Spotify URL</label><input type="text" id="gs-spotify" placeholder="https://open.spotify.com/track/..."></div>
+    <div class="field"><label>YouTube URL</label><input type="text" id="gs-youtube" placeholder="https://youtube.com/watch?v=..."></div>
+    <div class="field-row">
+      <div class="field"><label>Week #</label><input type="number" id="gs-week" value="1" min="1" max="4"></div>
+      <div class="field"><label>Drop Date</label><input type="date" id="gs-drop-date"></div>
+    </div>
+    <div class="field"><label>Note</label><textarea id="gs-note" placeholder="Why this song?"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('genre-submission-add')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitGenreSubmission()">Save</button>
+    </div>
+  </div>
+</div>
+
 <!-- Edit Curator Modal -->
 <div class="modal-overlay" id="modal-curator-edit">
   <div class="modal">
@@ -542,6 +586,23 @@ tr:hover td{background:rgba(255,255,255,.025)}
       </div>
     </div>
     <div class="profile-bio" id="profile-bio"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-feature-curator">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-title">📣 Feature This Curator</div>
+    <div id="feature-curator-info" style="margin-bottom:16px;padding:12px 14px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:var(--radius);font-size:12px;line-height:1.7"></div>
+    <div class="field">
+      <label>Message — sent to all active subscribers</label>
+      <textarea id="feature-msg" rows="5" style="width:100%;padding:11px 13px;background:rgba(255,255,255,0.04);border:1px solid var(--border-hi);border-radius:var(--radius);color:var(--ink);font-family:var(--mono);font-size:12px;line-height:1.6;resize:vertical;outline:none"></textarea>
+    </div>
+    <div id="feature-sub-count" style="font-size:12px;color:#E8B84B;margin-bottom:10px;min-height:18px"></div>
+    <div id="feature-status" style="font-size:12px;min-height:18px;margin-bottom:6px"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('feature-curator')">Cancel</button>
+      <button class="btn btn-primary" id="feature-send-btn" onclick="sendFeatureBlast()">Send to All Subscribers</button>
+    </div>
   </div>
 </div>
 
@@ -675,7 +736,8 @@ async function loadCurators() {
           </td>
           <td style="color:var(--muted);font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.bio||'—')}</td>
           <td>${c.song_count??0}</td><td>${c.sub_count??0}</td>
-          <td style="display:flex;gap:6px">
+          <td style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn" style="color:#E8B84B;border-color:rgba(232,184,75,0.35)" onclick="featureCurator(${c.id})">📣 Feature</button>
             <button class="btn" onclick="openEditCurator(${c.id})">Edit</button>
             <button class="btn btn-danger" onclick="deleteCurator(${c.id})">Delete</button>
           </td>
@@ -813,6 +875,67 @@ async function submitSubscriber() {
 async function deleteSong(id) { if(!confirm('Delete?')) return; try { await api('DELETE',`/api/songs/${id}`); toast('Deleted.','ok'); loadSongs(); loadDashboard(); } catch(e){toast(e.message,'err');} }
 async function deleteGenre(id) { if(!confirm('Delete?')) return; try { await api('DELETE',`/api/genres/${id}`); toast('Deleted.','ok'); loadGenres(); } catch(e){toast(e.message,'err');} }
 async function deleteCurator(id) { if(!confirm('Delete?')) return; try { await api('DELETE',`/api/curators/${id}`); toast('Deleted.','ok'); loadCurators(); } catch(e){toast(e.message,'err');} }
+
+// ── Curator Feature Blast ─────────────────────────────────────
+let _featureCuratorId = null;
+
+async function featureCurator(id) {
+  _featureCuratorId = id;
+  const c = CURATORS.find(x => x.id === id);
+  if (!c) return;
+
+  const slug = c.name.toLowerCase().replace(/ /g, '-');
+  const base = (API === 'http://localhost:3000') ? 'https://uht-app-production.up.railway.app' : API;
+  const dropUrl = `${base}/drop/curator/${slug}`;
+  const monthLabel = c.curator_month ? `${c.curator_month} · ` : '';
+
+  document.getElementById('feature-msg').value =
+    `UHT: This month\u2019s curator is ${c.name}. ${monthLabel}Follow their weekly picks:\n${dropUrl}\n\nReply STOP to opt out.`;
+
+  document.getElementById('feature-curator-info').innerHTML =
+    `<strong style="color:var(--ink)">${esc(c.name)}</strong>${c.curator_month ? ` <span style="color:#E8B84B;font-size:11px">· ${esc(c.curator_month)}</span>` : ''}<br><span style="color:var(--muted)">${esc(c.bio || '—')}</span>`;
+
+  document.getElementById('feature-sub-count').textContent = 'Loading subscriber count…';
+  document.getElementById('feature-status').textContent = '';
+  const btn = document.getElementById('feature-send-btn');
+  btn.disabled = false;
+  btn.textContent = 'Send to All Subscribers';
+
+  openModal('feature-curator');
+
+  try {
+    const { subscribers } = await api('GET', '/api/subscribers');
+    const active = subscribers.filter(s => s.is_active).length;
+    document.getElementById('feature-sub-count').textContent =
+      `⚠ This will send to ${active} active subscriber${active !== 1 ? 's' : ''}.`;
+  } catch(e) {
+    document.getElementById('feature-sub-count').textContent = 'Could not load subscriber count.';
+  }
+}
+
+async function sendFeatureBlast() {
+  const message = document.getElementById('feature-msg').value.trim();
+  if (!message) return;
+  const subLine = document.getElementById('feature-sub-count').textContent;
+  if (!confirm(`Send this message?\n\n${message}\n\n${subLine}`)) return;
+  const btn = document.getElementById('feature-send-btn');
+  const status = document.getElementById('feature-status');
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  status.textContent = '';
+  try {
+    const { sent, failed } = await api('POST', '/api/messages/send', { message });
+    status.style.color = 'var(--green)';
+    status.textContent = `✓ Sent to ${sent} subscriber${sent !== 1 ? 's' : ''}${failed ? ` · ${failed} failed` : ''}.`;
+    btn.textContent = '✓ Done';
+    toast(`Curator blast sent to ${sent} subscribers.`, 'ok');
+  } catch(e) {
+    status.style.color = 'var(--accent)';
+    status.textContent = `Error: ${e.message}`;
+    btn.disabled = false;
+    btn.textContent = 'Send to All Subscribers';
+  }
+}
 
 let _editCuratorImgBase64 = null;
 
@@ -1088,10 +1211,7 @@ async function loadSubmissions() {
           ${s.youtube_url ? `<a href="${esc(s.youtube_url)}" target="_blank" style="color:var(--accent);font-size:11px">▶ YT</a>` : ''}
           ${!s.spotify_url && !s.youtube_url ? '<span style="color:var(--muted)">—</span>' : ''}
         </td>
-        <td style="display:flex;gap:6px">
-          <button class="btn" onclick="clearVotes(${s.id})">Clear Votes</button>
-          <button class="btn btn-danger" onclick="deleteSubmission(${s.id})">Delete</button>
-        </td>
+        <td><button class="btn btn-danger" onclick="deleteSubmission(${s.id})">Delete</button></td>
       </tr>
     `).join('');
   } catch(e) {
@@ -1127,12 +1247,6 @@ async function submitSubmission() {
   } catch(e) { toast(e.message, 'err'); }
 }
 
-async function clearVotes(id) {
-  if (!confirm('Clear all votes for this submission?')) return;
-  try { await api('DELETE', `/api/curator-submissions/${id}/votes`); toast('Votes cleared.', 'ok'); loadSubmissions(); }
-  catch(e) { toast(e.message, 'err'); }
-}
-
 async function deleteSubmission(id) {
   if (!confirm('Delete this submission?')) return;
   try {
@@ -1153,7 +1267,135 @@ async function populateCuratorDropdown() {
 
 async function loadSubmissionsPanel() {
   loadSubmissions();
+  loadCommunitySubmissions();
+  loadGenreSubmissions();
   populateCuratorDropdown();
+  populateGenreDropdown();
+}
+
+async function loadCommunitySubmissions() {
+  const tbody = document.getElementById('community-submissions-tbody');
+  try {
+    const data = await api('GET', '/api/community-submissions');
+    const rows = data.submissions || [];
+    if (!rows.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="10">No submissions yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map((s, i) => `
+      <tr>
+        <td style="color:var(--muted)">#${i+1}</td>
+        <td>${esc(s.name||'—')}</td>
+        <td style="color:var(--muted)">${esc(s.phone||'—')}</td>
+        <td><strong>${esc(s.artist)}</strong></td>
+        <td>${esc(s.song)}</td>
+        <td><span class="tag tag-genre">${esc(s.genre||'—')}</span></td>
+        <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)">${esc(s.why||'—')}</td>
+        <td>${s.youtube_url ? `<a href="${esc(s.youtube_url)}" target="_blank" style="color:var(--accent);font-size:11px">▶ Watch</a>` : '—'}</td>
+        <td style="color:var(--muted);font-size:11px">${s.submitted_at ? s.submitted_at.slice(0,10) : '—'}</td>
+        <td><button class="btn btn-danger" onclick="deleteCommunitySubmission(${s.id})">Delete</button></td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="10">${esc(e.message)}</td></tr>`;
+    toast(e.message, 'err');
+  }
+}
+
+async function deleteCommunitySubmission(id) {
+  if (!confirm('Delete this submission?')) return;
+  try {
+    await api('DELETE', `/api/community-submissions/${id}`);
+    toast('Deleted.', 'ok');
+    loadCommunitySubmissions();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+async function loadGenreSubmissions() {
+  const tbody = document.getElementById('genre-submissions-tbody');
+  try {
+    const data = await api('GET', '/api/genre-submissions');
+    const rows = data.submissions || data;
+    if (!rows.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="9">No genre submissions yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map((s, i) => `
+      <tr>
+        <td style="color:var(--muted)">#${i+1}</td>
+        <td><span class="tag tag-genre">${esc(s.genre)}</span></td>
+        <td><strong>${esc(s.title)}</strong></td>
+        <td>${esc(s.artist)}</td>
+        <td style="color:var(--muted)">${esc(s.week_title||'—')}</td>
+        <td style="color:var(--muted)">Wk ${s.week_number||1}</td>
+        <td style="color:var(--muted)">${s.drop_date ? s.drop_date.slice(0,10) : '—'}</td>
+        <td style="display:flex;gap:8px">
+          ${s.spotify_url ? `<a href="${esc(s.spotify_url)}" target="_blank" style="color:var(--green);font-size:11px">♫ Spotify</a>` : ''}
+          ${s.youtube_url ? `<a href="${esc(s.youtube_url)}" target="_blank" style="color:var(--accent);font-size:11px">▶ YT</a>` : ''}
+          ${!s.spotify_url && !s.youtube_url ? '<span style="color:var(--muted)">—</span>' : ''}
+        </td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn ${s.is_community_pick ? 'btn-primary' : ''}" onclick="setCommunityPick(${s.id})" title="Feature on Community page">${s.is_community_pick ? '★ Community Pick' : 'Set Community Pick'}</button>
+          <button class="btn btn-danger" onclick="deleteGenreSubmission(${s.id})">Delete</button>
+        </td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="9">${esc(e.message)}</td></tr>`;
+    toast(e.message, 'err');
+  }
+}
+
+async function populateGenreDropdown() {
+  try {
+    const data = await api('GET', '/api/genres');
+    const sel = document.getElementById('gs-genre');
+    sel.innerHTML = '<option value="">— Select Genre —</option>' +
+      (data.genres||data).map(g => `<option value="${esc(g.name)}">${esc(g.name)}</option>`).join('');
+  } catch(e) {}
+}
+
+async function submitGenreSubmission() {
+  const genre      = document.getElementById('gs-genre').value;
+  const title      = document.getElementById('gs-title').value.trim();
+  const artist     = document.getElementById('gs-artist').value.trim();
+  const week_title = document.getElementById('gs-week-title').value.trim();
+  const spotify_url= document.getElementById('gs-spotify').value.trim();
+  const youtube_url= document.getElementById('gs-youtube').value.trim();
+  const week_number= parseInt(document.getElementById('gs-week').value) || 1;
+  const drop_date  = document.getElementById('gs-drop-date').value || null;
+  const note       = document.getElementById('gs-note').value.trim();
+  if (!genre || !title || !artist) return toast('Genre, title and artist required.', 'err');
+  try {
+    await api('POST', '/api/genre-submissions', {
+      genre, title, artist, week_title, spotify_url, youtube_url, week_number, drop_date, note
+    });
+    toast('Genre submission added!', 'ok');
+    closeModal('genre-submission-add');
+    ['gs-title','gs-artist','gs-week-title','gs-spotify','gs-youtube','gs-note'].forEach(id => {
+      const el = document.getElementById(id); if(el) el.value = '';
+    });
+    document.getElementById('gs-week').value = '1';
+    document.getElementById('gs-drop-date').value = '';
+    loadGenreSubmissions();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+async function setCommunityPick(id) {
+  try {
+    await api('PATCH', `/api/genre-submissions/${id}/community-pick`);
+    toast('Community pick set. Live at /drop/community', 'ok');
+    loadGenreSubmissions();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+async function deleteGenreSubmission(id) {
+  if (!confirm('Delete this genre submission?')) return;
+  try {
+    await api('DELETE', `/api/genre-submissions/${id}`);
+    toast('Deleted.', 'ok');
+    loadGenreSubmissions();
+  } catch(e) { toast(e.message, 'err'); }
 }
 
 // ── Helpers ───────────────────────────────────────────────────
