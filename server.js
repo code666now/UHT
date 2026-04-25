@@ -36,7 +36,7 @@ app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "pu
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr23-v7' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr24-v1' });
 });
 
 // ── GET / — Home page ─────────────────────────────────────────────────────────
@@ -83,6 +83,9 @@ app.get('/', async (req, res) => {
       { key: 'community', emoji: '🃏', label: 'Community', path: '/drop/community', id: null }
     ].filter((g, i, arr) => g.label && arr.findIndex(x => x.key === g.key) === i);
 
+    // Pick first available drop for sample hit section (no extra query — reuses currentDrops)
+    const featuredDrop = allGenres.map(g => currentDrops[g.key] ? { ...currentDrops[g.key], genre: g } : null).find(Boolean);
+
     res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -113,8 +116,21 @@ a{color:inherit;text-decoration:none}
 .hero-btns{display:flex;gap:14px;flex-wrap:wrap}
 .btn-fill{padding:15px 44px;background:#f3f1ea;color:#000;border:none;font-family:Georgia,serif;font-size:15px;letter-spacing:.06em;cursor:pointer;border-radius:3px;transition:background .2s}
 .btn-fill:hover{background:#fff}
+.btn-fill.btn-primary{font-size:17px;padding:20px 56px;letter-spacing:.05em}
 .btn-outline{padding:15px 44px;border:1px solid rgba(243,241,234,0.22);font-family:Georgia,serif;font-size:15px;letter-spacing:.06em;border-radius:3px;color:#f3f1ea;display:inline-block;transition:border-color .2s}
 .btn-outline:hover{border-color:rgba(243,241,234,0.6)}
+.btn-text-link{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:rgba(243,241,234,0.55);text-decoration:none;display:inline-flex;align-items:center;gap:6px;padding:20px 4px;transition:color .2s;font-family:Georgia,serif;border:none;background:none;cursor:pointer}
+.btn-text-link:hover{color:#f3f1ea}
+.sample-hit{padding:64px 40px;border-top:1px solid rgba(243,241,234,0.07);border-bottom:1px solid rgba(243,241,234,0.07)}
+.sample-inner{max-width:900px;margin:0 auto;display:grid;grid-template-columns:1fr auto;gap:32px;align-items:center}
+.sample-genre{font-size:10px;letter-spacing:.35em;text-transform:uppercase;color:rgba(243,241,234,0.45);margin-bottom:14px}
+.sample-title{font-size:clamp(32px,5vw,58px);font-weight:700;letter-spacing:-.02em;line-height:1.05;margin-bottom:10px}
+.sample-artist{font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:rgba(243,241,234,0.5);margin-bottom:24px}
+.sample-listen{display:inline-flex;align-items:center;gap:8px;padding:13px 28px;border:1px solid rgba(243,241,234,0.28);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#f3f1ea;font-family:Georgia,serif;transition:all .2s}
+.sample-listen:hover{background:rgba(243,241,234,0.06);border-color:rgba(243,241,234,0.5)}
+.sample-ghost{font-size:clamp(80px,12vw,148px);font-weight:700;color:rgba(243,241,234,0.04);letter-spacing:-.03em;line-height:1;user-select:none;pointer-events:none}
+.curator-helper{font-size:13px;color:rgba(243,241,234,0.5);text-align:center;margin-top:18px;font-style:italic}
+@media(max-width:768px){.sample-inner{grid-template-columns:1fr}.sample-ghost{display:none}.btn-fill.btn-primary{font-size:16px;padding:18px 32px;width:100%;text-align:center}}
 .hero-fine{font-size:10px;letter-spacing:.2em;text-transform:uppercase;opacity:.55;margin-top:22px}
 
 /* TICKER */
@@ -288,10 +304,10 @@ select.sub-input option{background:#111;color:#f3f1ea}
     <span class="hero-solid">UNDENIABLE</span>
     <span class="hero-outline">HIT THEORY</span>
   </h1>
-  <p class="hero-sub">Your weekly music verdict.</p>
-  <div class="hero-btns">
-    <button class="btn-fill" onclick="document.getElementById('subscribe').scrollIntoView({behavior:'smooth'})">Get the weekly drop</button>
-    <a class="btn-outline" href="#drops">See this week's picks</a>
+  <p class="hero-sub">A weekly hit, curated by real people. Delivered by text.</p>
+  <div class="hero-btns" style="align-items:center;gap:24px">
+    <button class="btn-fill btn-primary" onclick="document.getElementById('subscribe').scrollIntoView({behavior:'smooth'})">Get Weekly Hits by Text</button>
+    <a class="btn-text-link" href="#drops">Explore drops ↓</a>
   </div>
   <div class="hero-fine">Free · Text only · Unsubscribe anytime</div>
 </section>
@@ -330,7 +346,8 @@ select.sub-input option{background:#111;color:#f3f1ea}
           <div class="curator-see">+ Follow</div>
         </div>
       </div>
-      <div style="font-size:9px;letter-spacing:.4em;text-transform:uppercase;color:rgba(243,241,234,0.16);margin-top:20px;font-family:Georgia,serif">Est. ${c.curator_month || 'May 2026'} · Undeniable Hit Theory</div>
+      <div class="curator-helper">Follow ${c.name.split(' ')[0]} to get his weekly pick every Monday.</div>
+      <div style="font-size:9px;letter-spacing:.4em;text-transform:uppercase;color:rgba(243,241,234,0.16);margin-top:12px;font-family:Georgia,serif">Est. ${c.curator_month || 'May 2026'} · Undeniable Hit Theory</div>
       `)(curators[0])}
     </div>
     ` : `
@@ -354,13 +371,26 @@ select.sub-input option{background:#111;color:#f3f1ea}
   </div>
 </section>
 
-<!-- TICKER -->
-<div class="ticker">
-  <div class="ticker-track">
-    <span class="ticker-text">· HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · </span>
-    <span class="ticker-text">· HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · </span>
+<!-- SAMPLE HIT -->
+${featuredDrop ? `
+<section class="sample-hit">
+  <div style="max-width:900px;margin:0 auto">
+    <div class="sec-head" style="margin-bottom:36px">
+      <span class="sec-label">Sample Drop</span>
+      <div class="sec-line"></div>
+    </div>
+    <div class="sample-inner">
+      <div>
+        <div class="sample-genre">${featuredDrop.genre.emoji} ${featuredDrop.genre.label.toUpperCase()}</div>
+        <div class="sample-title">${featuredDrop.title}</div>
+        <div class="sample-artist">${featuredDrop.artist}</div>
+        <a class="sample-listen" href="${featuredDrop.genre.path}">Listen ↗</a>
+      </div>
+      <div class="sample-ghost">HIT?</div>
+    </div>
   </div>
-</div>
+</section>
+` : ''}
 
 <!-- GENRE DROPS -->
 <section style="padding:80px 40px" id="drops">
