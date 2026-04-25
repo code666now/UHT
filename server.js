@@ -36,7 +36,7 @@ app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "pu
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr24-v6' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'apr24-v7' });
 });
 
 // ── GET / — Home page ─────────────────────────────────────────────────────────
@@ -390,22 +390,19 @@ select.sub-input option{background:#111;color:#f3f1ea}
 .js-go .footer{opacity:0;transition:opacity .8s ease}
 .js-go .footer.in{opacity:1}
 
-/* Custom cursor (desktop only) */
+/* Custom cursor — HIT emoji (desktop only) */
 @media(hover:hover){
   body{cursor:none}
-  .uht-cursor{pointer-events:none;position:fixed;top:0;left:0;z-index:9999;mix-blend-mode:difference;transition:transform .08s linear}
-  .uht-cursor-ring{width:32px;height:32px;border:1px solid rgba(232,228,217,0.6);border-radius:50%;margin:-16px 0 0 -16px;transition:transform .08s linear,width .25s ease,height .25s ease,border-color .25s ease,margin .25s ease}
-  .uht-cursor-dot{width:4px;height:4px;background:var(--ink);border-radius:50%;margin:-2px 0 0 -2px;position:fixed;top:0;left:0;z-index:10000;pointer-events:none;transition:transform .04s linear}
-  .uht-cursor.hover .uht-cursor-ring{width:52px;height:52px;margin:-26px 0 0 -26px;border-color:var(--accent);background:rgba(232,184,75,0.06)}
-  .uht-cursor.text .uht-cursor-ring{width:3px;height:28px;border-radius:2px;margin:-14px 0 0 -1.5px}
+  .uht-cursor{pointer-events:none;position:fixed;top:0;left:0;z-index:9999;font-size:22px;line-height:1;margin:-11px 0 0 -4px;transition:opacity .2s,transform .06s linear;user-select:none;filter:drop-shadow(0 1px 4px rgba(0,0,0,0.5))}
+  .uht-cursor.hover{transform:scale(1.35) !important}
+  .uht-cursor.hidden{opacity:0}
 }
-@media(hover:none){.uht-cursor,.uht-cursor-dot{display:none}}
+@media(hover:none){.uht-cursor{display:none}}
 </style>
 </head>
 <body>
 <!-- Custom cursor -->
-<div class="uht-cursor" id="uhtCursor"><div class="uht-cursor-ring"></div></div>
-<div class="uht-cursor-dot" id="uhtCursorDot"></div>
+<div class="uht-cursor" id="uhtCursor">🎵</div>
 
 <!-- NAV -->
 <nav class="nav">
@@ -919,27 +916,23 @@ function spawnEmbers(){
   });
 })();
 
-// ── Custom cursor (desktop) ───────────────────────────────────────
+// ── Custom cursor — 🎵 emoji (desktop) ──────────────────────────
 (function(){
   var cur=document.getElementById('uhtCursor');
-  var dot=document.getElementById('uhtCursorDot');
-  if(!cur||!dot||window.matchMedia('(hover:none)').matches)return;
+  if(!cur||window.matchMedia('(hover:none)').matches)return;
   var mx=0,my=0,cx=0,cy=0;
-  document.addEventListener('mousemove',function(e){
-    mx=e.clientX;my=e.clientY;
-    dot.style.transform='translate('+mx+'px,'+my+'px)';
-  });
-  (function loop(){cx+=(mx-cx)*.12;cy+=(my-cy)*.12;cur.style.transform='translate('+cx+'px,'+cy+'px)';requestAnimationFrame(loop);})();
-  document.querySelectorAll('a,button,.genre-card,.curator-card,.sub-pill,.sub-checkbox').forEach(function(el){
-    el.addEventListener('mouseenter',function(){cur.classList.add('hover');cur.classList.remove('text');});
+  document.addEventListener('mousemove',function(e){mx=e.clientX;my=e.clientY;});
+  (function loop(){
+    cx+=(mx-cx)*.14;cy+=(my-cy)*.14;
+    cur.style.transform='translate('+cx+'px,'+cy+'px)';
+    requestAnimationFrame(loop);
+  })();
+  document.querySelectorAll('a,button,.genre-card,.curator-card').forEach(function(el){
+    el.addEventListener('mouseenter',function(){cur.classList.add('hover');});
     el.addEventListener('mouseleave',function(){cur.classList.remove('hover');});
   });
-  document.querySelectorAll('input,select').forEach(function(el){
-    el.addEventListener('mouseenter',function(){cur.classList.add('text');cur.classList.remove('hover');});
-    el.addEventListener('mouseleave',function(){cur.classList.remove('text');});
-  });
-  document.addEventListener('mouseleave',function(){cur.style.opacity='0';dot.style.opacity='0';});
-  document.addEventListener('mouseenter',function(){cur.style.opacity='1';dot.style.opacity='1';});
+  document.addEventListener('mouseleave',function(){cur.classList.add('hidden');});
+  document.addEventListener('mouseenter',function(){cur.classList.remove('hidden');});
 })();
 
 // ── Smooth anchor scroll ──────────────────────────────────────────
