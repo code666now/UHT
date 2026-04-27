@@ -468,7 +468,7 @@ select.sub-input option{background:#111;color:#f3f1ea}
   <div class="hero-eyebrow">Weekly SMS · Vote Hit or Denied</div>
   <h1 class="hero-h1">
     <span class="hero-solid">UNDENIABLE</span>
-    <span class="hero-outline">HIT THEORY</span>
+    <span class="hero-outline">HITS</span>
   </h1>
   <p class="hero-sub">A weekly hit, curated by real people. Delivered by text.</p>
   <div class="hero-btns" style="align-items:center;gap:24px">
