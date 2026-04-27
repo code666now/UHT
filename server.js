@@ -1774,6 +1774,14 @@ html,body{background:#080808;color:#ede8df;font-family:'Inter',sans-serif;overfl
 .vote-btn:active{transform:translateY(0)}
 .vote-btn:disabled{opacity:.2;cursor:default;transform:none}
 .vote-msg{text-align:center;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:rgba(237,232,223,0.3);min-height:22px;padding:12px 0 0}
+/* Listen lock */
+.vote-lock{text-align:center;padding:8px 0 22px;transition:opacity .5s,max-height .6s ease,padding .6s ease;max-height:80px;overflow:hidden}
+.vote-lock.unlocked{opacity:0;max-height:0;padding:0;pointer-events:none}
+.vote-lock-label{font-size:9px;letter-spacing:.28em;text-transform:uppercase;color:rgba(237,232,223,0.3);margin-bottom:10px}
+.vote-lock-bar{height:2px;background:rgba(237,232,223,0.08);border-radius:2px;margin:0 auto;max-width:160px;overflow:hidden}
+.vote-lock-fill{height:100%;width:0%;background:#E8B84B;transition:width .9s linear}
+.vote-btns-wrap{transition:opacity .5s}
+.vote-btns-wrap.locked{opacity:.22;pointer-events:none}
 @media(min-width:600px){
   .vote-row{flex-direction:row}
   .vote-btn{flex:1}
@@ -1865,13 +1873,19 @@ ${!ytId && d.spotify_url ? `<div class="player-outer" style="height:152px"><ifra
 </div>
 
 <div class="vote-section">
-  <div class="vote-label">Is this an undeniable hit?</div>
-  <div class="vote-row">
-    <button class="vote-btn" id="vMega" onclick="vote('mega_hit')">🔥 Mega Hit</button>
-    <button class="vote-btn" id="vHit" onclick="vote('hit')">🎯 Hit</button>
-    <button class="vote-btn" id="vDenied" onclick="vote('deny')">💀 Denied</button>
+  <div class="vote-lock" id="voteLock">
+    <div class="vote-lock-label" id="lockLabel">Listen for 60s to unlock your vote</div>
+    <div class="vote-lock-bar"><div class="vote-lock-fill" id="lockFill"></div></div>
   </div>
-  <div class="vote-msg" id="voteMsg"></div>
+  <div class="vote-btns-wrap locked" id="voteBtns">
+    <div class="vote-label">Is this an undeniable hit?</div>
+    <div class="vote-row">
+      <button class="vote-btn" id="vMega" onclick="vote('mega_hit')">🔥 Mega Hit</button>
+      <button class="vote-btn" id="vHit" onclick="vote('hit')">🎯 Hit</button>
+      <button class="vote-btn" id="vDenied" onclick="vote('deny')">💀 Denied</button>
+    </div>
+    <div class="vote-msg" id="voteMsg"></div>
+  </div>
 </div>
 
 ${allSubs && allSubs.length > 0 ? `
@@ -1911,11 +1925,40 @@ ${ytId ? `<script src="https://www.youtube.com/iframe_api"></script>
 <script>
 var player;
 function onYouTubeIframeAPIReady(){
-  player=new YT.Player('player',{videoId:'${ytId}',playerVars:{rel:0,modestbranding:1,playsinline:1}});
+  player=new YT.Player('player',{videoId:'${ytId}',playerVars:{rel:0,modestbranding:1,playsinline:1},
+    events:{onStateChange:function(e){
+      if(e.data===1) startListenTimer(); else pauseListenTimer();
+    }}
+  });
 }
 </script>` : ''}
 
 <script>
+var _listenSecs=0,_unlocked=false,_lockIv=null,_LOCK=60;
+function startListenTimer(){
+  if(_lockIv||_unlocked) return;
+  _lockIv=setInterval(function(){
+    if(_unlocked) return;
+    _listenSecs++;
+    var pct=Math.min(100,(_listenSecs/_LOCK)*100);
+    var fill=document.getElementById('lockFill');
+    if(fill) fill.style.width=pct+'%';
+    var lbl=document.getElementById('lockLabel');
+    var rem=Math.max(0,_LOCK-_listenSecs);
+    if(lbl&&rem>0) lbl.textContent=rem+'s left to unlock your vote';
+    if(_listenSecs>=_LOCK) unlockVote();
+  },1000);
+}
+function pauseListenTimer(){ clearInterval(_lockIv); _lockIv=null; }
+function unlockVote(){
+  if(_unlocked) return; _unlocked=true; pauseListenTimer();
+  var lock=document.getElementById('voteLock');
+  var btns=document.getElementById('voteBtns');
+  if(lock) lock.classList.add('unlocked');
+  if(btns) btns.classList.remove('locked');
+}
+// Fallback: if no YT player, start on page load
+${ytId ? '' : 'startListenTimer();'}
 function vote(v){
   ['vMega','vHit','vDenied'].forEach(function(id){var b=document.getElementById(id);if(b)b.disabled=true;});
   var msg=document.getElementById('voteMsg');
@@ -2247,6 +2290,13 @@ html,body{background:#000;margin:0;padding:0;overflow-x:hidden;font-family:Georg
 .vote-btn.voted{background:#f3f1ea;border-color:#f3f1ea;color:#000}
 .vote-msg{text-align:center;font-size:13px;letter-spacing:.15em;text-transform:uppercase;color:#f3f1ea;min-height:28px;padding:16px 0 0;opacity:0;transition:opacity .4s ease}
 .vote-msg.show{opacity:1}
+.vote-lock{text-align:center;padding:8px 0 22px;transition:opacity .5s,max-height .6s ease,padding .6s ease;max-height:80px;overflow:hidden}
+.vote-lock.unlocked{opacity:0;max-height:0;padding:0;pointer-events:none}
+.vote-lock-label{font-size:9px;letter-spacing:.28em;text-transform:uppercase;color:rgba(243,241,234,0.3);margin-bottom:10px}
+.vote-lock-bar{height:2px;background:rgba(243,241,234,0.08);border-radius:2px;margin:0 auto;max-width:160px;overflow:hidden}
+.vote-lock-fill{height:100%;width:0%;background:#E8B84B;transition:width .9s linear}
+.vote-btns-wrap{transition:opacity .5s}
+.vote-btns-wrap.locked{opacity:.22;pointer-events:none}
 @keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.03)}100%{transform:scale(1)}}
 .vote-btn.pulse{animation:pulse .3s ease}
 @keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
@@ -2322,14 +2372,20 @@ ${submitModalCSS}
   </div>` : ''}
 
   <div class="vote-section">
-    <div class="vote-label">Is this an undeniable hit?</div>
-    <div class="vote-row">
-      <button class="vote-btn" id="vMega" onclick="castVote('mega_hit')">🔥 Mega Hit</button>
-      <button class="vote-btn" id="vHit" onclick="castVote('hit')">🎯 Hit</button>
-      <button class="vote-btn" id="vDenied" onclick="castVote('denied')">💀 Denied</button>
+    <div class="vote-lock" id="voteLock">
+      <div class="vote-lock-label" id="lockLabel">Listen for 60s to unlock your vote</div>
+      <div class="vote-lock-bar"><div class="vote-lock-fill" id="lockFill"></div></div>
     </div>
-    <div class="vote-msg" id="voteConfirm"></div>
-    <button class="share-btn" id="shareBtn" onclick="shareVote()">↗ Share this pick</button>
+    <div class="vote-btns-wrap locked" id="voteBtns">
+      <div class="vote-label">Is this an undeniable hit?</div>
+      <div class="vote-row">
+        <button class="vote-btn" id="vMega" onclick="castVote('mega_hit')">🔥 Mega Hit</button>
+        <button class="vote-btn" id="vHit" onclick="castVote('hit')">🎯 Hit</button>
+        <button class="vote-btn" id="vDenied" onclick="castVote('denied')">💀 Denied</button>
+      </div>
+      <div class="vote-msg" id="voteConfirm"></div>
+      <button class="share-btn" id="shareBtn" onclick="shareVote()">↗ Share this pick</button>
+    </div>
   </div>
 </section>
 
@@ -2349,6 +2405,9 @@ function onPlayerStateChange(e){
     var p=document.getElementById('uhtPlay');
     if(p) p.style.opacity='0';
     if(!timerStarted){timerStarted=true;setInterval(checkTime,500);}
+    startListenTimer();
+  } else {
+    pauseListenTimer();
   }
 }
 function checkTime(){
@@ -2359,6 +2418,30 @@ function checkTime(){
 </script>` : ''}
 
 <script>
+var _listenSecs=0,_unlocked=false,_lockIv=null,_LOCK=60;
+function startListenTimer(){
+  if(_lockIv||_unlocked) return;
+  _lockIv=setInterval(function(){
+    if(_unlocked) return;
+    _listenSecs++;
+    var pct=Math.min(100,(_listenSecs/_LOCK)*100);
+    var fill=document.getElementById('lockFill');
+    if(fill) fill.style.width=pct+'%';
+    var lbl=document.getElementById('lockLabel');
+    var rem=Math.max(0,_LOCK-_listenSecs);
+    if(lbl&&rem>0) lbl.textContent=rem+'s left to unlock your vote';
+    if(_listenSecs>=_LOCK) unlockVote();
+  },1000);
+}
+function pauseListenTimer(){ clearInterval(_lockIv); _lockIv=null; }
+function unlockVote(){
+  if(_unlocked) return; _unlocked=true; pauseListenTimer();
+  var lock=document.getElementById('voteLock');
+  var btns=document.getElementById('voteBtns');
+  if(lock) lock.classList.add('unlocked');
+  if(btns) btns.classList.remove('locked');
+}
+${ytId ? '' : 'startListenTimer();'}
 function castVote(type){
   var btnMap={mega_hit:'vMega',hit:'vHit',denied:'vDenied'};
   var voted=document.getElementById(btnMap[type]);
