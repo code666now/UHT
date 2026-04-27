@@ -588,7 +588,7 @@ ${fd && fdYtId ? `
         <div class="genre-name">${g.label.toUpperCase()}</div>
       </div>
       <div>
-        ${drop
+        ${(drop && g.key !== 'rock')
           ? `<div class="genre-song">${drop.title}</div><div class="genre-artist">${drop.artist}</div>`
           : `<div class="genre-coming">Drop coming Friday</div>`}
       </div>
