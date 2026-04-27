@@ -93,7 +93,7 @@ app.get('/', async (req, res) => {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>UHT — Undeniable Hit Theory</title>
+<title>UHT — Undeniable Hits</title>
 <meta name="description" content="A weekly music drop. Vote HIT or DENIED. Subscribe by text.">
 <style>
 /* ── Design tokens ────────────────────────────────────────── */
@@ -506,7 +506,7 @@ select.sub-input option{background:#111;color:#f3f1ea}
           <div style="position:absolute;bottom:0;left:0;right:0;padding:10px 16px 12px;background:linear-gradient(transparent,rgba(0,0,0,0.78));display:flex;align-items:center;gap:8px">
             <span style="font-size:8px;letter-spacing:.42em;text-transform:uppercase;color:rgba(232,228,217,0.72);font-family:Georgia,serif;line-height:1">${c.curator_month || 'May 2026'}</span>
             <span style="width:1px;height:10px;background:rgba(232,228,217,0.2);display:inline-block"></span>
-            <span style="font-size:8px;letter-spacing:.42em;text-transform:uppercase;color:rgba(232,184,75,0.7);font-family:Georgia,serif;line-height:1">Undeniable Hit Theory</span>
+            <span style="font-size:8px;letter-spacing:.42em;text-transform:uppercase;color:rgba(232,184,75,0.7);font-family:Georgia,serif;line-height:1">Undeniable Hits</span>
           </div>
         </div>
         <div class="curator-body">
@@ -690,7 +690,7 @@ ${fd && fdYtId ? `
     <a href="#how-it-works">How It Works</a>
     <a href="/admin">Admin</a>
   </div>
-  <div class="footer-copy">© ${new Date().getFullYear()} Undeniable Hit Theory · +1 (844) 261-6758</div>
+  <div class="footer-copy">© ${new Date().getFullYear()} Undeniable Hits · +1 (844) 261-6758</div>
 </footer>
 
 
@@ -1214,7 +1214,7 @@ app.post('/api/subscribe', async (req, res) => {
     if (isNew) {
       try {
         await twilioClient.messages.create({
-          body: 'Undeniable Hit Theory: Reply YES to confirm you want curator text drops. 1-2 msgs/month. Reply STOP to opt out.',
+          body: 'Undeniable Hits: Reply YES to confirm you want curator text drops. 1-2 msgs/month. Reply STOP to opt out.',
           from: process.env.TWILIO_FROM,
           to: normalPhone,
         });
@@ -1831,7 +1831,7 @@ html,body{background:#080808;color:#ede8df;font-family:'Inter',sans-serif;overfl
 <div class="page">
 
 <div class="stamp">
-  <div class="stamp-brand">Undeniable Hit Theory</div>
+  <div class="stamp-brand">Undeniable Hits</div>
   <div class="stamp-month">${curator.curator_month ? '🌙 Curator of the Month · ' + curator.curator_month : '🌙 Curator Pick'}</div>
 </div>
 
@@ -2969,7 +2969,7 @@ footer{text-align:center;padding:24px;font-size:11px;color:var(--muted);letter-s
 </head>
 <body>
 <header>
-  <div class="eyebrow">Undeniable Hit Theory</div>
+  <div class="eyebrow">Undeniable Hits</div>
   <h1>Hit Theory<br><em>Leaderboard</em></h1>
   <p class="subtitle">Ranked by hit rate &middot; minimum 5 votes to qualify</p>
 </header>
