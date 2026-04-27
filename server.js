@@ -460,7 +460,7 @@ select.sub-input option{background:#111;color:#f3f1ea}
   <a href="#drops" onclick="closeMobNav()">Genres</a>
   <a href="#how-it-works" onclick="closeMobNav()">How It Works</a>
   <button class="mob-cta" onclick="closeMobNav();setTimeout(function(){document.getElementById('subscribe').scrollIntoView({behavior:'smooth'})},300)">Subscribe</button>
-  <div class="mob-ticker">· HIT · DENIED · UNDENIABLE ·</div>
+  <div class="mob-ticker">· ONE HIT · ONE LIFE ·</div>
 </div>
 
 <!-- HERO -->
@@ -481,8 +481,8 @@ select.sub-input option{background:#111;color:#f3f1ea}
 <!-- TICKER -->
 <div class="ticker">
   <div class="ticker-track">
-    <span class="ticker-text">· HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · </span>
-    <span class="ticker-text">· HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · </span>
+    <span class="ticker-text">· ONE HIT · ONE LIFE · ONE HIT · ONE LIFE · ONE HIT · ONE LIFE · ONE HIT · ONE LIFE · ONE HIT · ONE LIFE · </span>
+    <span class="ticker-text">· ONE HIT · ONE LIFE · ONE HIT · ONE LIFE · ONE HIT · ONE LIFE · ONE HIT · ONE LIFE · ONE HIT · ONE LIFE · </span>
   </div>
 </div>
 
@@ -600,8 +600,8 @@ ${fd && fdYtId ? `
 <!-- TICKER -->
 <div class="ticker">
   <div class="ticker-track">
-    <span class="ticker-text">· HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · </span>
-    <span class="ticker-text">· HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · </span>
+    <span class="ticker-text">· ONE HIT · ONE LIFE · ONE HIT · ONE LIFE · ONE HIT · ONE LIFE · ONE HIT · ONE LIFE · ONE HIT · ONE LIFE · </span>
+    <span class="ticker-text">· ONE HIT · ONE LIFE · ONE HIT · ONE LIFE · ONE HIT · ONE LIFE · ONE HIT · ONE LIFE · ONE HIT · ONE LIFE · </span>
   </div>
 </div>
 
@@ -630,8 +630,8 @@ ${fd && fdYtId ? `
 <!-- TICKER REVERSED -->
 <div class="ticker ticker-rev">
   <div class="ticker-track">
-    <span class="ticker-text">· HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · </span>
-    <span class="ticker-text">· HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · HIT · DENIED · UNDENIABLE · </span>
+    <span class="ticker-text">· ONE HIT · ONE LIFE · ONE HIT · ONE LIFE · ONE HIT · ONE LIFE · ONE HIT · ONE LIFE · ONE HIT · ONE LIFE · </span>
+    <span class="ticker-text">· ONE HIT · ONE LIFE · ONE HIT · ONE LIFE · ONE HIT · ONE LIFE · ONE HIT · ONE LIFE · ONE HIT · ONE LIFE · </span>
   </div>
 </div>
 
