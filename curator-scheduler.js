@@ -130,11 +130,11 @@ let cron;
 try {
   cron = require('node-cron');
   // 0 10 * * 1  =  10:00am every Monday
-  cron.schedule('0 10 * * 1', () => {
-    console.log('[CuratorScheduler] Monday 10am ET — firing curator drop!');
+  cron.schedule('0 8 * * 1', () => {
+    console.log('[CuratorScheduler] Monday 8am PT — firing curator drop!');
     runCuratorDrop().catch(err => console.error('[CuratorScheduler] Drop failed:', err.message));
-  }, { scheduled: true, timezone: 'America/New_York' });
-  console.log('[CuratorScheduler] Monday curator drop scheduled for 10:00am every week.');
+  }, { scheduled: true, timezone: 'America/Los_Angeles' });
+  console.log('[CuratorScheduler] Monday curator drop scheduled for 8:00am PT every week.');
 } catch (e) {
   console.log('[CuratorScheduler] node-cron not installed — manual drops only via POST /api/curator-drop/send');
 }

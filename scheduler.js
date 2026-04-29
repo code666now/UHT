@@ -114,11 +114,11 @@ try {
   cron = require('node-cron');
   // Cron: minute hour day month weekday
   // 0 10 * * 5  =  10:00am every Friday
-  cron.schedule('0 10 * * 5', () => {
-    console.log('[Scheduler] Friday 10am ET — firing weekly drop!');
+  cron.schedule('0 8 * * 5', () => {
+    console.log('[Scheduler] Friday 8am PT — firing weekly drop!');
     runWeeklyDrop().catch(err => console.error('[Scheduler] Drop failed:', err.message));
-  }, { scheduled: true, timezone: 'America/New_York' });
-  console.log('[Scheduler] Friday drop scheduled for 10:00am every week.');
+  }, { scheduled: true, timezone: 'America/Los_Angeles' });
+  console.log('[Scheduler] Friday drop scheduled for 8:00am PT every week.');
 } catch (e) {
   console.log('[Scheduler] node-cron not installed — manual drops only via POST /api/drop/send');
 }
