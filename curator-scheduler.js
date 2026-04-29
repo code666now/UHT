@@ -177,7 +177,7 @@ async function runCuratorIntroBlast(curatorId) {
     return { sent: 0, skipped: 0, errors: 0 };
   }
 
-  let body = `Curator of the Month · ${month}\n\nMeet ${curator.name} — your ${month} curator. His first pick drops Monday.`;
+  let body = `Curator of the Month - ${month}\n\nMeet ${curator.name}, your ${month} curator. His first pick drops Monday.`;
   if (link) body += `\n${link}`;
 
   let sent = 0, skipped = 0, errors = 0;
