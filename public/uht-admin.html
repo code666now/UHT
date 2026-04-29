@@ -347,6 +347,20 @@ tr:hover td{background:rgba(255,255,255,.025)}
       </div>
 
       <div style="margin-bottom:28px;padding:20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)">
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px">Curator Intro Blast — Friday MMS</div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:14px">Send the curator intro MMS (photo + meet message + link) to all genre subscribers. Use this Friday morning to introduce the month's curator before Monday's drop.</p>
+        <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+          <select id="intro-curator-select" style="flex:1;min-width:180px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--ink);padding:8px 10px;font-size:13px;font-family:inherit">
+            <option value="">Select curator...</option>
+          </select>
+          <input id="intro-test-phone" type="tel" placeholder="Test phone (optional)" style="flex:1;min-width:180px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--ink);padding:8px 10px;font-size:13px;font-family:inherit">
+          <button class="btn" onclick="sendCuratorIntroTest()">Test to Phone</button>
+          <button class="btn btn-primary" onclick="sendCuratorIntroBlast()">Send to All Genre Subscribers</button>
+        </div>
+        <span id="intro-blast-status" style="font-size:11px;color:var(--muted)"></span>
+      </div>
+
+      <div style="margin-bottom:28px;padding:20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)">
         <div style="font-size:13px;font-weight:600;margin-bottom:10px">Weekly Drop Message</div>
         <p style="font-size:12px;color:var(--muted);margin-bottom:14px">Edit your SMS before sending to all active subscribers.</p>
         <textarea id="drop-msg-text" rows="4" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--ink);padding:10px;font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box" placeholder="e.g. This week on UHT: Song Title by Artist. Reply HIT or DENIED."></textarea>
@@ -1554,6 +1568,46 @@ document.querySelectorAll('.nav-item').forEach(item=>{
     if (name === 'featured') loadFeaturedDrop();
   });
 });
+
+// ── Curator Intro Blast ────────────────────────────────────────
+(async function loadIntroCuratorSelect(){
+  try {
+    const d = await fetch('/api/curators').then(r=>r.json());
+    const sel = document.getElementById('intro-curator-select');
+    if(!sel) return;
+    (d.curators||[]).forEach(c=>{
+      const o=document.createElement('option');
+      o.value=c.id; o.textContent=`${c.name} (${c.curator_month||'?'})`;
+      sel.appendChild(o);
+    });
+    if((d.curators||[]).length===1) sel.value=d.curators[0].id;
+  } catch(e){}
+})();
+
+async function sendCuratorIntroTest(){
+  const curator_id = document.getElementById('intro-curator-select').value;
+  const phone = document.getElementById('intro-test-phone').value.trim();
+  const st = document.getElementById('intro-blast-status');
+  if(!curator_id){st.textContent='Select a curator first.';return;}
+  if(!phone){st.textContent='Enter a test phone number.';return;}
+  st.textContent='Sending test...';
+  try {
+    const d = await fetch('/api/curator-intro/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({curator_id:parseInt(curator_id),phone})}).then(r=>r.json());
+    st.textContent = d.ok ? '✓ Test sent.' : ('Error: '+(d.error||'unknown'));
+  } catch(e){ st.textContent='Error: '+e.message; }
+}
+
+async function sendCuratorIntroBlast(){
+  const curator_id = document.getElementById('intro-curator-select').value;
+  const st = document.getElementById('intro-blast-status');
+  if(!curator_id){st.textContent='Select a curator first.';return;}
+  if(!confirm('Send curator intro MMS to ALL active genre subscribers?')) return;
+  st.textContent='Sending...';
+  try {
+    const d = await fetch('/api/curator-intro/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({curator_id:parseInt(curator_id)})}).then(r=>r.json());
+    st.textContent = d.ok ? `✓ Sent: ${d.sent} | Errors: ${d.errors}` : ('Error: '+(d.error||'unknown'));
+  } catch(e){ st.textContent='Error: '+e.message; }
+}
 
 // ── Drop Preview ───────────────────────────────────────────────
 async function sendDropPreview(){

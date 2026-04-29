@@ -139,4 +139,69 @@ try {
   console.log('[CuratorScheduler] node-cron not installed — manual drops only via POST /api/curator-drop/send');
 }
 
-module.exports = { runCuratorDrop, buildCuratorMessage };
+// ── Curator intro blast ───────────────────────────────────────────────────────
+// Sends a Friday intro MMS to all active genre subscribers introducing the
+// current curator. Skips anyone already subscribed to that curator.
+// Triggered manually via POST /api/curator-intro/send (admin button).
+async function runCuratorIntroBlast(curatorId) {
+  console.log(`\n[CuratorIntro] Starting intro blast at ${new Date().toISOString()}`);
+
+  // Get the curator
+  const { rows: curators } = await db.query(
+    `SELECT * FROM curators WHERE id = $1 LIMIT 1`, [curatorId]
+  );
+  if (!curators.length) throw new Error(`Curator ${curatorId} not found`);
+  const curator = curators[0];
+
+  const firstName = curator.name.split(' ')[0];
+  const month = curator.curator_month || 'this month';
+  const base = process.env.BASE_URL || '';
+  const slug = curator.name.toLowerCase().replace(/\s+/g, '');
+  const link = base ? `${base}/curator/${slug}?ref=sms` : null;
+
+  // Get all active genre subscribers not already subscribed to this curator
+  const { rows: subs } = await db.query(`
+    SELECT DISTINCT u.phone
+    FROM subscriptions s
+    JOIN users u ON u.id = s.user_id
+    WHERE s.is_active = TRUE
+      AND s.genre_id IS NOT NULL
+      AND u.id NOT IN (
+        SELECT s2.user_id FROM subscriptions s2
+        WHERE s2.curator_id = $1 AND s2.is_active = TRUE
+      )
+  `, [curatorId]);
+
+  if (!subs.length) {
+    console.log('[CuratorIntro] No genre subscribers to notify. Skipping.');
+    return { sent: 0, skipped: 0, errors: 0 };
+  }
+
+  let body = `Curator of the Month · ${month}\n\nMeet ${curator.name} — your ${month} curator. His first pick drops Monday.`;
+  if (link) body += `\n${link}`;
+
+  let sent = 0, skipped = 0, errors = 0;
+
+  for (const sub of subs) {
+    try {
+      const msgParams = {
+        from: process.env.TWILIO_FROM || process.env.TWILIO_PHONE_NUMBER,
+        to:   sub.phone,
+        body,
+      };
+      if (curator.image_url) msgParams.mediaUrl = [curator.image_url];
+
+      await client.messages.create(msgParams);
+      console.log(`[CuratorIntro] ✓ Sent to ${sub.phone}`);
+      sent++;
+    } catch(err) {
+      console.error(`[CuratorIntro] ✗ Error for ${sub.phone}:`, err.message);
+      errors++;
+    }
+  }
+
+  console.log(`[CuratorIntro] Done. Sent: ${sent} | Skipped: ${skipped} | Errors: ${errors}\n`);
+  return { sent, skipped, errors };
+}
+
+module.exports = { runCuratorDrop, buildCuratorMessage, runCuratorIntroBlast };

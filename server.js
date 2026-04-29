@@ -3250,7 +3250,38 @@ app.post('/api/migrate-curator-statement', async (req, res) => {
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
-require('./curator-scheduler');
+const { runCuratorDrop: _runCuratorDrop, runCuratorIntroBlast } = require('./curator-scheduler');
+
+// ── POST /api/curator-intro/send — manual Friday intro blast ─────────────────
+app.post('/api/curator-intro/send', async (req, res) => {
+  const { curator_id } = req.body;
+  if (!curator_id) return res.status(400).json({ error: 'curator_id required' });
+  try {
+    const r = await runCuratorIntroBlast(curator_id);
+    res.json({ ok: true, ...r });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── POST /api/curator-intro/test — send intro to a single phone ──────────────
+app.post('/api/curator-intro/test', async (req, res) => {
+  const { curator_id, phone } = req.body;
+  if (!curator_id || !phone) return res.status(400).json({ error: 'curator_id and phone required' });
+  try {
+    const { rows } = await db.query(`SELECT * FROM curators WHERE id=$1 LIMIT 1`, [curator_id]);
+    if (!rows.length) return res.status(404).json({ error: 'Curator not found' });
+    const c = rows[0];
+    const base = process.env.BASE_URL || '';
+    const slug = c.name.toLowerCase().replace(/\s+/g, '');
+    const link = base ? `${base}/curator/${slug}?ref=sms` : null;
+    const month = c.curator_month || 'this month';
+    let body = `Curator of the Month · ${month}\n\nMeet ${c.name} — your ${month} curator. His first pick drops Monday.`;
+    if (link) body += `\n${link}`;
+    const msgParams = { from: process.env.TWILIO_FROM || process.env.TWILIO_PHONE_NUMBER, to: phone, body };
+    if (c.image_url) msgParams.mediaUrl = [c.image_url];
+    await twilioClient.messages.create(msgParams);
+    res.json({ ok: true, body });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
 
 // ── Featured Drop table (auto-create on startup) ──────────────────────────────
 db.query(`
