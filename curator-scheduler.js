@@ -157,7 +157,7 @@ async function runCuratorIntroBlast(curatorId) {
   const month = curator.curator_month || 'this month';
   const base = process.env.BASE_URL || '';
   const slug = curator.name.toLowerCase().replace(/\s+/g, '');
-  const link = base ? `${base}/curator/${slug}?ref=sms` : null;
+  const link = base ? `${base}/curator/${slug}?ref=sms`.replace('https://','') : null;
 
   // Get all active genre subscribers not already subscribed to this curator
   const { rows: subs } = await db.query(`
@@ -177,7 +177,7 @@ async function runCuratorIntroBlast(curatorId) {
     return { sent: 0, skipped: 0, errors: 0 };
   }
 
-  let body = `Meet ${curator.name}! Our founding 1st Curator of the Month - ${month}. His first pick drops Monday. ${link || ''}`;
+  let body = `Meet ${curator.name}! Our founding 1st Curator of the Month - ${month}. His first pick drops Monday.\n${link || ''}`;
 
   let sent = 0, skipped = 0, errors = 0;
 

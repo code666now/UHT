@@ -3272,9 +3272,9 @@ app.post('/api/curator-intro/test', async (req, res) => {
     const c = rows[0];
     const base = process.env.BASE_URL || '';
     const slug = c.name.toLowerCase().replace(/\s+/g, '');
-    const link = base ? `${base}/curator/${slug}?ref=sms` : null;
+    const link = base ? `${base}/curator/${slug}?ref=sms`.replace('https://','') : null;
     const month = c.curator_month || 'this month';
-    let body = `Meet ${c.name}! Our founding 1st Curator of the Month - ${month}. His first pick drops Monday. ${link || ''}`;
+    let body = `Meet ${c.name}! Our founding 1st Curator of the Month - ${month}. His first pick drops Monday.\n${link || ''}`;
     const msgParams = { from: process.env.TWILIO_FROM || process.env.TWILIO_PHONE_NUMBER, to: phone, body };
     if (c.image_url) msgParams.mediaUrl = [c.image_url];
     await twilioClient.messages.create(msgParams);
