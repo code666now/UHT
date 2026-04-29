@@ -1666,6 +1666,135 @@ app.delete('/api/genre-submissions/:id', async (req, res) => {
 });
 
 
+// ── GET /curator/:slug — Curator intro page (Friday teaser, no song) ─────────
+app.get('/curator/:slug', async (req, res) => {
+  if(req.query.ref !== 'sms') return res.redirect('/?src=drop#subscribe');
+  const slug = req.params.slug.toLowerCase().replace(/-/g, '');
+  try {
+    const { rows } = await db.query(
+      `SELECT * FROM curators WHERE LOWER(REPLACE(name,' ',''))=$1 LIMIT 1`, [slug]
+    );
+    if (!rows.length) return res.status(404).send('<h1>Curator not found.</h1>');
+    const c = rows[0];
+    const firstName = c.name.split(' ')[0];
+    const month = c.curator_month || 'this month';
+    const base = process.env.BASE_URL || '';
+
+    res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${c.name} · Undeniable Hits</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;background:#000;color:#f3f1ea;font-family:Georgia,'Times New Roman',serif}
+.page{min-height:100vh;display:flex;flex-direction:column}
+
+/* Hero */
+.hero{position:relative;height:65vh;min-height:380px;overflow:hidden;background:#111}
+.hero-img{width:100%;height:100%;object-fit:cover;opacity:.7;display:block}
+.hero-img-placeholder{width:100%;height:100%;background:linear-gradient(160deg,#1a1a1a,#0a0a0a);display:flex;align-items:center;justify-content:center;font-size:80px}
+.hero-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,0.1) 40%,rgba(0,0,0,0.92) 100%)}
+.hero-content{position:absolute;bottom:0;left:0;right:0;padding:32px 28px 36px}
+.hero-eyebrow{font-size:9px;letter-spacing:.38em;text-transform:uppercase;color:rgba(243,241,234,0.4);margin-bottom:10px}
+.hero-name{font-size:clamp(36px,8vw,64px);font-weight:700;line-height:1;color:#f3f1ea;letter-spacing:-.02em}
+.hero-month{font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:#E8B84B;margin-top:8px;opacity:.85}
+
+/* Body */
+.body{padding:36px 28px 48px;max-width:540px;margin:0 auto;width:100%;flex:1}
+.coming-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border:1px solid rgba(232,184,75,0.3);border-radius:2px;background:rgba(232,184,75,0.06);margin-bottom:28px}
+.coming-dot{width:6px;height:6px;border-radius:50%;background:#E8B84B;animation:pulse 1.8s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+.coming-text{font-size:9px;letter-spacing:.32em;text-transform:uppercase;color:#E8B84B}
+.bio{font-size:16px;line-height:1.65;color:rgba(243,241,234,0.65);margin-bottom:32px;font-style:italic}
+.divider{height:1px;background:rgba(243,241,234,0.08);margin-bottom:32px}
+
+/* Follow form */
+.follow-label{font-size:9px;letter-spacing:.35em;text-transform:uppercase;color:rgba(243,241,234,0.3);margin-bottom:14px}
+.follow-input{width:100%;padding:18px 20px;background:rgba(255,255,255,0.04);border:1px solid rgba(243,241,234,0.12);border-radius:4px;color:#f3f1ea;font-family:Georgia,serif;font-size:16px;outline:none;transition:border-color .2s;margin-bottom:12px}
+.follow-input:focus{border-color:rgba(232,184,75,0.5)}
+.follow-btn{width:100%;padding:20px;background:#f3f1ea;color:#000;font-family:Georgia,serif;font-size:15px;font-weight:700;letter-spacing:.06em;border:none;border-radius:4px;cursor:pointer;transition:opacity .2s}
+.follow-btn:hover{opacity:.88}
+.follow-msg{text-align:center;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#E8B84B;min-height:20px;padding:14px 0 0;opacity:0;transition:opacity .4s}
+.follow-msg.show{opacity:1}
+.terms{font-size:10px;color:rgba(243,241,234,0.2);text-align:center;margin-top:14px;letter-spacing:.05em}
+
+/* Nav */
+.nav{position:fixed;top:0;left:0;right:0;padding:18px 24px;display:flex;justify-content:space-between;align-items:center;z-index:10;background:linear-gradient(to bottom,rgba(0,0,0,0.6),transparent)}
+.nav-logo{font-size:11px;letter-spacing:.38em;text-transform:uppercase;color:rgba(243,241,234,0.6);text-decoration:none}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a class="nav-logo" href="${base}">UHT</a>
+</nav>
+
+<div class="page">
+  <div class="hero">
+    ${c.image_url
+      ? `<img class="hero-img" src="${c.image_url}" alt="${c.name}">`
+      : `<div class="hero-img-placeholder">🎧</div>`}
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+      <div class="hero-eyebrow">Curator of the Month · ${month}</div>
+      <div class="hero-name">${c.name}</div>
+      <div class="hero-month">Undeniable Hits</div>
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="coming-badge">
+      <div class="coming-dot"></div>
+      <span class="coming-text">${firstName}'s first pick drops Monday</span>
+    </div>
+
+    ${c.bio ? `<p class="bio">"${c.bio}"</p>` : ''}
+    <div class="divider"></div>
+
+    <div class="follow-label">Follow ${firstName} — get his picks every Monday</div>
+    <input class="follow-input" id="phone" type="tel" placeholder="+1 (555) 000-0000" inputmode="tel">
+    <button class="follow-btn" onclick="submitFollow()">Follow ${firstName} →</button>
+    <div class="follow-msg" id="followMsg"></div>
+    <p class="terms">Free · Text only · Reply STOP anytime</p>
+  </div>
+</div>
+
+<script>
+function submitFollow(){
+  var phone=document.getElementById('phone').value.trim();
+  var msg=document.getElementById('followMsg');
+  if(!phone){document.getElementById('phone').style.borderColor='rgba(232,184,75,0.5)';return;}
+  document.querySelector('.follow-btn').disabled=true;
+  fetch('/api/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({phone:phone,curator_id:${c.id}})})
+  .then(function(r){return r.json();})
+  .then(function(d){
+    if(d.error){
+      msg.textContent=d.error;
+      msg.classList.add('show');
+      document.querySelector('.follow-btn').disabled=false;
+    } else {
+      msg.textContent='You\\'re in. ${firstName}\\'s pick lands Monday.';
+      msg.classList.add('show');
+      document.querySelector('.follow-btn').style.display='none';
+    }
+  })
+  .catch(function(){
+    msg.textContent='Something went wrong. Try again.';
+    msg.classList.add('show');
+    document.querySelector('.follow-btn').disabled=false;
+  });
+}
+</script>
+</body>
+</html>`);
+  } catch(e) {
+    console.error('/curator/:slug error:', e.message);
+    res.status(500).send('<h1>Error loading curator page.</h1>');
+  }
+});
+
 // ── GET /drop/curator/:slug ──────────────────────────────────────────────────
 app.get('/drop/curator/:slug', async (req, res) => {
   if(req.query.ref !== 'sms') return res.redirect('/?src=drop#subscribe');
