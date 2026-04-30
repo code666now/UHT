@@ -94,17 +94,15 @@ async function runWeeklyDrop() {
 
 // ── Message builder ───────────────────────────────────────────────────────────
 function buildDropMessage(song) {
-  let msg = `🎵 Your Undeniable Hit of the Week:\n\n`;
-  msg += `"${song.title}" by ${song.artist}\n\n`;
   const base = process.env.BASE_URL || '';
-  if (base) {
-    const target = song.curator_name
-      ? `/drop/curator/${song.curator_name.toLowerCase().replace(/\s+/g, '-')}`
-      : `/drop/${(song.genre_name || '').toLowerCase().replace(/\s+/g, '-')}`;
-    msg += `🗳 Vote: ${base}${target}?ref=sms`;
-  } else if (song.url) {
-    msg += `🔗 Listen: ${song.url}`;
-  }
+  const target = song.curator_name
+    ? `/drop/curator/${song.curator_name.toLowerCase().replace(/\s+/g, '-')}`
+    : `/drop/${(song.genre_name || '').toLowerCase().replace(/\s+/g, '-')}`;
+  const link = base ? `${base}${target}?ref=sms` : (song.url || '');
+
+  let msg = `Undeniable Hit of the Week\n\n`;
+  msg += `"${song.title}" by ${song.artist}\n\n`;
+  msg += `HIT or DENIED: ${link}`;
   return msg;
 }
 
