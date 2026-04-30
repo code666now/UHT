@@ -2800,8 +2800,13 @@ app.patch('/api/songs/:id', async (req, res) => {
 
 // ── DELETE /api/songs/:id ─────────────────────────────────────────────────────
 app.delete('/api/songs/:id', async (req, res) => {
+  const { id } = req.params;
   try {
-    await db.query('DELETE FROM songs WHERE id = $1', [req.params.id]);
+    // Remove dependent records first to satisfy FK constraints
+    await db.query('DELETE FROM votes     WHERE song_id = $1', [id]);
+    await db.query('DELETE FROM song_votes WHERE song_id = $1', [id]).catch(() => {});
+    await db.query('DELETE FROM deliveries WHERE song_id = $1', [id]);
+    await db.query('DELETE FROM songs WHERE id = $1', [id]);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
