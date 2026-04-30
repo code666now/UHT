@@ -2996,13 +2996,18 @@ app.get('/api/votes', async (req, res) => {
 
 // ── PATCH /api/curators/:id ───────────────────────────────────────────────────
 app.patch('/api/curators/:id', async (req, res) => {
-  console.log('PATCH body:', req.body);
   const { name, bio, statement, image_url, playlist_image_url, instagram, curator_month, monthly_theme } = req.body;
   if (!name) return res.status(400).json({ error: 'name required.' });
   try {
+    // Only overwrite image fields if a value is explicitly provided — prevents wiping images on metadata-only saves
+    const fields = ['name=$1','bio=$2','statement=$3','instagram=$4','curator_month=$5','monthly_theme=$6'];
+    const vals = [name, bio||null, statement||null, instagram||null, curator_month||null, monthly_theme||null];
+    let idx = vals.length + 1;
+    if (image_url !== undefined) { fields.push(`image_url=$${idx++}`); vals.push(image_url||null); }
+    if (playlist_image_url !== undefined) { fields.push(`playlist_image_url=$${idx++}`); vals.push(playlist_image_url||null); }
+    vals.push(req.params.id);
     const { rows } = await db.query(
-      `UPDATE curators SET name=$1, bio=$2, statement=$3, image_url=$4, playlist_image_url=$5, instagram=$6, curator_month=$7, monthly_theme=$8 WHERE id=$9 RETURNING *`,
-      [name, bio || null, statement || null, image_url || null, playlist_image_url || null, instagram || null, curator_month || null, monthly_theme || null, req.params.id]
+      `UPDATE curators SET ${fields.join(',')} WHERE id=$${idx} RETURNING *`, vals
     );
     if (!rows.length) return res.status(404).json({ error: 'Curator not found.' });
     res.json({ curator: rows[0] });
