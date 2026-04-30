@@ -3327,13 +3327,10 @@ app.post('/api/curator-drop/test', async (req, res) => {
     if (!curators.length) return res.status(404).json({ error: 'Curator not found' });
     const c = curators[0];
 
-    // Get the latest song for this curator
+    // Get the latest submission for this curator
     const { rows: songs } = await db.query(
-      `SELECT s.*, cs.theme, cs.curator_note, cs.week_number, cs.spotify_url
-       FROM songs s
-       LEFT JOIN curator_submissions cs ON cs.song_id = s.id AND cs.curator_id = $1
-       WHERE s.curator_id = $1
-       ORDER BY s.created_at ASC LIMIT 1`, [curator_id]
+      `SELECT * FROM curator_submissions WHERE curator_id=$1 ORDER BY week_number ASC LIMIT 1`,
+      [curator_id]
     );
 
     const song = songs.length
