@@ -2881,6 +2881,28 @@ app.delete('/api/curators/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── POST /api/curators/:id/reset-drops — wipe deliveries + votes for a curator's songs ──
+app.post('/api/curators/:id/reset-drops', async (req, res) => {
+  const { id } = req.params;
+  try {
+    // Get all song IDs for this curator
+    const { rows: songs } = await db.query('SELECT id FROM songs WHERE curator_id=$1', [id]);
+    const songIds = songs.map(s => s.id);
+
+    if (!songIds.length) return res.json({ ok: true, votes: 0, deliveries: 0, message: 'No songs found for this curator.' });
+
+    // Delete votes
+    const vRes = await db.query('DELETE FROM votes WHERE song_id = ANY($1)', [songIds]);
+    // Delete song_votes (curator intelligence table)
+    await db.query('DELETE FROM song_votes WHERE song_id = ANY($1)', [songIds]).catch(() => {});
+    // Delete deliveries
+    const dRes = await db.query('DELETE FROM deliveries WHERE song_id = ANY($1)', [songIds]);
+
+    console.log(`[ResetDrops] Curator ${id}: deleted ${vRes.rowCount} votes, ${dRes.rowCount} deliveries`);
+    res.json({ ok: true, votes: vRes.rowCount, deliveries: dRes.rowCount });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── GET /api/subscribers (joined with target name) ────────────────────────────
 app.get('/api/subscribers', async (req, res) => {
   try {

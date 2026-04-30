@@ -832,6 +832,7 @@ async function loadCurators() {
           <td style="display:flex;gap:6px;flex-wrap:wrap">
             <button class="btn" style="color:#E8B84B;border-color:rgba(232,184,75,0.35)" onclick="featureCurator(${c.id})">📣 Feature</button>
             <button class="btn" onclick="openEditCurator(${c.id})">Edit</button>
+            <button class="btn btn-danger" style="opacity:.5" onclick="resetCuratorDrops(${c.id},'${esc(c.name)}')">Reset Drops</button>
             <button class="btn btn-danger" onclick="deleteCurator(${c.id},'${esc(c.name)}')">Delete</button>
           </td>
         </tr>`).join('')
@@ -1010,6 +1011,14 @@ async function submitSubscriber() {
 async function deleteSong(id, label) { if(!confirm(`Delete song:\n"${label}"?\n\nThis cannot be undone.`)) return; try { await api('DELETE',`/api/songs/${id}`); toast('Deleted.','ok'); loadSongs(); loadDashboard(); } catch(e){toast(e.message,'err');} }
 async function deleteGenre(id, label) { if(!confirm(`Delete genre "${label}"?\n\nThis cannot be undone.`)) return; try { await api('DELETE',`/api/genres/${id}`); toast('Deleted.','ok'); loadGenres(); } catch(e){toast(e.message,'err');} }
 async function deleteCurator(id, label) { if(!confirm(`Delete curator "${label}"?\n\nThis cannot be undone.`)) return; try { await api('DELETE',`/api/curators/${id}`); toast('Deleted.','ok'); loadCurators(); } catch(e){toast(e.message,'err');} }
+
+async function resetCuratorDrops(id, label) {
+  if(!confirm(`Reset all drop history for "${label}"?\n\nThis clears all votes and deliveries for their songs — subscribers will receive their drops again from the start.\n\nUse this before launch or when rotating to a new curator.`)) return;
+  try {
+    const r = await api('POST', `/api/curators/${id}/reset-drops`);
+    toast(`Reset: ${r.votes} votes + ${r.deliveries} deliveries cleared.`, 'ok');
+  } catch(e) { toast(e.message,'err'); }
+}
 
 // ── Curator Feature Blast ─────────────────────────────────────
 let _featureCuratorId = null;
