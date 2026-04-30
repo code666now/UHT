@@ -1678,7 +1678,6 @@ app.delete('/api/genre-submissions/:id', async (req, res) => {
 
 // ── GET /curator/:slug — Curator intro page (Friday teaser, no song) ─────────
 app.get('/curator/:slug', async (req, res) => {
-  if(req.query.ref !== 'sms') return res.redirect('/?src=drop#subscribe');
   const slug = req.params.slug.toLowerCase().replace(/-/g, '');
   try {
     const { rows } = await db.query(
@@ -1689,6 +1688,8 @@ app.get('/curator/:slug', async (req, res) => {
     const firstName = c.name.split(' ')[0];
     const month = c.curator_month || 'this month';
     const base = process.env.BASE_URL || '';
+    const headshotUrl = c.image_url?.startsWith('data:') ? `${base}/curator-image/${c.id}` : (c.image_url || '');
+    const playlistUrl = c.playlist_image_url?.startsWith('data:') ? `${base}/curator-playlist-image/${c.id}` : (c.playlist_image_url || '');
 
     res.send(`<!DOCTYPE html>
 <html lang="en">
@@ -1751,8 +1752,8 @@ html,body{height:100%;background:#000;color:#f3f1ea;font-family:Georgia,'Times N
 
 <div class="page">
   <div class="hero">
-    ${c.image_url
-      ? `<img class="hero-img" src="${c.image_url}" alt="${c.name}">`
+    ${headshotUrl
+      ? `<img class="hero-img" src="${headshotUrl}" alt="${c.name}">`
       : `<div class="hero-img-placeholder">🎧</div>`}
     <div class="hero-overlay"></div>
     <div class="hero-content">
@@ -1765,18 +1766,18 @@ html,body{height:100%;background:#000;color:#f3f1ea;font-family:Georgia,'Times N
   <div class="body">
     <div class="coming-badge">
       <div class="coming-dot"></div>
-      <span class="coming-text">${firstName}'s first pick drops Monday</span>
+      <span class="coming-text">${firstName}'s picks drop every Monday</span>
     </div>
 
-    ${c.bio ? `<p class="bio">"${c.bio}"</p>` : ''}
+    ${c.statement ? `<p class="bio">"${c.statement}"</p>` : (c.bio ? `<p class="bio">"${c.bio}"</p>` : '')}
 
-    ${c.playlist_image_url ? `
+    ${playlistUrl ? `
     <div class="playlist-card">
-      <img class="playlist-art" src="${c.playlist_image_url}" alt="Playlist">
+      <img class="playlist-art" src="${playlistUrl}" alt="Playlist">
       <div class="playlist-info">
-        <div class="playlist-eyebrow">First pick · dropping Monday</div>
-        <div class="playlist-label">${firstName}'s Playlist</div>
-        <div class="playlist-sub">Follow to find out what it is</div>
+        <div class="playlist-eyebrow">Playlist · ${month}</div>
+        <div class="playlist-label">${firstName}'s Selections</div>
+        <div class="playlist-sub">Subscribe to get his picks every Monday</div>
       </div>
     </div>` : ''}
 
