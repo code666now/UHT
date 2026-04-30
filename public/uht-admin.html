@@ -906,7 +906,7 @@ function previewFromUrl(url) {
 function previewFromFile(input) {
   const file = input.files[0];
   if (!file) return;
-  if (file.size > 2 * 1024 * 1024) { toast('Image too large (max 2MB)', 'err'); return; }
+  if (file.size > 15 * 1024 * 1024) { toast('Image too large (max 15MB)', 'err'); return; }
   const reader = new FileReader();
   reader.onload = e => {
     _curatorImgBase64 = e.target.result;
@@ -1071,7 +1071,7 @@ function editPreviewFromUrl(url) {
 function editPreviewFromFile(input) {
   const file = input.files[0];
   if (!file) return;
-  if (file.size > 2 * 1024 * 1024) { toast('Image too large (max 2MB)', 'err'); return; }
+  if (file.size > 15 * 1024 * 1024) { toast('Image too large (max 15MB)', 'err'); return; }
   const reader = new FileReader();
   reader.onload = e => {
     _editCuratorImgBase64 = e.target.result;
@@ -1094,7 +1094,7 @@ function playlistPreviewFromUrl(url) {
 function playlistPreviewFromFile(input) {
   const file = input.files[0];
   if (!file) return;
-  if (file.size > 4 * 1024 * 1024) { toast('Image too large (max 4MB)', 'err'); return; }
+  if (file.size > 15 * 1024 * 1024) { toast('Image too large (max 15MB)', 'err'); return; }
   const reader = new FileReader();
   reader.onload = e => {
     _editPlaylistImgBase64 = e.target.result;
