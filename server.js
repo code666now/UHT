@@ -6,7 +6,6 @@
 // Run: node src/server.js
 
 require('dotenv').config();
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 const { runWeeklyDrop } = require('./scheduler');
 const express = require('express');
 const db      = require('./db');
@@ -1232,7 +1231,7 @@ app.post('/api/subscribe', async (req, res) => {
       try {
         await twilioClient.messages.create({
           body: 'Undeniable Hits: Reply YES to confirm you want curator text drops. 1-2 msgs/month. Reply STOP to opt out.',
-          from: process.env.TWILIO_FROM,
+          from: process.env.TWILIO_FROM || process.env.TWILIO_PHONE_NUMBER,
           to: normalPhone,
         });
         console.log(`[Subscribe] Opt-in SMS sent to ${normalPhone}`);
@@ -2611,6 +2610,29 @@ function checkTime(){
 </script>` : ''}
 
 <script>
+// Voter UUID — persisted per browser, better than IP for dedup
+function getVoterId(){
+  var k='uht_voter_id';
+  var id=localStorage.getItem(k);
+  if(!id){id=Math.random().toString(36).slice(2)+Date.now().toString(36);localStorage.setItem(k,id);}
+  return id;
+}
+// Restore vote state on page reload
+(function(){
+  var prev=localStorage.getItem('uht_vote_${d.id}');
+  if(prev){
+    ['vMega','vHit','vDenied'].forEach(function(id){var b=document.getElementById(id);if(b)b.disabled=true;});
+    var msg=document.getElementById('voteConfirm');
+    var labels={mega_hit:'Mega Hit recorded.',hit:'HIT recorded.',denied:'DENIED recorded.'};
+    if(msg){msg.textContent=labels[prev]||'Vote recorded.';setTimeout(function(){msg.classList.add('show');},100);}
+    setTimeout(function(){
+      var arc=document.getElementById('archive-section');
+      if(arc){arc.style.display='block';}
+      var pv=document.getElementById('post-vote');
+      if(pv){pv.style.display='block';}
+    },200);
+  }
+})();
 var _listenSecs=0,_unlocked=false,_lockIv=null,_LOCK=60;
 function startListenTimer(){
   if(_lockIv||_unlocked) return;
@@ -2654,10 +2676,11 @@ function castVote(type){
     var arc=document.getElementById('archive-section');
     if(arc){setTimeout(function(){arc.style.display='block';arc.classList.add('slide-up');},400);}
   },600);
+  localStorage.setItem('uht_vote_${d.id}', type);
   fetch('/api/genre-vote', {
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({submission_id:${d.id}, vote:type})
+    body:JSON.stringify({submission_id:${d.id}, vote:type, voter_id:getVoterId()})
   }).then(function(r){if(!r.ok)r.json().then(function(e){console.error('[vote error]',e);});})
     .catch(function(e){console.error('[vote network error]',e);});
 }
@@ -2751,10 +2774,12 @@ app.post('/api/genre-vote', async (req, res) => {
   if (!['hit', 'denied'].includes(dbVote)) {
     return res.status(400).json({ error: 'vote must be hit, denied, mega_hit, or deny.' });
   }
-  // Compute voter fingerprint from IP + user agent
+  // Voter fingerprint: prefer client UUID (localStorage), fall back to IP+UA
+  const clientId = req.body.voter_id || '';
   const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
   const ua = req.headers['user-agent'] || '';
-  const voterHash = require('crypto').createHash('sha256').update(ip + ua).digest('hex');
+  const fingerprint = clientId || (ip + ua);
+  const voterHash = require('crypto').createHash('sha256').update(fingerprint).digest('hex');
   try {
     const { rows } = await db.query(
       `INSERT INTO curator_submission_votes (submission_id, vote, voter_hash)

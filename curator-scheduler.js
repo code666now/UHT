@@ -162,7 +162,7 @@ async function runCuratorIntroBlast(curatorId) {
   const month = curator.curator_month || 'this month';
   const base = process.env.BASE_URL || '';
   const slug = curator.name.toLowerCase().replace(/\s+/g, '');
-  const link = base ? `${base}/curator/${slug}?ref=sms`.replace('https://','') : null;
+  const link = base ? `${base}/drop/curator/${slug}`.replace('https://','') : null;
 
   // Get all active genre subscribers not already subscribed to this curator
   const { rows: subs } = await db.query(`

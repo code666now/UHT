@@ -112,7 +112,7 @@ let cron;
 try {
   cron = require('node-cron');
   // Cron: minute hour day month weekday
-  // 0 10 * * 5  =  10:00am every Friday
+  // 0 8 * * 5  =  8:00am PT every Friday
   cron.schedule('0 8 * * 5', async () => {
     console.log('[Scheduler] Friday 8am PT — firing weekly drop + curator intro blast!');
     runWeeklyDrop().catch(err => console.error('[Scheduler] Drop failed:', err.message));
