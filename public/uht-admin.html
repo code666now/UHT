@@ -270,7 +270,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <div class="panel" id="panel-songs">
       <div class="section-header">
         <div class="section-title">All Songs</div>
-        <button class="btn btn-primary" onclick="openModal('song')">+ Add Song</button>
+        <button class="btn btn-primary" onclick="openAddSong()">+ Add Song</button>
       </div>
       <div class="table-wrap"><table>
         <thead><tr><th>#</th><th>Title</th><th>Artist</th><th>Type</th><th>Target</th><th>URL</th><th></th></tr></thead>
@@ -469,19 +469,21 @@ tr:hover td{background:rgba(255,255,255,.025)}
 <!-- ══ Modals ════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="modal-song">
   <div class="modal">
-    <div class="modal-title">Add Song</div>
+    <div class="modal-title" id="song-modal-title">Add Song</div>
+    <input type="hidden" id="song-edit-id">
     <div class="field-row">
       <div class="field"><label>Title *</label><input type="text" id="song-title" placeholder="GOD DID"></div>
       <div class="field"><label>Artist *</label><input type="text" id="song-artist" placeholder="DJ Khaled"></div>
     </div>
-    <div class="field"><label>Listen URL</label><input type="url" id="song-url" placeholder="https://open.spotify.com/track/…"></div>
+    <div class="field"><label>Spotify URL</label><input type="url" id="song-url" placeholder="https://open.spotify.com/track/…"></div>
+    <div class="field"><label>YouTube URL</label><input type="url" id="song-youtube" placeholder="https://youtube.com/watch?v=…"></div>
     <div class="field-row">
       <div class="field"><label>Genre</label><select id="song-genre"><option value="">— None —</option></select></div>
       <div class="field"><label>Curator</label><select id="song-curator"><option value="">— None —</option></select></div>
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('song')">Cancel</button>
-      <button class="btn btn-primary" onclick="submitSong()">Save Song</button>
+      <button class="btn btn-primary" id="song-submit-btn" onclick="submitSong()">Save Song</button>
     </div>
   </div>
 </div>
@@ -781,8 +783,15 @@ async function loadSongs() {
           <td><strong>${esc(s.title)}</strong></td><td>${esc(s.artist)}</td>
           <td><span class="tag ${s.curator_id?'tag-curator':'tag-genre'}">${s.curator_id?'curator':'genre'}</span></td>
           <td>${esc(s.target_name||'—')}</td>
-          <td>${s.url?`<a href="${esc(s.url)}" target="_blank" style="color:var(--muted);font-size:11px">link ↗</a>`:'—'}</td>
-          <td><button class="btn btn-danger" onclick="deleteSong(${s.id},'${esc(s.title)} by ${esc(s.artist)}')">Delete</button></td>
+          <td style="display:flex;gap:6px;align-items:center">
+            ${s.url?`<a href="${esc(s.url)}" target="_blank" style="color:var(--muted);font-size:11px">Spotify ↗</a>`:''}
+            ${s.youtube_url?`<a href="${esc(s.youtube_url)}" target="_blank" style="color:var(--muted);font-size:11px">YT ↗</a>`:''}
+            ${!s.url && !s.youtube_url ? '—' : ''}
+          </td>
+          <td style="display:flex;gap:6px">
+            <button class="btn" onclick="openEditSong(${s.id})">Edit</button>
+            <button class="btn btn-danger" onclick="deleteSong(${s.id},'${esc(s.title)} by ${esc(s.artist)}')">Delete</button>
+          </td>
         </tr>`).join('')
       : '<tr class="empty-row"><td colspan="7">No songs yet. Add one!</td></tr>';
   } catch(e) { tbody.innerHTML=`<tr class="empty-row"><td colspan="7">${esc(e.message)}</td></tr>`; }
@@ -872,15 +881,49 @@ async function loadVotes() {
 }
 
 // ── Submits ───────────────────────────────────────────────────
+function openAddSong() {
+  document.getElementById('song-modal-title').textContent = 'Add Song';
+  document.getElementById('song-edit-id').value = '';
+  document.getElementById('song-submit-btn').textContent = 'Save Song';
+  openModal('song');
+}
+
+function openEditSong(id) {
+  api('GET','/api/songs').then(({songs})=>{
+    const s = songs.find(x=>x.id===id);
+    if(!s) return toast('Song not found.','err');
+    document.getElementById('song-modal-title').textContent = 'Edit Song';
+    document.getElementById('song-edit-id').value = s.id;
+    document.getElementById('song-title').value = s.title||'';
+    document.getElementById('song-artist').value = s.artist||'';
+    document.getElementById('song-url').value = s.url||'';
+    document.getElementById('song-youtube').value = s.youtube_url||'';
+    document.getElementById('song-genre').value = s.genre_id||'';
+    document.getElementById('song-curator').value = s.curator_id||'';
+    document.getElementById('song-submit-btn').textContent = 'Save Changes';
+    openModal('song');
+  }).catch(e=>toast(e.message,'err'));
+}
+
 async function submitSong() {
+  const editId = document.getElementById('song-edit-id').value;
   const title=document.getElementById('song-title').value.trim();
   const artist=document.getElementById('song-artist').value.trim();
   const url=document.getElementById('song-url').value.trim();
+  const youtube_url=document.getElementById('song-youtube').value.trim();
   const genre_id=document.getElementById('song-genre').value||null;
   const curator_id=document.getElementById('song-curator').value||null;
   if(!title||!artist) return toast('Title and artist required.','err');
-  try { await api('POST','/api/songs',{title,artist,url,genre_id,curator_id}); toast('Song added!','ok'); closeModal('song'); loadSongs(); loadDashboard(); }
-  catch(e) { toast(e.message,'err'); }
+  try {
+    if(editId) {
+      await api('PATCH',`/api/songs/${editId}`,{title,artist,url,youtube_url,genre_id,curator_id});
+      toast('Song updated!','ok');
+    } else {
+      await api('POST','/api/songs',{title,artist,url,youtube_url,genre_id,curator_id});
+      toast('Song added!','ok');
+    }
+    closeModal('song'); loadSongs(); loadDashboard();
+  } catch(e) { toast(e.message,'err'); }
 }
 
 async function submitGenre() {

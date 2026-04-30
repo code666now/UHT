@@ -18,6 +18,10 @@ db.query('ALTER TABLE curators ADD COLUMN IF NOT EXISTS playlist_image_url TEXT'
   .then(() => console.log('[Migration] playlist_image_url column ready'))
   .catch(e => console.error('[Migration] playlist_image_url:', e.message));
 
+db.query('ALTER TABLE songs ADD COLUMN IF NOT EXISTS youtube_url TEXT')
+  .then(() => console.log('[Migration] songs.youtube_url column ready'))
+  .catch(e => console.error('[Migration] songs.youtube_url:', e.message));
+
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
@@ -2766,14 +2770,29 @@ app.get('/api/songs', async (req, res) => {
 
 // ── POST /api/songs ───────────────────────────────────────────────────────────
 app.post('/api/songs', async (req, res) => {
-  const { title, artist, url, genre_id, curator_id } = req.body;
+  const { title, artist, url, youtube_url, genre_id, curator_id } = req.body;
   if (!title || !artist) return res.status(400).json({ error: 'title and artist required.' });
   try {
     const { rows } = await db.query(
-      `INSERT INTO songs (title, artist, url, genre_id, curator_id)
-       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-      [title, artist, url || null, genre_id || null, curator_id || null]
+      `INSERT INTO songs (title, artist, url, youtube_url, genre_id, curator_id)
+       VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+      [title, artist, url || null, youtube_url || null, genre_id || null, curator_id || null]
     );
+    res.json({ song: rows[0] });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── PATCH /api/songs/:id ─────────────────────────────────────────────────────
+app.patch('/api/songs/:id', async (req, res) => {
+  const { title, artist, url, youtube_url, genre_id, curator_id } = req.body;
+  if (!title || !artist) return res.status(400).json({ error: 'title and artist required.' });
+  try {
+    const { rows } = await db.query(
+      `UPDATE songs SET title=$1, artist=$2, url=$3, youtube_url=$4, genre_id=$5, curator_id=$6
+       WHERE id=$7 RETURNING *`,
+      [title, artist, url || null, youtube_url || null, genre_id || null, curator_id || null, req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Song not found.' });
     res.json({ song: rows[0] });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
