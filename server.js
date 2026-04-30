@@ -28,6 +28,13 @@ db.query(`ALTER TABLE deliveries DROP CONSTRAINT IF EXISTS deliveries_song_id_fk
   .then(() => console.log('[Migration] deliveries FK cascade ready'))
   .catch(e => console.error('[Migration] deliveries FK cascade:', e.message));
 
+// One-time: remove test delivery + song for Sweet Child O Mine (id=1)
+db.query(`DELETE FROM votes WHERE song_id = 1`)
+  .then(() => db.query(`DELETE FROM deliveries WHERE song_id = 1`))
+  .then(() => db.query(`DELETE FROM songs WHERE id = 1`))
+  .then(() => console.log('[Cleanup] Sweet Child O Mine removed'))
+  .catch(() => {}); // already gone — ignore
+
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
