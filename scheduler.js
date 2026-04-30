@@ -114,11 +114,20 @@ try {
   cron = require('node-cron');
   // Cron: minute hour day month weekday
   // 0 10 * * 5  =  10:00am every Friday
-  cron.schedule('0 8 * * 5', () => {
-    console.log('[Scheduler] Friday 8am PT — firing weekly drop!');
+  cron.schedule('0 8 * * 5', async () => {
+    console.log('[Scheduler] Friday 8am PT — firing weekly drop + curator intro blast!');
     runWeeklyDrop().catch(err => console.error('[Scheduler] Drop failed:', err.message));
+    // Fire curator intro blast for all active curators this month
+    try {
+      const { runCuratorIntroBlast } = require('./curator-scheduler');
+      const { rows } = await db.query(`SELECT id FROM curators WHERE curator_month IS NOT NULL ORDER BY id ASC LIMIT 1`);
+      if (rows.length) {
+        runCuratorIntroBlast(rows[0].id).catch(err => console.error('[Scheduler] Curator intro blast failed:', err.message));
+        console.log(`[Scheduler] Curator intro blast fired for curator #${rows[0].id}`);
+      }
+    } catch(e) { console.error('[Scheduler] Curator intro blast error:', e.message); }
   }, { scheduled: true, timezone: 'America/Los_Angeles' });
-  console.log('[Scheduler] Friday drop scheduled for 8:00am PT every week.');
+  console.log('[Scheduler] Friday drop + curator intro scheduled for 8:00am PT every week.');
 } catch (e) {
   console.log('[Scheduler] node-cron not installed — manual drops only via POST /api/drop/send');
 }
