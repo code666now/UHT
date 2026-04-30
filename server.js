@@ -3317,6 +3317,37 @@ app.post('/api/curator-intro/test', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── POST /api/curator-drop/test — send a week N drop to a single phone ───────
+app.post('/api/curator-drop/test', async (req, res) => {
+  const { curator_id, phone, week } = req.body;
+  if (!curator_id || !phone) return res.status(400).json({ error: 'curator_id and phone required' });
+  try {
+    const { buildCuratorMessage } = require('./curator-scheduler');
+    const { rows: curators } = await db.query(`SELECT * FROM curators WHERE id=$1 LIMIT 1`, [curator_id]);
+    if (!curators.length) return res.status(404).json({ error: 'Curator not found' });
+    const c = curators[0];
+
+    // Get the latest song for this curator
+    const { rows: songs } = await db.query(
+      `SELECT s.*, cs.theme, cs.curator_note, cs.week_number, cs.spotify_url
+       FROM songs s
+       LEFT JOIN curator_submissions cs ON cs.song_id = s.id AND cs.curator_id = $1
+       WHERE s.curator_id = $1
+       ORDER BY s.created_at ASC LIMIT 1`, [curator_id]
+    );
+
+    const song = songs.length
+      ? { ...songs[0], week_number: week || songs[0].week_number || 1 }
+      : { title: '(no song yet)', artist: '—', week_number: week || 1, theme: null, curator_note: null };
+
+    const { body, mediaUrl } = buildCuratorMessage(song, c.name, c.image_url, c.curator_month, c.playlist_image_url);
+    const msgParams = { from: process.env.TWILIO_FROM || process.env.TWILIO_PHONE_NUMBER, to: phone, body };
+    if (mediaUrl) msgParams.mediaUrl = [mediaUrl];
+    await twilioClient.messages.create(msgParams);
+    res.json({ ok: true, body, week: song.week_number, media: mediaUrl ? 'image attached' : 'no image' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── Featured Drop table (auto-create on startup) ──────────────────────────────
 db.query(`
   CREATE TABLE IF NOT EXISTS featured_drop (
