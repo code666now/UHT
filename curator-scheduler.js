@@ -67,7 +67,10 @@ async function runCuratorDrop() {
       }
 
       const song = songs[0];
-      const { body, mediaUrl } = buildCuratorMessage(song, sub.curator_name, sub.curator_image, sub.curator_month, sub.curator_playlist_image);
+      const base = process.env.BASE_URL || '';
+      const headshot = sub.curator_image?.startsWith('data:') ? `${base}/curator-image/${sub.curator_id}` : sub.curator_image;
+      const playlistArt = sub.curator_playlist_image?.startsWith('data:') ? `${base}/curator-playlist-image/${sub.curator_id}` : sub.curator_playlist_image;
+      const { body, mediaUrl } = buildCuratorMessage(song, sub.curator_name, headshot, sub.curator_month, playlistArt);
 
       // Send via Twilio — MMS if curator has a photo, SMS otherwise
       const msgParams = {
@@ -190,7 +193,8 @@ async function runCuratorIntroBlast(curatorId) {
         to:   sub.phone,
         body,
       };
-      if (curator.image_url) msgParams.mediaUrl = [curator.image_url];
+      const introImg = curator.image_url?.startsWith('data:') ? `${base}/curator-image/${curator.id}` : curator.image_url;
+      if (introImg) msgParams.mediaUrl = [introImg];
 
       await client.messages.create(msgParams);
       console.log(`[CuratorIntro] ✓ Sent to ${sub.phone}`);

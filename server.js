@@ -3297,6 +3297,40 @@ app.post('/api/curator-intro/send', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── GET /curator-image/:id — serve curator headshot from DB (supports base64 or redirect) ──
+app.get('/curator-image/:id', async (req, res) => {
+  try {
+    const { rows } = await db.query('SELECT image_url FROM curators WHERE id=$1 LIMIT 1', [req.params.id]);
+    if (!rows.length || !rows[0].image_url) return res.status(404).send('Not found');
+    const url = rows[0].image_url;
+    if (url.startsWith('data:')) {
+      const [meta, b64] = url.split(',');
+      const mime = meta.match(/data:([^;]+)/)[1];
+      res.set('Content-Type', mime);
+      res.set('Cache-Control', 'public, max-age=86400');
+      return res.send(Buffer.from(b64, 'base64'));
+    }
+    res.redirect(url);
+  } catch(e) { res.status(500).send(e.message); }
+});
+
+// ── GET /curator-playlist-image/:id — serve curator playlist art from DB ──────
+app.get('/curator-playlist-image/:id', async (req, res) => {
+  try {
+    const { rows } = await db.query('SELECT playlist_image_url FROM curators WHERE id=$1 LIMIT 1', [req.params.id]);
+    if (!rows.length || !rows[0].playlist_image_url) return res.status(404).send('Not found');
+    const url = rows[0].playlist_image_url;
+    if (url.startsWith('data:')) {
+      const [meta, b64] = url.split(',');
+      const mime = meta.match(/data:([^;]+)/)[1];
+      res.set('Content-Type', mime);
+      res.set('Cache-Control', 'public, max-age=86400');
+      return res.send(Buffer.from(b64, 'base64'));
+    }
+    res.redirect(url);
+  } catch(e) { res.status(500).send(e.message); }
+});
+
 // ── POST /api/curator-intro/test — send intro to a single phone ──────────────
 app.post('/api/curator-intro/test', async (req, res) => {
   const { curator_id, phone } = req.body;
@@ -3311,7 +3345,8 @@ app.post('/api/curator-intro/test', async (req, res) => {
     const month = c.curator_month || 'this month';
     let body = `Meet ${c.name}! Our founding 1st Curator of the Month - ${month}. His first pick drops Monday.\n${link || ''}`;
     const msgParams = { from: process.env.TWILIO_FROM || process.env.TWILIO_PHONE_NUMBER, to: phone, body };
-    if (c.image_url) msgParams.mediaUrl = [c.image_url];
+    const introImg = c.image_url?.startsWith('data:') ? `${base}/curator-image/${c.id}` : c.image_url;
+    if (introImg) msgParams.mediaUrl = [introImg];
     await twilioClient.messages.create(msgParams);
     res.json({ ok: true, body });
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -3337,11 +3372,14 @@ app.post('/api/curator-drop/test', async (req, res) => {
       ? { ...songs[0], week_number: week || songs[0].week_number || 1 }
       : { title: '(no song yet)', artist: '—', week_number: week || 1, theme: null, curator_note: null };
 
-    const { body, mediaUrl } = buildCuratorMessage(song, c.name, c.image_url, c.curator_month, c.playlist_image_url);
+    const base2 = process.env.BASE_URL || '';
+    const headshot = c.image_url?.startsWith('data:') ? `${base2}/curator-image/${c.id}` : c.image_url;
+    const playlistArt = c.playlist_image_url?.startsWith('data:') ? `${base2}/curator-playlist-image/${c.id}` : c.playlist_image_url;
+    const { body, mediaUrl } = buildCuratorMessage(song, c.name, headshot, c.curator_month, playlistArt);
     const msgParams = { from: process.env.TWILIO_FROM || process.env.TWILIO_PHONE_NUMBER, to: phone, body };
     if (mediaUrl) msgParams.mediaUrl = [mediaUrl];
     await twilioClient.messages.create(msgParams);
-    res.json({ ok: true, body, week: song.week_number, media: mediaUrl ? 'image attached' : 'no image' });
+    res.json({ ok: true, body, week: song.week_number, media: mediaUrl ? mediaUrl.slice(0,80) : 'no image' });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
