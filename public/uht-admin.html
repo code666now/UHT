@@ -1041,22 +1041,22 @@ function openEditCurator(id) {
   document.getElementById('edit-curator-instagram').value = c.instagram || '';
   document.getElementById('edit-curator-month').value = c.curator_month || '';
   document.getElementById('edit-monthly-theme').value = c.monthly_theme || '';
-  document.getElementById('edit-curator-img-url').value = c.image_url || '';
-  document.getElementById('edit-playlist-img-url').value = c.playlist_image_url || '';
+  // Clear URL fields — images only update when a new file is uploaded or URL explicitly pasted
+  document.getElementById('edit-curator-img-url').value = '';
+  document.getElementById('edit-playlist-img-url').value = '';
   _editCuratorImgBase64 = null;
-  const p = document.getElementById('edit-img-preview');
-  if (c.image_url) {
-    p.innerHTML = `<img src="${esc(c.image_url)}" onerror="this.parentNode.innerHTML='<span class=img-placeholder>🎧</span>'" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`;
-  } else {
-    p.innerHTML = '<span class="img-placeholder">🎧</span>';
-  }
   _editPlaylistImgBase64 = null;
+  // Show existing image previews (read-only, won't be sent unless changed)
+  const p = document.getElementById('edit-img-preview');
+  const imgSrc = c.image_url?.startsWith('data:') ? '/curator-image/'+c.id : c.image_url;
+  p.innerHTML = imgSrc
+    ? `<img src="${esc(imgSrc)}" onerror="this.parentNode.innerHTML='<span class=img-placeholder>🎧</span>'" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`
+    : '<span class="img-placeholder">🎧</span>';
   const pp = document.getElementById('edit-playlist-img-preview');
-  if (c.playlist_image_url) {
-    pp.innerHTML = `<img src="${esc(c.playlist_image_url)}" onerror="this.parentNode.innerHTML='<span class=img-placeholder>🎵</span>'" style="width:100%;height:100%;object-fit:cover;border-radius:4px">`;
-  } else {
-    pp.innerHTML = '<span class="img-placeholder">🎵</span>';
-  }
+  const pImgSrc = c.playlist_image_url?.startsWith('data:') ? '/curator-playlist-image/'+c.id : c.playlist_image_url;
+  pp.innerHTML = pImgSrc
+    ? `<img src="${esc(pImgSrc)}" onerror="this.parentNode.innerHTML='<span class=img-placeholder>🎵</span>'" style="width:100%;height:100%;object-fit:cover;border-radius:4px">`
+    : '<span class="img-placeholder">🎵</span>';
   openModal('curator-edit');
 }
 
