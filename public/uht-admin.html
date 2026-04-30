@@ -1109,14 +1109,20 @@ async function submitEditCurator() {
   const name = document.getElementById('edit-curator-name').value.trim();
   const bio  = document.getElementById('edit-curator-bio').value.trim();
   if (!name) return toast('Name required.', 'err');
-  const image_url = _editCuratorImgBase64 || document.getElementById('edit-curator-img-url').value.trim() || null;
-  const playlist_image_url = _editPlaylistImgBase64 || document.getElementById('edit-playlist-img-url').value.trim() || null;
   try {
     const statement = document.getElementById('edit-curator-statement').value.trim() || null;
     const instagram = document.getElementById('edit-curator-instagram').value.trim();
     const curator_month = document.getElementById('edit-curator-month').value.trim() || null;
     const monthly_theme = document.getElementById('edit-monthly-theme').value.trim() || null;
-    await api('PATCH', `/api/curators/${id}`, { name, bio, statement, image_url, playlist_image_url, instagram, curator_month, monthly_theme });
+    const payload = { name, bio, statement, instagram, curator_month, monthly_theme };
+    // Only send image fields if a new file was uploaded or URL manually changed
+    const imgUrl = document.getElementById('edit-curator-img-url').value.trim();
+    if (_editCuratorImgBase64) payload.image_url = _editCuratorImgBase64;
+    else if (imgUrl) payload.image_url = imgUrl;
+    const pImgUrl = document.getElementById('edit-playlist-img-url').value.trim();
+    if (_editPlaylistImgBase64) payload.playlist_image_url = _editPlaylistImgBase64;
+    else if (pImgUrl) payload.playlist_image_url = pImgUrl;
+    await api('PATCH', `/api/curators/${id}`, payload);
     toast('Curator updated!', 'ok');
     closeModal('curator-edit');
     _editCuratorImgBase64 = null;
