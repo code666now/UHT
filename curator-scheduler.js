@@ -22,8 +22,9 @@ async function runCuratorDrop() {
       s.user_id,
       s.curator_id,
       u.phone,
-      c.name         AS curator_name,
-      c.image_url    AS curator_image,
+      c.name              AS curator_name,
+      c.image_url         AS curator_image,
+      c.playlist_image_url AS curator_playlist_image,
       c.curator_month
     FROM subscriptions s
     JOIN users    u ON u.id = s.user_id
@@ -66,7 +67,7 @@ async function runCuratorDrop() {
       }
 
       const song = songs[0];
-      const { body, mediaUrl } = buildCuratorMessage(song, sub.curator_name, sub.curator_image, sub.curator_month);
+      const { body, mediaUrl } = buildCuratorMessage(song, sub.curator_name, sub.curator_image, sub.curator_month, sub.curator_playlist_image);
 
       // Send via Twilio — MMS if curator has a photo, SMS otherwise
       const msgParams = {
@@ -100,29 +101,30 @@ async function runCuratorDrop() {
 // ── Curator message builder ───────────────────────────────────────────────────
 // Returns { body, mediaUrl } — mediaUrl is the curator photo for MMS (or null for SMS).
 // Week 1: intro message ("Meet the curator"). Week 2-4: shorter drop notice.
-function buildCuratorMessage(song, curatorName, curatorImage, curatorMonth) {
+function buildCuratorMessage(song, curatorName, curatorImage, curatorMonth, playlistImage) {
   const base = process.env.BASE_URL || '';
   const slug = curatorName.toLowerCase().replace(/\s+/g, '');
-  const link = base ? `${base}/drop/curator/${slug}?ref=sms` : null;
+  const link = base ? `${base}/drop/curator/${slug}?ref=sms`.replace('https://','') : null;
   const firstName = curatorName.split(' ')[0];
   const month = curatorMonth || 'this month';
   const week = parseInt(song.week_number) || 1;
 
   let body;
   if (week === 1) {
-    // Introduction drop
-    body = `Curator of the Month · ${month}\n\n${firstName}'s picks are live. Vote now.`;
+    // Week 1 — intro drop, still introduce the curator
+    body = `Curator of the Month - ${month}\n\n${firstName}'s first pick is live. Vote now.`;
   } else {
-    // Week 2, 3, 4 — short and direct
-    body = `${month} · Week ${week}\n\n${firstName}'s new pick is live. Vote now.`;
+    // Weeks 2, 3, 4 — focus on the music
+    body = `${month} - Week ${week}\n\n${firstName}'s new pick is live. Vote now.`;
   }
 
   if (link) body += `\n${link}`;
 
-  return {
-    body,
-    mediaUrl: curatorImage || null,
-  };
+  // Week 1: send curator headshot (introducing the person)
+  // Weeks 2-4: send playlist art (focus on the music)
+  const mediaUrl = (week === 1 ? curatorImage : (playlistImage || curatorImage)) || null;
+
+  return { body, mediaUrl };
 }
 
 // ── Schedule: every Monday at 10:00am ────────────────────────────────────────

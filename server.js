@@ -44,7 +44,7 @@ app.get('/', async (req, res) => {
   try {
     const [genresResult, curatorsResult, currentDropsResult, communityDropResult, featuredDropResult] = await Promise.all([
       db.query('SELECT id, name FROM genres ORDER BY name ASC'),
-      db.query('SELECT id, name, bio, statement, image_url, instagram, curator_month FROM curators ORDER BY name ASC'),
+      db.query('SELECT id, name, bio, statement, image_url, playlist_image_url, instagram, curator_month FROM curators ORDER BY name ASC'),
       // Latest drop per genre
       db.query(`
         SELECT DISTINCT ON (LOWER(genre)) LOWER(genre) AS genre_key, title, artist
@@ -830,7 +830,7 @@ function handleVerify(){
 
 
 // ── Curator data (server-rendered) ──
-var _curators = ${JSON.stringify(curators.map(c => ({id:c.id,name:c.name,bio:c.bio||'',statement:c.statement||'',instagram:c.instagram||'',image_url:c.image_url||'',curator_month:c.curator_month||''})))};
+var _curators = ${JSON.stringify(curators.map(c => ({id:c.id,name:c.name,bio:c.bio||'',statement:c.statement||'',instagram:c.instagram||'',image_url:c.image_url||'',playlist_image_url:c.playlist_image_url||'',curator_month:c.curator_month||''})))};
 var _cmCuratorId = null;
 
 function openCuratorModal(id) {
@@ -1710,6 +1710,15 @@ html,body{height:100%;background:#000;color:#f3f1ea;font-family:Georgia,'Times N
 .bio{font-size:16px;line-height:1.65;color:rgba(243,241,234,0.65);margin-bottom:32px;font-style:italic}
 .divider{height:1px;background:rgba(243,241,234,0.08);margin-bottom:32px}
 
+/* Playlist preview card */
+.playlist-card{display:flex;align-items:center;gap:16px;background:rgba(255,255,255,0.04);border:1px solid rgba(243,241,234,0.08);border-radius:4px;padding:16px;margin-bottom:28px}
+.playlist-art{width:64px;height:64px;border-radius:3px;object-fit:cover;flex-shrink:0;background:#1a1a1a}
+.playlist-art-placeholder{width:64px;height:64px;border-radius:3px;background:#1a1a1a;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:28px}
+.playlist-info{flex:1;min-width:0}
+.playlist-eyebrow{font-size:8px;letter-spacing:.35em;text-transform:uppercase;color:rgba(243,241,234,0.3);margin-bottom:6px}
+.playlist-label{font-size:14px;font-weight:700;color:#f3f1ea;line-height:1.2}
+.playlist-sub{font-size:11px;color:rgba(243,241,234,0.35);margin-top:4px;letter-spacing:.05em}
+
 /* Follow form */
 .follow-label{font-size:9px;letter-spacing:.35em;text-transform:uppercase;color:rgba(243,241,234,0.3);margin-bottom:14px}
 .follow-input{width:100%;padding:18px 20px;background:rgba(255,255,255,0.04);border:1px solid rgba(243,241,234,0.12);border-radius:4px;color:#f3f1ea;font-family:Georgia,serif;font-size:16px;outline:none;transition:border-color .2s;margin-bottom:12px}
@@ -1750,6 +1759,17 @@ html,body{height:100%;background:#000;color:#f3f1ea;font-family:Georgia,'Times N
     </div>
 
     ${c.bio ? `<p class="bio">"${c.bio}"</p>` : ''}
+
+    ${c.playlist_image_url ? `
+    <div class="playlist-card">
+      <img class="playlist-art" src="${c.playlist_image_url}" alt="Playlist">
+      <div class="playlist-info">
+        <div class="playlist-eyebrow">First pick · dropping Monday</div>
+        <div class="playlist-label">${firstName}'s Playlist</div>
+        <div class="playlist-sub">Follow to find out what it is</div>
+      </div>
+    </div>` : ''}
+
     <div class="divider"></div>
 
     <div class="follow-label">Follow ${firstName} — get his picks every Monday</div>
@@ -1878,7 +1898,10 @@ html,body{background:#080808;color:#ede8df;font-family:'Inter',sans-serif;overfl
 /* Pick */
 .pick{padding:52px 32px 36px}
 .pick-meta{font-size:9px;letter-spacing:.35em;text-transform:uppercase;color:rgba(237,232,223,0.25);margin-bottom:22px}
-.song-title{font-family:'Playfair Display',serif;font-size:clamp(38px,9vw,66px);font-weight:700;line-height:1.02;letter-spacing:-1.5px;color:#ede8df;margin-bottom:10px}
+.pick-header{display:flex;gap:20px;align-items:flex-start;margin-bottom:10px}
+.pick-art{width:88px;height:88px;border-radius:4px;object-fit:cover;flex-shrink:0;background:#1a1a1a}
+.pick-text{flex:1;min-width:0}
+.song-title{font-family:'Playfair Display',serif;font-size:clamp(32px,8vw,60px);font-weight:700;line-height:1.02;letter-spacing:-1.5px;color:#ede8df;margin-bottom:10px}
 .song-artist{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:rgba(237,232,223,0.35);font-weight:400;margin-bottom:32px}
 .song-note{font-family:'Playfair Display',serif;font-size:17px;font-style:italic;color:rgba(237,232,223,0.45);line-height:1.9;padding-left:20px;border-left:1px solid rgba(237,232,223,0.18);margin-bottom:0}
 
@@ -1983,8 +2006,13 @@ ${curator.bio ? `<div class="bio"><p>${curator.bio}</p></div>` : ''}
 
 <div class="pick">
   <div class="pick-meta">${d.theme ? d.theme.toUpperCase() + ' · ' : ''}Week ${d.week_number}</div>
-  <div class="song-title">${d.title}</div>
-  <div class="song-artist">${d.artist}</div>
+  <div class="pick-header">
+    ${curator.playlist_image_url ? `<img class="pick-art" src="${curator.playlist_image_url}" alt="Playlist art">` : ''}
+    <div class="pick-text">
+      <div class="song-title">${d.title}</div>
+      <div class="song-artist">${d.artist}</div>
+    </div>
+  </div>
   ${d.curator_note ? `<div class="song-note">"${d.curator_note}"</div>` : ''}
 </div>
 
@@ -2808,11 +2836,12 @@ app.get('/api/curators-admin', async (req, res) => {
 
 // ── POST /api/curators ────────────────────────────────────────────────────────
 app.post('/api/curators', async (req, res) => {
-  const { name, bio, statement, image_url, instagram, curator_month, monthly_theme } = req.body;
+  const { name, bio, statement, image_url, playlist_image_url, instagram, curator_month, monthly_theme } = req.body;
   if (!name) return res.status(400).json({ error: 'name required.' });
   try {
     const { rows } = await db.query(
-      `INSERT INTO curators (name, bio, statement, image_url, instagram, curator_month, monthly_theme) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`, [name, bio || null, statement || null, image_url || null, instagram || null, curator_month || null, monthly_theme || null]
+      `INSERT INTO curators (name, bio, statement, image_url, playlist_image_url, instagram, curator_month, monthly_theme) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+      [name, bio || null, statement || null, image_url || null, playlist_image_url || null, instagram || null, curator_month || null, monthly_theme || null]
     );
     res.json({ curator: rows[0] });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -2962,12 +2991,12 @@ app.get('/api/votes', async (req, res) => {
 // ── PATCH /api/curators/:id ───────────────────────────────────────────────────
 app.patch('/api/curators/:id', async (req, res) => {
   console.log('PATCH body:', req.body);
-  const { name, bio, statement, image_url, instagram, curator_month, monthly_theme } = req.body;
+  const { name, bio, statement, image_url, playlist_image_url, instagram, curator_month, monthly_theme } = req.body;
   if (!name) return res.status(400).json({ error: 'name required.' });
   try {
     const { rows } = await db.query(
-      `UPDATE curators SET name=$1, bio=$2, statement=$3, image_url=$4, instagram=$5, curator_month=$6, monthly_theme=$7 WHERE id=$8 RETURNING *`,
-      [name, bio || null, statement || null, image_url || null, instagram || null, curator_month || null, monthly_theme || null, req.params.id]
+      `UPDATE curators SET name=$1, bio=$2, statement=$3, image_url=$4, playlist_image_url=$5, instagram=$6, curator_month=$7, monthly_theme=$8 WHERE id=$9 RETURNING *`,
+      [name, bio || null, statement || null, image_url || null, playlist_image_url || null, instagram || null, curator_month || null, monthly_theme || null, req.params.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Curator not found.' });
     res.json({ curator: rows[0] });

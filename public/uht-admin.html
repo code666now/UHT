@@ -595,7 +595,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
       <div class="field"><label>Monthly Theme</label><input type="text" id="edit-monthly-theme" placeholder="Late Night Drives"></div>
     </div>
     <div class="field">
-      <label>Photo</label>
+      <label>Photo <span style="font-weight:400;opacity:.5;font-size:11px">— curator headshot (used in intro MMS + week 1 drop)</span></label>
       <div class="img-upload-wrap">
         <div class="img-preview" id="edit-img-preview"><span class="img-placeholder">🎧</span></div>
         <div class="img-controls">
@@ -609,6 +609,13 @@ tr:hover td{background:rgba(255,255,255,.025)}
           </label>
           <div style="font-size:10px;color:var(--muted);margin-top:6px">JPG, PNG, WEBP · max 2MB</div>
         </div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Playlist Image URL <span style="font-weight:400;opacity:.5;font-size:11px">— album/playlist art (used in weeks 2–4 MMS + drop page)</span></label>
+      <div style="display:flex;gap:12px;align-items:flex-start">
+        <div id="edit-playlist-img-preview" style="width:64px;height:64px;border-radius:4px;background:var(--bg);border:1px solid var(--border);overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px">🎵</div>
+        <input type="url" id="edit-playlist-img-url" placeholder="Paste playlist art URL…" style="flex:1" oninput="(function(v){var p=document.getElementById('edit-playlist-img-preview');p.innerHTML=v?'<img src=\\''+v+'\\'style=\\'width:100%;height:100%;object-fit:cover\\'>':'🎵';})(this.value)">
       </div>
     </div>
     <div class="modal-footer">
@@ -1023,12 +1030,19 @@ function openEditCurator(id) {
   document.getElementById('edit-curator-month').value = c.curator_month || '';
   document.getElementById('edit-monthly-theme').value = c.monthly_theme || '';
   document.getElementById('edit-curator-img-url').value = c.image_url || '';
+  document.getElementById('edit-playlist-img-url').value = c.playlist_image_url || '';
   _editCuratorImgBase64 = null;
   const p = document.getElementById('edit-img-preview');
   if (c.image_url) {
     p.innerHTML = `<img src="${esc(c.image_url)}" onerror="this.parentNode.innerHTML='<span class=img-placeholder>🎧</span>'" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`;
   } else {
     p.innerHTML = '<span class="img-placeholder">🎧</span>';
+  }
+  const pp = document.getElementById('edit-playlist-img-preview');
+  if (c.playlist_image_url) {
+    pp.innerHTML = `<img src="${esc(c.playlist_image_url)}" onerror="this.innerHTML='🎵'" style="width:100%;height:100%;object-fit:cover">`;
+  } else {
+    pp.innerHTML = '🎵';
   }
   openModal('curator-edit');
 }
@@ -1060,12 +1074,13 @@ async function submitEditCurator() {
   const bio  = document.getElementById('edit-curator-bio').value.trim();
   if (!name) return toast('Name required.', 'err');
   const image_url = _editCuratorImgBase64 || document.getElementById('edit-curator-img-url').value.trim() || null;
+  const playlist_image_url = document.getElementById('edit-playlist-img-url').value.trim() || null;
   try {
     const statement = document.getElementById('edit-curator-statement').value.trim() || null;
     const instagram = document.getElementById('edit-curator-instagram').value.trim();
     const curator_month = document.getElementById('edit-curator-month').value.trim() || null;
     const monthly_theme = document.getElementById('edit-monthly-theme').value.trim() || null;
-    await api('PATCH', `/api/curators/${id}`, { name, bio, statement, image_url, instagram, curator_month, monthly_theme });
+    await api('PATCH', `/api/curators/${id}`, { name, bio, statement, image_url, playlist_image_url, instagram, curator_month, monthly_theme });
     toast('Curator updated!', 'ok');
     closeModal('curator-edit');
     _editCuratorImgBase64 = null;
