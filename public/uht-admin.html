@@ -711,7 +711,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 //  UHT Admin — vanilla JS
 // ═══════════════════════════════════════════════════════════════
 
-let API  = localStorage.getItem('uht_api_url') || (window.location.hostname === 'localhost' ? 'http://localhost:3000' : window.location.origin);
+let API  = localStorage.getItem('uht_api_url') || (window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://undeniablehits.com');
 let AKEY = localStorage.getItem('uht_anthropic_key') || '';
 let GENRES = [], CURATORS = [];
 let agentHistory = [];
@@ -825,7 +825,7 @@ async function loadCurators() {
           </td>
         </tr>`).join('')
       : '<tr class="empty-row"><td colspan="6">No curators yet.</td></tr>';
-  } catch(e) { tbody.innerHTML=`<tr class="empty-row"><td colspan="6">${esc(e.message)}</td></tr>`; }
+  } catch(e) { tbody.innerHTML=`<tr class="empty-row"><td colspan="6">${esc(e.message)} (API: ${API})</td></tr>`; }
 }
 
 async function loadSubscribers() {
