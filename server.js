@@ -1495,6 +1495,27 @@ app.post('/api/drop/test', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── POST /api/drop/test-genre — send genre drop to any phone without subscription ──
+app.post('/api/drop/test-genre', async (req, res) => {
+  const { phone, genre_id } = req.body;
+  if (!phone || !genre_id) return res.status(400).json({ error: 'phone and genre_id required' });
+  try {
+    const { rows: songs } = await db.query(
+      `SELECT s.*, g.name AS genre_name FROM songs s
+       JOIN genres g ON g.id = s.genre_id
+       WHERE s.genre_id = $1 ORDER BY s.created_at ASC LIMIT 1`,
+      [genre_id]
+    );
+    if (!songs.length) return res.status(404).json({ error: `No song found for genre ${genre_id}` });
+    const song = songs[0];
+    const { buildDropMessage } = require('./scheduler');
+    const msg = buildDropMessage(song);
+    const twilio = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+    await twilio.messages.create({ from: process.env.TWILIO_FROM || process.env.TWILIO_PHONE_NUMBER, to: phone, body: msg });
+    res.json({ ok: true, sent_to: phone, genre: song.genre_name, song: song.title, artist: song.artist });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/api/genres/seed', async (req, res) => {
   const genres = ['Rock', 'Punk', 'Pop', 'Country'];
   const created = [];
