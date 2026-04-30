@@ -711,7 +711,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 //  UHT Admin — vanilla JS
 // ═══════════════════════════════════════════════════════════════
 
-let API  = localStorage.getItem('uht_api_url') || 'http://localhost:3000';
+let API  = localStorage.getItem('uht_api_url') || (window.location.hostname === 'localhost' ? 'http://localhost:3000' : window.location.origin);
 let AKEY = localStorage.getItem('uht_anthropic_key') || '';
 let GENRES = [], CURATORS = [];
 let agentHistory = [];
