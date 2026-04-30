@@ -28,12 +28,6 @@ db.query(`ALTER TABLE deliveries DROP CONSTRAINT IF EXISTS deliveries_song_id_fk
   .then(() => console.log('[Migration] deliveries FK cascade ready'))
   .catch(e => console.error('[Migration] deliveries FK cascade:', e.message));
 
-// One-time: remove test delivery + song for Sweet Child O Mine (id=1)
-db.query(`DELETE FROM votes WHERE song_id = 1`)
-  .then(() => db.query(`DELETE FROM deliveries WHERE song_id = 1`))
-  .then(() => db.query(`DELETE FROM songs WHERE id = 1`))
-  .then(() => console.log('[Cleanup] Sweet Child O Mine removed'))
-  .catch(() => {}); // already gone — ignore
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -1221,16 +1215,16 @@ app.post('/api/subscribe', async (req, res) => {
     );
     const userId = userRows[0].id;
 
-    // Create subscription (DO NOTHING if duplicate)
+    // Upsert subscription — reactivate if previously unsubscribed
     const { rows: subRows } = await db.query(
-      `INSERT INTO subscriptions (user_id, genre_id, curator_id)
-       VALUES ($1, $2, $3)
-       ON CONFLICT DO NOTHING
-       RETURNING id`,
+      `INSERT INTO subscriptions (user_id, genre_id, curator_id, is_active)
+       VALUES ($1, $2, $3, true)
+       ON CONFLICT (user_id, genre_id, curator_id) DO UPDATE SET is_active = true
+       RETURNING id, (xmax = 0) AS inserted`,
       [userId, genre_id || null, curator_id || null]
     );
 
-    const isNew = subRows.length > 0;
+    const isNew = subRows.length > 0 && subRows[0].inserted;
     console.log(`[Subscribe] ${normalPhone} -> user #${userId} | ${isNew ? 'new subscription' : 'already subscribed'}`);
 
     // Send opt-in confirmation text to new subscribers
@@ -2163,8 +2157,8 @@ ${ytId ? '' : 'startListenTimer();'}
 function vote(v){
   ['vMega','vHit','vDenied'].forEach(function(id){var b=document.getElementById(id);if(b)b.disabled=true;});
   var msg=document.getElementById('voteMsg');
-  fetch('/api/vote',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({submission_id:${d.id},vote:v,page:'curator'})})
+  fetch('/api/genre-vote',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({submission_id:${d.id},vote:v})})
   .then(function(r){return r.json();})
   .then(function(){
     var labels={mega_hit:'🔥 Mega Hit recorded!',hit:'🎯 Hit recorded!',deny:'💀 Denied recorded!'};
