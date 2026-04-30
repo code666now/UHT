@@ -13,6 +13,11 @@ const db      = require('./db');
 const twilio  = require('twilio');
 const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 
+// ── Startup migrations ────────────────────────────────────────────────────────
+db.query('ALTER TABLE curators ADD COLUMN IF NOT EXISTS playlist_image_url TEXT')
+  .then(() => console.log('[Migration] playlist_image_url column ready'))
+  .catch(e => console.error('[Migration] playlist_image_url:', e.message));
+
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
