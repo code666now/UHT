@@ -1862,7 +1862,6 @@ function submitFollow(){
 
 // ── GET /drop/curator/:slug ──────────────────────────────────────────────────
 app.get('/drop/curator/:slug', async (req, res) => {
-  if(req.query.ref !== 'sms') return res.redirect('/?src=drop#subscribe');
   const slug = req.params.slug.toLowerCase().replace(/-/g, '');
   try {
     const curatorRes = await db.query(
@@ -2437,8 +2436,6 @@ app.post('/api/migrate-community-pick', async (req, res) => {
 
 // ── GET /drop/:genre ─────────────────────────────────────────────────────────
 app.get('/drop/:genre', async (req, res) => {
-  if(req.params.genre.toLowerCase() === 'rock') return res.redirect('/?src=drop#subscribe');
-  if(req.query.ref !== 'sms') return res.redirect('/?src=drop#subscribe');
   const genre = req.params.genre.toLowerCase();
   try {
     const { rows } = await db.query(
