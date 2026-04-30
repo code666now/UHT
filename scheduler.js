@@ -98,7 +98,7 @@ function buildDropMessage(song) {
   const target = song.curator_name
     ? `/drop/curator/${song.curator_name.toLowerCase().replace(/\s+/g, '-')}`
     : `/drop/${(song.genre_name || '').toLowerCase().replace(/\s+/g, '-')}`;
-  const link = base ? `${base}${target}?ref=sms` : (song.url || '');
+  const link = base ? `${base}${target}` : (song.url || '');
 
   const genre = song.genre_name || song.curator_name || '';
   let msg = `Undeniable ${genre} Hit of the Week\n\n`;
