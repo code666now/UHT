@@ -22,6 +22,14 @@ db.query('ALTER TABLE songs ADD COLUMN IF NOT EXISTS youtube_url TEXT')
   .then(() => console.log('[Migration] songs.youtube_url column ready'))
   .catch(e => console.error('[Migration] songs.youtube_url:', e.message));
 
+// Make deliveries.song_id cascade on delete so songs can be removed freely
+db.query(`
+  ALTER TABLE deliveries DROP CONSTRAINT IF EXISTS deliveries_song_id_fkey;
+  ALTER TABLE deliveries ADD CONSTRAINT deliveries_song_id_fkey
+    FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE;
+`).then(() => console.log('[Migration] deliveries FK cascade ready'))
+  .catch(e => console.error('[Migration] deliveries FK cascade:', e.message));
+
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
