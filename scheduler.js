@@ -102,7 +102,6 @@ function buildDropMessage(song) {
 
   const genre = song.genre_name || song.curator_name || '';
   let msg = `Undeniable ${genre} Hit of the Week\n\n`;
-  msg += `"${song.title}" by ${song.artist}\n\n`;
   msg += `HIT or DENIED: ${link}`;
   return msg;
 }
