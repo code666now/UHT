@@ -52,7 +52,7 @@ app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "pu
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may1-v1' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may1-v2' });
 });
 
 // ── GET / — Home page ─────────────────────────────────────────────────────────
@@ -1957,7 +1957,7 @@ app.get('/drop/curator/:slug', async (req, res) => {
   if (!d) {
     const firstName = curator.name.split(' ')[0];
     const base = process.env.BASE_URL || '';
-    return res.send(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${curator.name}'s Picks — Undeniable Hits</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#000;color:#f3f1ea;font-family:Georgia,'Times New Roman',serif;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:32px;text-align:center}</style></head><body><div><p style="font-size:10px;letter-spacing:.35em;text-transform:uppercase;opacity:.4;margin-bottom:16px">Undeniable Hits</p><h1 style="font-size:28px;margin-bottom:12px">${firstName}'s Picks</h1><p style="opacity:.55;font-size:15px;line-height:1.6">${firstName}'s first pick drops Monday.<br>Subscribe at <a href="${base}/curator/${slug}" style="color:#E8B84B;text-decoration:none">${(base||'undeniablehits.com').replace('https://','')}/curator/${slug}</a></p></div></body></html>`);
+    return res.send(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${curator.name}' Picks — Undeniable Hits</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#000;color:#f3f1ea;font-family:Georgia,'Times New Roman',serif;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:32px;text-align:center}</style></head><body><div><p style="font-size:10px;letter-spacing:.35em;text-transform:uppercase;opacity:.4;margin-bottom:16px">Undeniable Hits</p><h1 style="font-size:28px;margin-bottom:12px">${firstName}' Picks</h1><p style="opacity:.55;font-size:15px;line-height:1.6">${firstName}' first pick drops Monday.<br>Subscribe at <a href="${base}/curator/${slug}" style="color:#E8B84B;text-decoration:none">${(base||'undeniablehits.com').replace('https://','')}/curator/${slug}</a></p></div></body></html>`);
   }
 
   try {
@@ -2153,7 +2153,7 @@ ${!ytId && d.spotify_url ? `<div class="player-outer" style="height:152px"><ifra
 
 ${allSubs && allSubs.length > 0 ? `
 <div class="archive">
-  <div class="archive-label">Archive · ${curator.name.split(' ')[0]}'s Picks</div>
+  <div class="archive-label">Archive · ${curator.name.split(' ')[0]}' Picks</div>
   ${allSubs.map((sub, i) => `
   <div class="archive-item">
     <div class="archive-week">Week ${sub.week_number} of 4</div>
