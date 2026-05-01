@@ -1704,19 +1704,51 @@ app.delete('/api/genre-submissions/:id', async (req, res) => {
 
 
 // ── GET /curator/:slug — Curator intro page (Friday teaser, no song) ─────────
+// Hardcoded fallback data for known curators — renders instantly even if DB is
+// slow or unreachable (common on cellular / Railway cold-start). Real DB data
+// always wins when available; this only fires on timeout or error.
+const CURATOR_FALLBACK = {
+  lucasmoon: {
+    id: 1,
+    name: 'Lucas Moon',
+    curator_month: 'May 2026',
+    bio: 'Tastemaker and founding Curator of the Month.',
+    statement: null,
+    image_url: null,
+    playlist_image_url: null,
+    instagram: null,
+  }
+};
 app.get('/curator/:slug', async (req, res) => {
   const slug = req.params.slug.toLowerCase().replace(/-/g, '');
+
+  // Race DB query against a 4-second timeout so cellular users always get HTML
+  let c;
   try {
-    const { rows } = await db.query(
-      `SELECT * FROM curators WHERE LOWER(REPLACE(name,' ',''))=$1 LIMIT 1`, [slug]
-    );
-    if (!rows.length) return res.status(404).send('<h1>Curator not found.</h1>');
-    const c = rows[0];
-    const firstName = c.name.split(' ')[0];
-    const month = c.curator_month || 'this month';
-    const base = process.env.BASE_URL || '';
-    const headshotUrl = c.image_url?.startsWith('data:') ? `${base}/curator-image/${c.id}` : (c.image_url || '');
-    const playlistUrl = c.playlist_image_url?.startsWith('data:') ? `${base}/curator-playlist-image/${c.id}` : (c.playlist_image_url || '');
+    const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('DB timeout')), 4000));
+    const query   = db.query(`SELECT * FROM curators WHERE LOWER(REPLACE(name,' ',''))=$1 LIMIT 1`, [slug]);
+    const { rows } = await Promise.race([query, timeout]);
+    c = rows[0] || CURATOR_FALLBACK[slug] || null;
+  } catch(e) {
+    console.error('/curator/:slug DB error:', e.message);
+    c = CURATOR_FALLBACK[slug] || null;
+  }
+
+  if (!c) {
+    return res.status(404).send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Curator Not Found · Undeniable Hits</title><style>body{background:#000;color:#f3f1ea;font-family:Georgia,serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;text-align:center;padding:32px}</style></head><body><div><p style="font-size:11px;letter-spacing:.3em;text-transform:uppercase;opacity:.4;margin-bottom:16px">Undeniable Hits</p><h1 style="font-size:28px;margin-bottom:12px">Curator not found.</h1><p style="opacity:.5;font-size:14px">Check the link and try again.</p></div></body></html>`);
+  }
+
+  const firstName = c.name.split(' ')[0];
+  const month = c.curator_month || 'this month';
+  const base = process.env.BASE_URL || '';
+  // Use the proxy route only for base64-stored images; plain URLs go direct.
+  // Add Cache-Control on image proxy routes (already set there).
+  const headshotUrl = c.image_url?.startsWith('data:') ? `${base}/curator-image/${c.id}` : (c.image_url || '');
+  const playlistUrl = c.playlist_image_url?.startsWith('data:') ? `${base}/curator-playlist-image/${c.id}` : (c.playlist_image_url || '');
+
+  // Cache this page for 5 minutes; stale-while-revalidate lets CDN/browser
+  // serve the cached copy instantly while fetching a fresh one in the background.
+  res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600');
 
     res.send(`<!DOCTYPE html>
 <html lang="en">
@@ -1780,7 +1812,7 @@ html,body{height:100%;background:#000;color:#f3f1ea;font-family:Georgia,'Times N
 <div class="page">
   <div class="hero">
     ${headshotUrl
-      ? `<img class="hero-img" src="${headshotUrl}" alt="${c.name}">`
+      ? `<img class="hero-img" src="${headshotUrl}" alt="${c.name}" decoding="async" fetchpriority="high">`
       : `<div class="hero-img-placeholder">🎧</div>`}
     <div class="hero-overlay"></div>
     <div class="hero-content">
@@ -1800,7 +1832,7 @@ html,body{height:100%;background:#000;color:#f3f1ea;font-family:Georgia,'Times N
 
     ${playlistUrl ? `
     <div class="playlist-card">
-      <img class="playlist-art" src="${playlistUrl}" alt="Playlist">
+      <img class="playlist-art" src="${playlistUrl}" alt="Playlist" loading="lazy" decoding="async">
       <div class="playlist-info">
         <div class="playlist-eyebrow">Playlist · ${month}</div>
         <div class="playlist-label">${firstName}'s Selections</div>
@@ -1848,8 +1880,18 @@ function submitFollow(){
 </body>
 </html>`);
   } catch(e) {
-    console.error('/curator/:slug error:', e.message);
-    res.status(500).send('<h1>Error loading curator page.</h1>');
+    console.error('/curator/:slug render error:', e.message);
+    // Graceful fallback — never show a blank page from an SMS link
+    res.status(500).send(`<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Undeniable Hits</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#000;color:#f3f1ea;font-family:Georgia,'Times New Roman',serif;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:32px;text-align:center}</style>
+</head><body><div>
+<p style="font-size:10px;letter-spacing:.35em;text-transform:uppercase;opacity:.4;margin-bottom:20px">Undeniable Hits</p>
+<h1 style="font-size:26px;margin-bottom:12px">Curator of the Month</h1>
+<p style="opacity:.55;font-size:15px;line-height:1.6;margin-bottom:28px">His picks drop every Monday. Subscribe below to get notified.</p>
+<a href="/" style="display:inline-block;padding:16px 32px;background:#f3f1ea;color:#000;font-family:Georgia,serif;font-size:14px;font-weight:700;letter-spacing:.06em;text-decoration:none">Visit Undeniable Hits</a>
+</div></body></html>`);
   }
 });
 
@@ -3409,7 +3451,8 @@ app.get('/curator-image/:id', async (req, res) => {
       const [meta, b64] = url.split(',');
       const mime = meta.match(/data:([^;]+)/)[1];
       res.set('Content-Type', mime);
-      res.set('Cache-Control', 'public, max-age=86400');
+      // Long cache — image data only changes when admin re-uploads
+      res.set('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400');
       return res.send(Buffer.from(b64, 'base64'));
     }
     res.redirect(url);
@@ -3426,7 +3469,7 @@ app.get('/curator-playlist-image/:id', async (req, res) => {
       const [meta, b64] = url.split(',');
       const mime = meta.match(/data:([^;]+)/)[1];
       res.set('Content-Type', mime);
-      res.set('Cache-Control', 'public, max-age=86400');
+      res.set('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400');
       return res.send(Buffer.from(b64, 'base64'));
     }
     res.redirect(url);
