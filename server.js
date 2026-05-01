@@ -1750,6 +1750,7 @@ app.get('/curator/:slug', async (req, res) => {
   // serve the cached copy instantly while fetching a fresh one in the background.
   res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600');
 
+  try {
     res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1898,42 +1899,56 @@ function submitFollow(){
 // ── GET /drop/curator/:slug ──────────────────────────────────────────────────
 app.get('/drop/curator/:slug', async (req, res) => {
   const slug = req.params.slug.toLowerCase().replace(/-/g, '');
+  // Cache so repeat SMS taps are served instantly
+  res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600');
+
+  let curator, d, allSubs, curatorTier;
   try {
-    const curatorRes = await db.query(
-      `SELECT * FROM curators WHERE LOWER(REPLACE(name,' ',''))=$1 LIMIT 1`,
-      [slug]
-    );
-    if (!curatorRes.rows.length) return res.status(404).send('<h1>Curator not found.</h1>');
-    const curator = curatorRes.rows[0];
+    // Step 1: get curator (must come first; we need curator.id for the rest)
+    const timeout1 = new Promise((_, rej) => setTimeout(() => rej(new Error('DB timeout')), 4000));
+    const { rows: cRows } = await Promise.race([
+      db.query(`SELECT * FROM curators WHERE LOWER(REPLACE(name,' ',''))=$1 LIMIT 1`, [slug]),
+      timeout1
+    ]);
+    curator = cRows[0] || null;
 
-    const subRes = await db.query(
-      `SELECT * FROM curator_submissions WHERE curator_id=$1
-       ORDER BY week_number DESC, submitted_at DESC LIMIT 1`,
-      [curator.id]
-    );
-    if (!subRes.rows.length) return res.status(404).send('<h1>No picks yet.</h1>');
-    const d = subRes.rows[0];
-    const allSubsRes = await db.query(
-      `SELECT * FROM curator_submissions WHERE curator_id=$1 ORDER BY week_number ASC`,
-      [curator.id]
-    );
-    const allSubs = allSubsRes.rows;
+    if (curator) {
+      // Step 2: run remaining 3 queries in parallel (saves ~2 round trips)
+      const timeout2 = new Promise((_, rej) => setTimeout(() => rej(new Error('DB timeout')), 4000));
+      const [subRes, allSubsRes, hitRes] = await Promise.race([
+        Promise.all([
+          db.query(`SELECT * FROM curator_submissions WHERE curator_id=$1 ORDER BY week_number DESC, submitted_at DESC LIMIT 1`, [curator.id]),
+          db.query(`SELECT * FROM curator_submissions WHERE curator_id=$1 ORDER BY week_number ASC`, [curator.id]),
+          db.query(`SELECT COUNT(*) AS hits FROM curator_submission_votes WHERE submission_id IN (SELECT id FROM curator_submissions WHERE curator_id=$1) AND vote='hit'`, [curator.id])
+        ]),
+        timeout2
+      ]);
+      d        = subRes.rows[0]    || null;
+      allSubs  = allSubsRes.rows   || [];
+      const totalHits = parseInt(hitRes.rows[0]?.hits || 0, 10);
+      curatorTier =
+        totalHits >= 28 ? '🏆 Legend' :
+        totalHits >= 18 ? '👑 Tastemaker' :
+        totalHits >= 8  ? '🎯 Hit Hunter' :
+                          '🌙 Rising Curator';
+    }
+  } catch(e) {
+    console.error('/drop/curator/:slug DB error:', e.message);
+    curator = null; d = null; allSubs = []; curatorTier = '🌙 Rising Curator';
+  }
 
-    // Compute curator tier from lifetime hit votes
-    const hitRes = await db.query(
-      `SELECT COUNT(*) AS hits FROM curator_submission_votes
-        WHERE submission_id IN (
-          SELECT id FROM curator_submissions WHERE curator_id = $1
-        ) AND vote = 'hit'`,
-      [curator.id]
-    );
-    const totalHits = parseInt(hitRes.rows[0].hits, 10);
-    const curatorTier =
-      totalHits >= 28 ? '🏆 Legend' :
-      totalHits >= 18 ? '👑 Tastemaker' :
-      totalHits >= 8  ? '🎯 Hit Hunter' :
-                        '🌙 Rising Curator';
+  if (!curator) {
+    return res.status(404).send(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Curator Not Found — Undeniable Hits</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#000;color:#f3f1ea;font-family:Georgia,'Times New Roman',serif;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:32px;text-align:center}</style></head><body><div><p style="font-size:10px;letter-spacing:.35em;text-transform:uppercase;opacity:.4;margin-bottom:16px">Undeniable Hits</p><h1 style="font-size:28px;margin-bottom:12px">Curator not found.</h1><p style="opacity:.5;font-size:15px">Check the link and try again.</p></div></body></html>`);
+  }
 
+  // No picks yet — graceful holding page rather than 404
+  if (!d) {
+    const firstName = curator.name.split(' ')[0];
+    const base = process.env.BASE_URL || '';
+    return res.send(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${curator.name}'s Picks — Undeniable Hits</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#000;color:#f3f1ea;font-family:Georgia,'Times New Roman',serif;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:32px;text-align:center}</style></head><body><div><p style="font-size:10px;letter-spacing:.35em;text-transform:uppercase;opacity:.4;margin-bottom:16px">Undeniable Hits</p><h1 style="font-size:28px;margin-bottom:12px">${firstName}'s Picks</h1><p style="opacity:.55;font-size:15px;line-height:1.6">${firstName}'s first pick drops Monday.<br>Subscribe at <a href="${base}/curator/${slug}" style="color:#E8B84B;text-decoration:none">${(base||'undeniablehits.com').replace('https://','')}/curator/${slug}</a></p></div></body></html>`);
+  }
+
+  try {
     const ytId = d.youtube_url ? (d.youtube_url.match(/(?:v=|youtu\.be\/)([^&?/]+)/) || [])[1] : null;
     const pageUrl = '/drop/curator/' + slug;
     const firstName = curator.name.split(' ')[0];
@@ -2249,7 +2264,11 @@ function submitFollow(){
 </script>
 </body>
 </html>`);
-  } catch(e) { res.status(500).send('<h1>Error: ' + e.message + '</h1>'); }
+  } catch(e) {
+    console.error('/drop/curator/:slug render error:', e.message);
+    const firstName = curator?.name?.split(' ')[0] || 'The curator';
+    res.status(500).send(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Curator Pick — Undeniable Hits</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#000;color:#f3f1ea;font-family:Georgia,'Times New Roman',serif;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:32px;text-align:center}</style></head><body><div><p style="font-size:10px;letter-spacing:.35em;text-transform:uppercase;opacity:.4;margin-bottom:16px">Undeniable Hits</p><h1 style="font-size:28px;margin-bottom:12px">${firstName}'s Pick</h1><p style="opacity:.55;font-size:15px;line-height:1.6">Something went wrong loading this drop.<br>Try again in a moment.</p></div></body></html>`);
+  }
 });
 
 
@@ -2332,12 +2351,22 @@ const submitModalCSS = `
 
 // ── GET /drop/community ───────────────────────────────────────────────────────
 app.get('/drop/community', async (req, res) => {
+  // Cache so repeat SMS taps are served instantly
+  res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600');
+  let d;
   try {
-    const { rows } = await db.query(
-      `SELECT * FROM genre_submissions WHERE is_community_pick = TRUE ORDER BY created_at DESC LIMIT 1`
-    );
-    if (!rows.length) return res.status(404).send('<h1 style="font-family:sans-serif;color:#fff;background:#000;padding:40px">No community pick selected yet.</h1>');
-    const d = rows[0];
+    const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('DB timeout')), 4000));
+    const query   = db.query(`SELECT * FROM genre_submissions WHERE is_community_pick = TRUE ORDER BY created_at DESC LIMIT 1`);
+    const { rows } = await Promise.race([query, timeout]);
+    d = rows[0] || null;
+  } catch(e) {
+    console.error('/drop/community DB error:', e.message);
+    d = null;
+  }
+  if (!d) {
+    return res.send(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Community Pick — Undeniable Hits</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#000;color:#f3f1ea;font-family:Georgia,'Times New Roman',serif;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:32px;text-align:center}</style></head><body><div><p style="font-size:10px;letter-spacing:.35em;text-transform:uppercase;opacity:.4;margin-bottom:16px">Undeniable Hits</p><h1 style="font-size:28px;margin-bottom:12px">Community Pick</h1><p style="opacity:.55;font-size:15px;line-height:1.6">This week's community pick is loading.<br>Check back in a moment.</p></div></body></html>`);
+  }
+  try {
     const ytId = d.youtube_url ? (d.youtube_url.match(/(?:v=|youtu\.be\/)([^&?/]+)/) || [])[1] : null;
 
     res.send(`<!DOCTYPE html>
@@ -2404,7 +2433,10 @@ function replayVideo(){if(!player)return;player.seekTo(0);player.playVideo();doc
 </script>` : ''}
 </body>
 </html>`);
-  } catch(e) { res.status(500).send('<h1>Error: ' + e.message + '</h1>'); }
+  } catch(e) {
+    console.error('/drop/community render error:', e.message);
+    res.status(500).send(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Community Pick — Undeniable Hits</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#000;color:#f3f1ea;font-family:Georgia,'Times New Roman',serif;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:32px;text-align:center}</style></head><body><div><p style="font-size:10px;letter-spacing:.35em;text-transform:uppercase;opacity:.4;margin-bottom:16px">Undeniable Hits</p><h1 style="font-size:28px;margin-bottom:12px">Community Pick</h1><p style="opacity:.55;font-size:15px;line-height:1.6">Something went wrong loading this page.<br>Try again in a moment.</p></div></body></html>`);
+  }
 });
 
 // ── PATCH /api/genre-submissions/:id/community-pick ──────────────────────────
@@ -2472,8 +2504,14 @@ app.post('/api/migrate-community-pick', async (req, res) => {
 // ── GET /drop/:genre ─────────────────────────────────────────────────────────
 app.get('/drop/:genre', async (req, res) => {
   const genre = req.params.genre.toLowerCase();
+  // Cache so repeat SMS taps are served instantly; stale-while-revalidate
+  // lets the browser/CDN serve cached HTML while fetching fresh data.
+  res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600');
+
+  let rows = [];
   try {
-    const { rows } = await db.query(
+    const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('DB timeout')), 4000));
+    const query   = db.query(
       `SELECT gs.*,
          COUNT(*) FILTER (WHERE v.vote='hit') AS hits,
          COUNT(*) FILTER (WHERE v.vote='denied') AS denies
@@ -2484,7 +2522,20 @@ app.get('/drop/:genre', async (req, res) => {
        ORDER BY gs.drop_date DESC NULLS LAST, gs.created_at DESC`,
       [genre]
     );
-    if (!rows.length) return res.status(404).send('<h1>No drop found for this genre.</h1>');
+    const result = await Promise.race([query, timeout]);
+    rows = result.rows;
+  } catch(e) {
+    console.error('/drop/:genre DB error:', e.message);
+    rows = [];
+  }
+
+  // No drop yet — show a branded holding page instead of a 404
+  if (!rows.length) {
+    const label = genre.charAt(0).toUpperCase() + genre.slice(1);
+    return res.send(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Undeniable ${label} Hit — Coming Soon</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#000;color:#f3f1ea;font-family:Georgia,'Times New Roman',serif;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:32px;text-align:center}</style></head><body><div><p style="font-size:10px;letter-spacing:.35em;text-transform:uppercase;opacity:.4;margin-bottom:16px">Undeniable Hits</p><h1 style="font-size:28px;margin-bottom:12px">Undeniable ${label} Hit</h1><p style="opacity:.55;font-size:15px;line-height:1.6">This week's drop is on its way.<br>Check back Friday.</p></div></body></html>`);
+  }
+
+  try {
     const d = rows[0];
     const archive = rows.slice(1);
     const ytId = d.youtube_url ? (d.youtube_url.match(/(?:v=|youtu\.be\/)([^&?/]+)/) || [])[1] : null;
@@ -2802,7 +2853,11 @@ function scrollToNext(targetId){
 </script>
 </body>
 </html>`);
-  } catch(e) { res.status(500).send('<h1>Error: ' + e.message + '</h1>'); }
+  } catch(e) {
+    console.error('/drop/:genre render error:', e.message);
+    const label = genre.charAt(0).toUpperCase() + genre.slice(1);
+    res.status(500).send(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Undeniable ${label} Hit</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#000;color:#f3f1ea;font-family:Georgia,'Times New Roman',serif;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:32px;text-align:center}</style></head><body><div><p style="font-size:10px;letter-spacing:.35em;text-transform:uppercase;opacity:.4;margin-bottom:16px">Undeniable Hits</p><h1 style="font-size:28px;margin-bottom:12px">Undeniable ${label} Hit</h1><p style="opacity:.55;font-size:15px;line-height:1.6">Something went wrong loading this drop.<br>Try again in a moment.</p></div></body></html>`);
+  }
 });
 
 
