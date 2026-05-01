@@ -107,17 +107,15 @@ async function runCuratorDrop() {
 function buildCuratorMessage(song, curatorName, curatorImage, curatorMonth, playlistImage) {
   const base = process.env.BASE_URL || '';
   const slug = curatorName.toLowerCase().replace(/\s+/g, '');
-  const link = base ? `${base}/drop/curator/${slug}?ref=sms`.replace('https://','') : null;
+  const link = base ? `${base}/drop/curator/${slug}`.replace('https://','') : null;
   const firstName = curatorName.split(' ')[0];
   const month = curatorMonth || 'this month';
   const week = parseInt(song.week_number) || 1;
 
   let body;
   if (week === 1) {
-    // Week 1 — intro drop, still introduce the curator
     body = `Curator of the Month - ${month}\n\n${firstName}'s first pick is live. Vote now.`;
   } else {
-    // Weeks 2, 3, 4 — focus on the music
     body = `${month} - Week ${week}\n\n${firstName}'s new pick is live. Vote now.`;
   }
 
