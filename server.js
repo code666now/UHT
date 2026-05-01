@@ -95,7 +95,13 @@ app.get('/', async (req, res) => {
     const nowUtc = new Date();
     const ptHour = ((nowUtc.getUTCHours() - 7) + 24) % 24; // PDT = UTC-7
     const ptDay  = new Date(nowUtc.getTime() - 7 * 3600 * 1000).getUTCDay(); // 0=Sun…5=Fri
-    const showDropSong = (ptDay === 5 && ptHour >= 10); // Friday after 10am PT only
+    // Fri 10am → Tue midnight: songs visible (open all weekend)
+    // Wed, Thu, Fri before 10am: "Drop coming Friday"
+    const showDropSong = (ptDay === 5 && ptHour >= 10) // Friday after 10am
+                      || ptDay === 6  // Saturday
+                      || ptDay === 0  // Sunday
+                      || ptDay === 1  // Monday
+                      || ptDay === 2; // Tuesday
 
     // Genre display config
     const genreConfig = {
