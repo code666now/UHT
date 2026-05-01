@@ -89,6 +89,13 @@ app.get('/', async (req, res) => {
       currentDrops['community'] = { title: communityDropResult.rows[0].title, artist: communityDropResult.rows[0].artist };
     }
 
+    // Only show song copy on genre cards on Fridays after 8am PT (once drop has gone out).
+    // All other days show "Drop coming Friday" so cards stay teaser-only.
+    const nowUtc = new Date();
+    const ptHour = ((nowUtc.getUTCHours() - 7) + 24) % 24; // PT offset (PDT = UTC-7)
+    const ptDay  = new Date(nowUtc.getTime() - 7 * 3600 * 1000).getUTCDay(); // 0=Sun…5=Fri
+    const showDropSong = (ptDay === 5 && ptHour >= 8); // Friday after 8am PT only
+
     // Genre display config
     const genreConfig = {
       rock:      { emoji: '🎸', label: 'Rock',      path: '/drop/rock' },
@@ -604,7 +611,7 @@ ${fd && fdYtId ? `
         <div class="genre-name">${g.label.toUpperCase()}</div>
       </div>
       <div>
-        ${(drop && g.key !== 'rock')
+        ${(showDropSong && drop)
           ? `<div class="genre-song">${drop.title}</div><div class="genre-artist">${drop.artist}</div>`
           : `<div class="genre-coming">Drop coming Friday</div>`}
       </div>
@@ -704,7 +711,6 @@ ${fd && fdYtId ? `
     <a href="#curators">Curators</a>
     <a href="#drops">Genres</a>
     <a href="#how-it-works">How It Works</a>
-    <a href="/admin">Admin</a>
   </div>
   <div class="footer-copy">© ${new Date().getFullYear()} Undeniable Hits · +1 (844) 261-6758</div>
 </footer>
@@ -736,7 +742,6 @@ ${fd && fdYtId ? `
         <div style="margin-top:6px;font-size:11px;opacity:.4;cursor:pointer" onclick="handleCuratorUnfollow()">Unfollow</div>
       </div>
       <div class="cm-scorecard" id="cmScorecard" style="display:none">
-        <div class="cm-score-label">Track Record</div>
         <div class="cm-score-grid" id="cmScoreGrid"></div>
       </div>
     </div>
