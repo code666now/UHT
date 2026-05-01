@@ -102,7 +102,7 @@ function buildDropMessage(song) {
 
   const genre = song.genre_name || song.curator_name || '';
   let msg = `Undeniable ${genre} Hit of the Week\n\n`;
-  msg += `HIT or DENIED: ${link}`;
+  msg += `Vote HIT or DENIED: ${link}`;
   return msg;
 }
 
