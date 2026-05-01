@@ -1848,7 +1848,7 @@ html,body{height:100%;background:#000;color:#f3f1ea;font-family:Georgia,'Times N
       <img class="playlist-art" src="${playlistUrl}" alt="Playlist" loading="lazy" decoding="async">
       <div class="playlist-info">
         <div class="playlist-eyebrow">Playlist · ${month}</div>
-        <div class="playlist-label">${firstName}'s Selections</div>
+        <div class="playlist-label">${firstName} Selections</div>
         <div class="playlist-sub">Subscribe to get his picks every Monday</div>
       </div>
     </div>` : ''}
