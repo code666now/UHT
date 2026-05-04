@@ -52,7 +52,7 @@ app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "pu
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may1-v3' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may1-v4' });
 });
 
 // ── Temp debug: subscriber list ───────────────────────────────────────────────
@@ -68,42 +68,22 @@ app.get('/api/debug/subs', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── Temp repair: fix curator subs + insert The Chain ─────────────────────────
-app.post('/api/debug/repair-curator', async (req, res) => {
+// ── Temp repair: dedup Alexis curator subs (keep oldest per user+curator) ────
+app.post('/api/debug/dedup-subs', async (req, res) => {
   try {
-    // 1. Point all curator_id=1 subs at Lucas's real id (3)
-    const fix = await db.query(`UPDATE subscriptions SET curator_id=3 WHERE curator_id=1 RETURNING id`);
-
-    // 2. Remove Alexis duplicates — keep lowest sub id per user+curator combo
-    const dedup = await db.query(`
+    const { rows: deleted } = await db.query(`
       DELETE FROM subscriptions WHERE id IN (
         SELECT id FROM (
           SELECT id, ROW_NUMBER() OVER (PARTITION BY user_id, curator_id ORDER BY id) AS rn
-          FROM subscriptions WHERE curator_id=3 AND genre_id IS NULL
+          FROM subscriptions WHERE curator_id IS NOT NULL AND genre_id IS NULL
         ) t WHERE rn > 1
-      ) RETURNING id
+      ) RETURNING id, user_id, curator_id
     `);
-
-    // 3. Insert "The Chain" for Lucas if not already there
-    const songInsert = await db.query(`
-      INSERT INTO songs (title, artist, curator_id, url)
-      VALUES ('The Chain', 'Fleetwood Mac', 3, null)
-      ON CONFLICT DO NOTHING
-      RETURNING id, title, artist
+    const { rows: remaining } = await db.query(`
+      SELECT s.id, u.name, u.phone, s.curator_id, s.is_active FROM subscriptions s
+      JOIN users u ON u.id = s.user_id WHERE s.curator_id IS NOT NULL ORDER BY s.id
     `);
-
-    // 4. Insert matching curator_submission so week/theme data is available
-    const csInsert = await db.query(`
-      INSERT INTO curator_submissions (curator_id, title, artist, youtube_url, theme, week_number, curator_note)
-      VALUES (3, 'The Chain', 'Fleetwood Mac', 'https://www.youtube.com/watch?v=xwTPvcPYaOo', 'Bike Ride on the Beach', 1, 'great song for fun')
-      ON CONFLICT DO NOTHING
-      RETURNING id
-    `);
-
-    const { rows: finalSubs } = await db.query(`SELECT id, user_id, curator_id, genre_id FROM subscriptions WHERE curator_id IS NOT NULL ORDER BY id`);
-    const { rows: finalSongs } = await db.query(`SELECT id, title, artist, curator_id FROM songs WHERE curator_id IS NOT NULL`);
-
-    res.json({ fixed: fix.rows, deduped: dedup.rows, songInserted: songInsert.rows, csInserted: csInsert.rows, curatorSubs: finalSubs, curatorSongs: finalSongs });
+    res.json({ deleted, remaining });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -1773,7 +1753,7 @@ app.delete('/api/genre-submissions/:id', async (req, res) => {
 // always wins when available; this only fires on timeout or error.
 const CURATOR_FALLBACK = {
   lucasmoon: {
-    id: 3,
+    id: 1,
     name: 'Lucas Moon',
     curator_month: 'May 2026',
     bio: 'Tastemaker and founding Curator of the Month.',
