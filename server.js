@@ -52,7 +52,20 @@ app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "pu
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may1-v2' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may1-v3' });
+});
+
+// ── Temp debug: subscriber list ───────────────────────────────────────────────
+app.get('/api/debug/subs', async (req, res) => {
+  try {
+    const { rows: subs } = await db.query(`
+      SELECT s.id, s.user_id, s.curator_id, s.genre_id, s.is_active, u.phone, u.name
+      FROM subscriptions s JOIN users u ON u.id = s.user_id ORDER BY s.id
+    `);
+    const { rows: deliveries } = await db.query('SELECT * FROM deliveries ORDER BY id DESC LIMIT 20');
+    const { rows: songs } = await db.query('SELECT id, title, artist, curator_id, genre_id FROM songs ORDER BY id');
+    res.json({ subs, deliveries, songs });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 // ── GET / — Home page ─────────────────────────────────────────────────────────
