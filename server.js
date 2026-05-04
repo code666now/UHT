@@ -1020,9 +1020,14 @@ function loadCuratorScorecard(id) {
         });
       }
 
+      // Collector card link
+      var cardLink = '<div style="text-align:center;padding:18px 0 4px">'
+        +'<a href="/curator/'+data.curator_slug+'/card" style="font-size:9px;letter-spacing:.3em;text-transform:uppercase;color:rgba(232,184,75,0.6);text-decoration:none;border-bottom:1px solid rgba(232,184,75,0.25);padding-bottom:2px">View Collector Card →</a>'
+        +'</div>';
+
       // Override 3-col grid — use full-width single column
       grid.style.display = 'block';
-      grid.innerHTML = tierHtml + statsHtml + archiveHtml;
+      grid.innerHTML = tierHtml + statsHtml + archiveHtml + cardLink;
       sc.style.display = 'block';
     }).catch(function(){});
 }
@@ -1752,6 +1757,8 @@ app.get('/curator/:slug/card', async (req, res) => {
         SELECT
           COALESCE((SELECT COUNT(*) FROM song_votes WHERE curator_id=$1 AND vote_type IN ('hit','mega_hit','ultra_hit')),0)
           + COALESCE((SELECT COUNT(*) FROM curator_submission_votes WHERE submission_id IN (SELECT id FROM curator_submissions WHERE curator_id=$1) AND vote='hit'),0) AS total_hits,
+          COALESCE((SELECT COUNT(*) FROM song_votes WHERE curator_id=$1 AND vote_type='denied'),0)
+          + COALESCE((SELECT COUNT(*) FROM curator_submission_votes WHERE submission_id IN (SELECT id FROM curator_submissions WHERE curator_id=$1) AND vote='denied'),0) AS total_denies,
           (SELECT COUNT(*) FROM curator_submissions WHERE curator_id=$1) AS pick_count
       `, [c.id]),
       db.query(`
@@ -1766,8 +1773,11 @@ app.get('/curator/:slug/card', async (req, res) => {
       `, [c.id])
     ]);
 
-    const totalHits = parseInt(statsRes.rows[0]?.total_hits || 0);
-    const pickCount = parseInt(statsRes.rows[0]?.pick_count || 0);
+    const totalHits   = parseInt(statsRes.rows[0]?.total_hits   || 0);
+    const totalDenies = parseInt(statsRes.rows[0]?.total_denies || 0);
+    const totalVotes  = totalHits + totalDenies;
+    const pickCount   = parseInt(statsRes.rows[0]?.pick_count   || 0);
+    const hitRate     = totalVotes > 0 ? Math.round(totalHits / totalVotes * 100) : 0;
     const tier =
       totalHits >= 28 ? '🏆 Legend' :
       totalHits >= 18 ? '👑 Tastemaker' :
@@ -1892,7 +1902,7 @@ body{background:#111;min-height:100vh;display:flex;flex-direction:column;align-i
     </div>
     <div class="stat-divider"></div>
     <div class="stat">
-      <div class="stat-val">${pickCount > 0 ? Math.round(totalHits / pickCount * 100) : 0}%</div>
+      <div class="stat-val">${hitRate}%</div>
       <div class="stat-lbl">Hit Rate</div>
     </div>
   </div>
@@ -2112,6 +2122,9 @@ html,body{height:100%;background:#000;color:#f3f1ea;font-family:Georgia,'Times N
     <button class="follow-btn" onclick="submitFollow()">Follow ${firstName} →</button>
     <div class="follow-msg" id="followMsg"></div>
     <p class="terms">Free · Text only · Reply STOP anytime</p>
+  </div>
+  <div style="text-align:center;padding:20px 0 4px">
+    <a href="/curator/${slug}/card" style="font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:rgba(232,184,75,0.6);text-decoration:none;border-bottom:1px solid rgba(232,184,75,0.25);padding-bottom:2px">View Collector Card →</a>
   </div>
 </div>
 
@@ -2420,6 +2433,7 @@ ${allSubs && allSubs.length > 0 ? `
 
 <div class="bottom">
   <button class="bottom-share" onclick="sharePick()">Share this pick</button>
+  <a href="/curator/${slug}/card" style="display:block;margin-top:14px;font-size:9px;letter-spacing:.3em;text-transform:uppercase;color:rgba(232,184,75,0.55);text-decoration:none;text-align:center;border-top:1px solid rgba(232,184,75,0.1);padding-top:14px">View ${firstName}' Collector Card →</a>
 </div>
 
 </div>
@@ -3704,7 +3718,11 @@ app.get('/api/curators/:id/scorecard', async (req, res) => {
       totalHits >= 8  ? '🎯 Hit Hunter' :
                         '🌙 Rising Curator';
 
-    res.json({ stats: stats.rows[0], submissions: submissions.rows, totalHits, tier });
+    // Include slug so the frontend can link to /curator/:slug/card
+    const curatorRow = await db.query('SELECT name FROM curators WHERE id=$1 LIMIT 1', [id]);
+    const curatorSlug = curatorRow.rows[0]?.name?.toLowerCase().replace(/\s+/g, '') || '';
+
+    res.json({ stats: stats.rows[0], submissions: submissions.rows, totalHits, tier, curator_slug: curatorSlug });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
