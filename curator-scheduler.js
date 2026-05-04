@@ -61,7 +61,35 @@ async function runCuratorDrop() {
         continue;
       }
 
-      const song = songs[0];
+      const cs = songs[0];
+
+      // Ensure curator submission exists as a songs row (deliveries FK requires songs.id)
+      const { rows: songRows } = await db.query(`
+        INSERT INTO songs (title, artist, curator_id, url)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT DO NOTHING
+        RETURNING id
+      `, [cs.title, cs.artist, sub.curator_id, cs.spotify_url || cs.youtube_url || null]);
+
+      // If already existed, look it up
+      let songId;
+      if (songRows.length) {
+        songId = songRows[0].id;
+      } else {
+        const { rows: existing } = await db.query(
+          `SELECT id FROM songs WHERE LOWER(title)=LOWER($1) AND LOWER(artist)=LOWER($2) AND curator_id=$3 LIMIT 1`,
+          [cs.title, cs.artist, sub.curator_id]
+        );
+        songId = existing[0]?.id;
+      }
+
+      if (!songId) {
+        console.error(`[CuratorDrop] Could not resolve song_id for "${cs.title}"`);
+        errors++;
+        continue;
+      }
+
+      const song = { ...cs, id: songId };
       const base = process.env.BASE_URL || '';
       const headshot = sub.curator_image?.startsWith('data:') ? `${base}/curator-image/${sub.curator_id}` : sub.curator_image;
       const playlistArt = sub.curator_playlist_image?.startsWith('data:') ? `${base}/curator-playlist-image/${sub.curator_id}` : sub.curator_playlist_image;
@@ -77,10 +105,10 @@ async function runCuratorDrop() {
 
       await client.messages.create(msgParams);
 
-      // Record delivery — song_id holds curator_submission.id for curator drops
+      // Record delivery
       await db.query(
         `INSERT INTO deliveries (user_id, song_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-        [sub.user_id, song.id]
+        [sub.user_id, songId]
       );
 
       console.log(`[CuratorDrop] ✓ Sent "${song.title}" by ${sub.curator_name} → ${sub.phone}`);

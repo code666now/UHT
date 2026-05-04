@@ -52,7 +52,7 @@ app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "pu
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may1-v5' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may1-v6' });
 });
 
 // ── Temp debug: subscriber list ───────────────────────────────────────────────
