@@ -42,14 +42,20 @@ async function runCuratorDrop() {
 
   for (const sub of subs) {
     try {
-      // Find oldest unplayed curator_submission not yet delivered to this user
+      // Find oldest unplayed curator_submission not yet delivered to this user.
+      // Skip check joins songs by title+artist so it works even when cs.id ≠ songs.id.
       const { rows: songs } = await db.query(`
         SELECT cs.id, cs.title, cs.artist, cs.theme, cs.curator_note,
                cs.week_number, cs.spotify_url, cs.youtube_url, cs.submitted_at
         FROM curator_submissions cs
         WHERE cs.curator_id = $1
-          AND cs.id NOT IN (
-            SELECT song_id FROM deliveries WHERE user_id = $2
+          AND NOT EXISTS (
+            SELECT 1
+            FROM songs s
+            JOIN deliveries d ON d.song_id = s.id AND d.user_id = $2
+            WHERE s.curator_id = $1
+              AND LOWER(s.title)  = LOWER(cs.title)
+              AND LOWER(s.artist) = LOWER(cs.artist)
           )
         ORDER BY cs.submitted_at ASC
         LIMIT 1
@@ -137,9 +143,9 @@ function buildCuratorMessage(song, curatorName, curatorImage, curatorMonth, play
 
   let body;
   if (week === 1) {
-    body = `Curator of the Month - ${month}\n\n${firstName}'s first pick is live. Vote now.`;
+    body = `Curator of the Month - ${month}\n\n${firstName}' first pick is live. Vote now.`;
   } else {
-    body = `${month} - Week ${week}\n\n${firstName}'s new pick is live. Vote now.`;
+    body = `${month} - Week ${week}\n\n${firstName}' new pick is live. Vote now.`;
   }
 
   if (link) body += `\n${link}`;
