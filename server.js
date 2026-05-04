@@ -52,40 +52,9 @@ app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "pu
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may1-v6' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may1-v7' });
 });
 
-// ── Temp debug: subscriber list ───────────────────────────────────────────────
-app.get('/api/debug/subs', async (req, res) => {
-  try {
-    const { rows: subs } = await db.query(`
-      SELECT s.id, s.user_id, s.curator_id, s.genre_id, s.is_active, u.phone, u.name
-      FROM subscriptions s JOIN users u ON u.id = s.user_id ORDER BY s.id
-    `);
-    const { rows: deliveries } = await db.query('SELECT * FROM deliveries ORDER BY id DESC LIMIT 20');
-    const { rows: songs } = await db.query('SELECT id, title, artist, curator_id, genre_id FROM songs ORDER BY id');
-    res.json({ subs, deliveries, songs });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── Temp repair: dedup Alexis curator subs (keep oldest per user+curator) ────
-app.post('/api/debug/dedup-subs', async (req, res) => {
-  try {
-    const { rows: deleted } = await db.query(`
-      DELETE FROM subscriptions WHERE id IN (
-        SELECT id FROM (
-          SELECT id, ROW_NUMBER() OVER (PARTITION BY user_id, curator_id ORDER BY id) AS rn
-          FROM subscriptions WHERE curator_id IS NOT NULL AND genre_id IS NULL
-        ) t WHERE rn > 1
-      ) RETURNING id, user_id, curator_id
-    `);
-    const { rows: remaining } = await db.query(`
-      SELECT s.id, u.name, u.phone, s.curator_id, s.is_active FROM subscriptions s
-      JOIN users u ON u.id = s.user_id WHERE s.curator_id IS NOT NULL ORDER BY s.id
-    `);
-    res.json({ deleted, remaining });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
 
 // ── GET / — Home page ─────────────────────────────────────────────────────────
 app.get('/', async (req, res) => {
@@ -1258,16 +1227,31 @@ app.post('/api/subscribe', async (req, res) => {
     );
     const userId = userRows[0].id;
 
-    // Upsert subscription — reactivate if previously unsubscribed
-    const { rows: subRows } = await db.query(
-      `INSERT INTO subscriptions (user_id, genre_id, curator_id, is_active)
-       VALUES ($1, $2, $3, true)
-       ON CONFLICT (user_id, genre_id, curator_id) DO UPDATE SET is_active = true
-       RETURNING id, (xmax = 0) AS inserted`,
+    // Upsert subscription — explicit lookup first because PostgreSQL's UNIQUE
+    // constraint does not match NULL = NULL, so ON CONFLICT silently inserts
+    // duplicates when genre_id or curator_id is NULL.
+    const { rows: existing } = await db.query(
+      `SELECT id, is_active FROM subscriptions
+       WHERE user_id = $1
+         AND (genre_id    IS NOT DISTINCT FROM $2)
+         AND (curator_id  IS NOT DISTINCT FROM $3)
+       LIMIT 1`,
       [userId, genre_id || null, curator_id || null]
     );
 
-    const isNew = subRows.length > 0 && subRows[0].inserted;
+    let isNew = false;
+    if (existing.length) {
+      // Reactivate if previously paused/removed
+      if (!existing[0].is_active) {
+        await db.query(`UPDATE subscriptions SET is_active = true WHERE id = $1`, [existing[0].id]);
+      }
+    } else {
+      await db.query(
+        `INSERT INTO subscriptions (user_id, genre_id, curator_id, is_active) VALUES ($1, $2, $3, true)`,
+        [userId, genre_id || null, curator_id || null]
+      );
+      isNew = true;
+    }
     console.log(`[Subscribe] ${normalPhone} -> user #${userId} | ${isNew ? 'new subscription' : 'already subscribed'}`);
 
     // Send opt-in confirmation text to new subscribers
@@ -3548,30 +3532,6 @@ app.post('/api/curator-drop/send', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── GET /api/curator-drop/preview — dry-run, shows what would be sent ────────
-app.get('/api/curator-drop/preview', async (req, res) => {
-  try {
-    const { rows: subs } = await db.query(`
-      SELECT s.id AS sub_id, s.user_id, s.curator_id, u.phone, c.name AS curator_name
-      FROM subscriptions s
-      JOIN users u ON u.id = s.user_id
-      JOIN curators c ON c.id = s.curator_id
-      WHERE s.is_active = TRUE AND s.curator_id IS NOT NULL
-    `);
-    const preview = [];
-    for (const sub of subs) {
-      const { rows: songs } = await db.query(`
-        SELECT cs.id, cs.title, cs.artist, cs.week_number
-        FROM curator_submissions cs
-        WHERE cs.curator_id = $1
-          AND cs.id NOT IN (SELECT song_id FROM deliveries WHERE user_id = $2)
-        ORDER BY cs.submitted_at ASC LIMIT 1
-      `, [sub.curator_id, sub.user_id]);
-      preview.push({ sub_id: sub.sub_id, user_id: sub.user_id, phone: sub.phone, curator_id: sub.curator_id, would_send: songs[0] || null });
-    }
-    res.json({ subs: subs.length, preview });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
 
 // ── GET /curator-image/:id — serve curator headshot from DB (supports base64 or redirect) ──
 app.get('/curator-image/:id', async (req, res) => {
