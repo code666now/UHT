@@ -42,23 +42,16 @@ async function runCuratorDrop() {
 
   for (const sub of subs) {
     try {
-      // Find oldest unplayed song for this curator not yet delivered to this user
+      // Find oldest unplayed curator_submission not yet delivered to this user
       const { rows: songs } = await db.query(`
-        SELECT
-          s.*,
-          cs.theme,
-          cs.curator_note,
-          cs.week_number,
-          cs.spotify_url
-        FROM songs s
-        LEFT JOIN curator_submissions cs ON cs.curator_id = $1
-          AND LOWER(cs.title) = LOWER(s.title)
-          AND LOWER(cs.artist) = LOWER(s.artist)
-        WHERE s.curator_id = $1
-          AND s.id NOT IN (
+        SELECT cs.id, cs.title, cs.artist, cs.theme, cs.curator_note,
+               cs.week_number, cs.spotify_url, cs.youtube_url, cs.submitted_at
+        FROM curator_submissions cs
+        WHERE cs.curator_id = $1
+          AND cs.id NOT IN (
             SELECT song_id FROM deliveries WHERE user_id = $2
           )
-        ORDER BY s.created_at ASC
+        ORDER BY cs.submitted_at ASC
         LIMIT 1
       `, [sub.curator_id, sub.user_id]);
 
@@ -84,9 +77,9 @@ async function runCuratorDrop() {
 
       await client.messages.create(msgParams);
 
-      // Record delivery
+      // Record delivery — song_id holds curator_submission.id for curator drops
       await db.query(
-        `INSERT INTO deliveries (user_id, song_id) VALUES ($1, $2)`,
+        `INSERT INTO deliveries (user_id, song_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
         [sub.user_id, song.id]
       );
 
