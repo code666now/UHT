@@ -51,7 +51,9 @@ async function runCuratorDrop() {
           cs.week_number,
           cs.spotify_url
         FROM songs s
-        LEFT JOIN curator_submissions cs ON cs.song_id = s.id AND cs.curator_id = $1
+        LEFT JOIN curator_submissions cs ON cs.curator_id = $1
+          AND LOWER(cs.title) = LOWER(s.title)
+          AND LOWER(cs.artist) = LOWER(s.artist)
         WHERE s.curator_id = $1
           AND s.id NOT IN (
             SELECT song_id FROM deliveries WHERE user_id = $2

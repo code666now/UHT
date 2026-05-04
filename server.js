@@ -1721,7 +1721,7 @@ app.delete('/api/genre-submissions/:id', async (req, res) => {
 // always wins when available; this only fires on timeout or error.
 const CURATOR_FALLBACK = {
   lucasmoon: {
-    id: 1,
+    id: 3,
     name: 'Lucas Moon',
     curator_month: 'May 2026',
     bio: 'Tastemaker and founding Curator of the Month.',
@@ -3504,6 +3504,14 @@ app.post('/api/curator-intro/send', async (req, res) => {
   if (!curator_id) return res.status(400).json({ error: 'curator_id required' });
   try {
     const r = await runCuratorIntroBlast(curator_id);
+    res.json({ ok: true, ...r });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── POST /api/curator-drop/send — manual Monday curator drop ─────────────────
+app.post('/api/curator-drop/send', async (req, res) => {
+  try {
+    const r = await _runCuratorDrop();
     res.json({ ok: true, ...r });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
