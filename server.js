@@ -1788,6 +1788,7 @@ app.get('/curator/:slug/card', async (req, res) => {
     const headshotUrl = c.image_url?.startsWith('data:')
       ? `${base}/curator-image/${c.id}` : (c.image_url || '');
     const month   = c.curator_month || 'this month';
+    const theme   = c.monthly_theme || '';
     const firstName = c.name.split(' ')[0];
     const cardUrl = `${base}/curator/${slug}/card`;
     const picks   = subsRes.rows;
@@ -1835,6 +1836,7 @@ body{background:#111;min-height:100vh;display:flex;flex-direction:column;align-i
 .name-block{padding:16px 16px 12px;border-bottom:1px solid rgba(232,184,75,0.15)}
 .curator-name{font-size:26px;color:#f3f1ea;letter-spacing:.02em;line-height:1.1;margin-bottom:3px}
 .curator-sub{font-size:8px;letter-spacing:.3em;text-transform:uppercase;color:rgba(243,241,234,0.45)}
+.curator-theme{font-size:10px;letter-spacing:.08em;color:rgba(232,184,75,0.7);font-style:italic;margin-top:5px}
 
 /* Stats */
 .stats-block{padding:10px 16px;display:flex;align-items:center;gap:0;border-bottom:1px solid rgba(232,184,75,0.15)}
@@ -1888,6 +1890,7 @@ body{background:#111;min-height:100vh;display:flex;flex-direction:column;align-i
   <div class="name-block">
     <div class="curator-name">${c.name}</div>
     <div class="curator-sub">Curator of the Month · ${month}</div>
+    ${theme ? `<div class="curator-theme">${theme}</div>` : ''}
   </div>
 
   <div class="stats-block">
