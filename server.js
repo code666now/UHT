@@ -52,7 +52,7 @@ app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "pu
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may1-v4' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may1-v5' });
 });
 
 // ── Temp debug: subscriber list ───────────────────────────────────────────────
@@ -3545,6 +3545,31 @@ app.post('/api/curator-drop/send', async (req, res) => {
   try {
     const r = await _runCuratorDrop();
     res.json({ ok: true, ...r });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── GET /api/curator-drop/preview — dry-run, shows what would be sent ────────
+app.get('/api/curator-drop/preview', async (req, res) => {
+  try {
+    const { rows: subs } = await db.query(`
+      SELECT s.id AS sub_id, s.user_id, s.curator_id, u.phone, c.name AS curator_name
+      FROM subscriptions s
+      JOIN users u ON u.id = s.user_id
+      JOIN curators c ON c.id = s.curator_id
+      WHERE s.is_active = TRUE AND s.curator_id IS NOT NULL
+    `);
+    const preview = [];
+    for (const sub of subs) {
+      const { rows: songs } = await db.query(`
+        SELECT cs.id, cs.title, cs.artist, cs.week_number
+        FROM curator_submissions cs
+        WHERE cs.curator_id = $1
+          AND cs.id NOT IN (SELECT song_id FROM deliveries WHERE user_id = $2)
+        ORDER BY cs.submitted_at ASC LIMIT 1
+      `, [sub.curator_id, sub.user_id]);
+      preview.push({ sub_id: sub.sub_id, user_id: sub.user_id, phone: sub.phone, curator_id: sub.curator_id, would_send: songs[0] || null });
+    }
+    res.json({ subs: subs.length, preview });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
