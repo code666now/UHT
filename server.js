@@ -52,7 +52,7 @@ app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "pu
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may1-v9' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may1-v10' });
 });
 
 
@@ -1730,6 +1730,242 @@ app.delete('/api/genre-submissions/:id', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+
+// ── GET /curator/:slug/card — Collectible curator scorecard ──────────────────
+app.get('/curator/:slug/card', async (req, res) => {
+  const slug = req.params.slug.toLowerCase().replace(/-/g, '');
+  try {
+    const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('DB timeout')), 4000));
+    const query   = db.query(`SELECT * FROM curators WHERE LOWER(REPLACE(name,' ',''))=$1 LIMIT 1`, [slug]);
+    let c;
+    try {
+      const { rows } = await Promise.race([query, timeout]);
+      c = rows[0] || CURATOR_FALLBACK[slug] || null;
+    } catch(e) {
+      c = CURATOR_FALLBACK[slug] || null;
+    }
+    if (!c) return res.status(404).send('Curator not found');
+
+    // Scorecard stats
+    const [statsRes, subsRes] = await Promise.all([
+      db.query(`
+        SELECT
+          COALESCE((SELECT COUNT(*) FROM song_votes WHERE curator_id=$1 AND vote_type IN ('hit','mega_hit','ultra_hit')),0)
+          + COALESCE((SELECT COUNT(*) FROM curator_submission_votes WHERE submission_id IN (SELECT id FROM curator_submissions WHERE curator_id=$1) AND vote='hit'),0) AS total_hits,
+          (SELECT COUNT(*) FROM curator_submissions WHERE curator_id=$1) AS pick_count
+      `, [c.id]),
+      db.query(`
+        SELECT cs.title, cs.artist, cs.week_number,
+          COUNT(*) FILTER (WHERE v.vote='hit') AS hits,
+          COUNT(*) FILTER (WHERE v.vote='denied') AS denies
+        FROM curator_submissions cs
+        LEFT JOIN curator_submission_votes v ON v.submission_id = cs.id
+        WHERE cs.curator_id=$1
+        GROUP BY cs.id, cs.title, cs.artist, cs.week_number
+        ORDER BY cs.week_number ASC
+      `, [c.id])
+    ]);
+
+    const totalHits = parseInt(statsRes.rows[0]?.total_hits || 0);
+    const pickCount = parseInt(statsRes.rows[0]?.pick_count || 0);
+    const tier =
+      totalHits >= 28 ? '🏆 Legend' :
+      totalHits >= 18 ? '👑 Tastemaker' :
+      totalHits >= 8  ? '🎯 Hit Hunter' : '🌙 Rising Curator';
+
+    const cardNum = String(c.id).padStart(3, '0');
+    const base    = process.env.BASE_URL || '';
+    const headshotUrl = c.image_url?.startsWith('data:')
+      ? `${base}/curator-image/${c.id}` : (c.image_url || '');
+    const month   = c.curator_month || 'this month';
+    const firstName = c.name.split(' ')[0];
+    const cardUrl = `${base}/curator/${slug}/card`;
+    const picks   = subsRes.rows;
+
+    const picksHtml = picks.length ? picks.map(p => {
+      const verdict = parseInt(p.hits) > parseInt(p.denies) ? 'HIT' : parseInt(p.denies) > 0 ? 'DENIED' : '—';
+      const verdictColor = verdict === 'HIT' ? '#E8B84B' : verdict === 'DENIED' ? '#ff4444' : 'rgba(243,241,234,0.3)';
+      return `<div class="pick-row">
+        <span class="pick-week">Wk ${p.week_number || '—'}</span>
+        <span class="pick-info"><span class="pick-title">${p.title}</span><span class="pick-artist">${p.artist}</span></span>
+        <span class="pick-verdict" style="color:${verdictColor}">${verdict}</span>
+      </div>`;
+    }).join('') : `<div class="pick-row"><span class="pick-info" style="opacity:.4">First pick coming Monday</span></div>`;
+
+    res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
+    res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${c.name} · Collector Card · Undeniable Hits</title>
+<meta property="og:title" content="${c.name} — Founding Curator #${cardNum}">
+<meta property="og:description" content="${totalHits} HITs · ${tier} · Undeniable Hits">
+${headshotUrl ? `<meta property="og:image" content="${headshotUrl}">` : ''}
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#111;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 16px;font-family:Georgia,'Times New Roman',serif;gap:24px}
+
+/* ── Card ── */
+.card{width:340px;background:#000;border:1.5px solid #E8B84B;border-radius:4px;overflow:hidden;position:relative;box-shadow:0 0 40px rgba(232,184,75,0.15),0 20px 60px rgba(0,0,0,0.6)}
+
+/* Founding band */
+.founding-band{background:#E8B84B;padding:6px 14px;display:flex;justify-content:space-between;align-items:center}
+.founding-label{font-size:8px;letter-spacing:.35em;text-transform:uppercase;color:#000;font-weight:700}
+.card-num{font-size:11px;letter-spacing:.2em;color:#000;font-weight:700}
+
+/* Photo */
+.photo-wrap{position:relative;width:100%;height:300px;overflow:hidden;background:#0a0a0a}
+.photo-wrap img{width:100%;height:100%;object-fit:cover;object-position:top center;display:block}
+.photo-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:rgba(243,241,234,0.1);font-size:48px}
+.photo-gloss{position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,0.07) 0%,transparent 50%,rgba(232,184,75,0.04) 100%);pointer-events:none}
+.season-stamp{position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.65);border:1px solid rgba(232,184,75,0.4);padding:3px 7px;font-size:7px;letter-spacing:.3em;text-transform:uppercase;color:#E8B84B;border-radius:2px}
+
+/* Name block */
+.name-block{padding:16px 16px 12px;border-bottom:1px solid rgba(232,184,75,0.15)}
+.curator-name{font-size:26px;color:#f3f1ea;letter-spacing:.02em;line-height:1.1;margin-bottom:3px}
+.curator-sub{font-size:8px;letter-spacing:.3em;text-transform:uppercase;color:rgba(243,241,234,0.45)}
+
+/* Stats */
+.stats-block{padding:10px 16px;display:flex;align-items:center;gap:0;border-bottom:1px solid rgba(232,184,75,0.15)}
+.stat{flex:1;text-align:center}
+.stat-val{font-size:20px;color:#E8B84B;line-height:1}
+.stat-lbl{font-size:7px;letter-spacing:.25em;text-transform:uppercase;color:rgba(243,241,234,0.4);margin-top:3px}
+.stat-divider{width:1px;height:28px;background:rgba(232,184,75,0.2)}
+.tier-block{padding:8px 16px;border-bottom:1px solid rgba(232,184,75,0.15)}
+.tier-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(232,184,75,0.08);border:1px solid rgba(232,184,75,0.25);border-radius:2px;padding:4px 8px;font-size:8px;letter-spacing:.25em;text-transform:uppercase;color:#E8B84B}
+
+/* Picks */
+.picks-block{padding:10px 16px 14px}
+.picks-label{font-size:7px;letter-spacing:.3em;text-transform:uppercase;color:rgba(243,241,234,0.3);margin-bottom:8px}
+.pick-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(243,241,234,0.05)}
+.pick-row:last-child{border-bottom:none}
+.pick-week{font-size:8px;letter-spacing:.15em;color:rgba(243,241,234,0.3);min-width:28px}
+.pick-info{flex:1;display:flex;flex-direction:column;gap:1px}
+.pick-title{font-size:11px;color:#f3f1ea;line-height:1.2}
+.pick-artist{font-size:9px;color:rgba(243,241,234,0.45)}
+.pick-verdict{font-size:8px;letter-spacing:.2em;font-weight:700;min-width:36px;text-align:right}
+
+/* Footer */
+.card-footer{padding:8px 16px;display:flex;justify-content:center;background:rgba(232,184,75,0.04);border-top:1px solid rgba(232,184,75,0.12)}
+.card-footer-text{font-size:7px;letter-spacing:.4em;text-transform:uppercase;color:rgba(232,184,75,0.5)}
+
+/* ── Buttons ── */
+.actions{display:flex;gap:10px;width:340px}
+.btn{flex:1;padding:13px;border:1px solid rgba(232,184,75,0.4);background:transparent;color:#f3f1ea;font-family:Georgia,serif;font-size:11px;letter-spacing:.2em;text-transform:uppercase;cursor:pointer;transition:all .2s}
+.btn:hover{background:rgba(232,184,75,0.08);border-color:#E8B84B}
+.btn-primary{background:#E8B84B;color:#000;border-color:#E8B84B;font-weight:700}
+.btn-primary:hover{background:#d4a73c}
+.copy-msg{font-size:10px;letter-spacing:.15em;color:rgba(232,184,75,0.6);text-align:center;height:14px}
+</style>
+</head>
+<body>
+
+<div class="card" id="card">
+  <div class="founding-band">
+    <span class="founding-label">Founding Curator</span>
+    <span class="card-num">No. ${cardNum}</span>
+  </div>
+
+  <div class="photo-wrap">
+    ${headshotUrl
+      ? `<img src="${headshotUrl}" alt="${c.name}" loading="eager">`
+      : `<div class="photo-placeholder">◐</div>`}
+    <div class="photo-gloss"></div>
+    <div class="season-stamp">Season 1 · ${month}</div>
+  </div>
+
+  <div class="name-block">
+    <div class="curator-name">${c.name}</div>
+    <div class="curator-sub">Curator of the Month · ${month}</div>
+  </div>
+
+  <div class="stats-block">
+    <div class="stat">
+      <div class="stat-val">${totalHits}</div>
+      <div class="stat-lbl">HITs</div>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat">
+      <div class="stat-val">${pickCount}</div>
+      <div class="stat-lbl">Picks</div>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat">
+      <div class="stat-val">${pickCount > 0 ? Math.round(totalHits / pickCount * 100) : 0}%</div>
+      <div class="stat-lbl">Hit Rate</div>
+    </div>
+  </div>
+
+  <div class="tier-block">
+    <div class="tier-badge">${tier}</div>
+  </div>
+
+  <div class="picks-block">
+    <div class="picks-label">Selections</div>
+    ${picksHtml}
+  </div>
+
+  <div class="card-footer">
+    <span class="card-footer-text">Undeniable Hits</span>
+  </div>
+</div>
+
+<div class="actions">
+  <button class="btn btn-primary" onclick="saveCard()">↓ Save Card</button>
+  <button class="btn" id="shareBtn" onclick="shareCard()">↑ Share</button>
+</div>
+<div class="copy-msg" id="copyMsg"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+var cardUrl = '${cardUrl}';
+var curatorName = '${c.name}';
+
+function saveCard() {
+  var btn = document.querySelector('.btn-primary');
+  btn.textContent = 'Saving…';
+  btn.disabled = true;
+  html2canvas(document.getElementById('card'), {
+    scale: 3,
+    useCORS: true,
+    backgroundColor: '#000',
+    logging: false
+  }).then(function(canvas) {
+    var a = document.createElement('a');
+    a.download = '${slug}-curator-card.png';
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+    btn.textContent = '↓ Save Card';
+    btn.disabled = false;
+  }).catch(function() {
+    btn.textContent = '↓ Save Card';
+    btn.disabled = false;
+  });
+}
+
+function shareCard() {
+  if (navigator.share) {
+    navigator.share({
+      title: curatorName + ' — Founding Curator #${cardNum}',
+      text: '${totalHits} HITs · ${tier} · Undeniable Hits',
+      url: cardUrl
+    }).catch(function() {});
+  } else {
+    navigator.clipboard.writeText(cardUrl).then(function() {
+      document.getElementById('copyMsg').textContent = 'Link copied';
+      setTimeout(function() { document.getElementById('copyMsg').textContent = ''; }, 2000);
+    });
+  }
+}
+</script>
+</body>
+</html>`);
+  } catch(e) {
+    console.error('/curator/:slug/card error:', e.message);
+    res.status(500).send('Something went wrong.');
+  }
+});
 
 // ── GET /curator/:slug — Curator intro page (Friday teaser, no song) ─────────
 // Hardcoded fallback data for known curators — renders instantly even if DB is
