@@ -52,7 +52,7 @@ app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "pu
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may1-v7' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may1-v8' });
 });
 
 
@@ -1854,7 +1854,7 @@ html,body{height:100%;background:#000;color:#f3f1ea;font-family:Georgia,'Times N
   <div class="body">
     <div class="coming-badge">
       <div class="coming-dot"></div>
-      <span class="coming-text">${firstName}'s picks drop every Monday</span>
+      <span class="coming-text">${firstName}' picks drop every Monday</span>
     </div>
 
     ${c.statement ? `<p class="bio">"${c.statement}"</p>` : (c.bio ? `<p class="bio">"${c.bio}"</p>` : '')}
