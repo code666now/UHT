@@ -2801,6 +2801,22 @@ html,body{background:#000;margin:0;padding:0;overflow-x:hidden;font-family:Georg
 .uht-replay:hover{opacity:1;border-color:rgba(255,255,255,.5)}
 .no-video{padding:40px 14px;text-align:center}
 @media(min-width:768px){.uht-hit{align-items:center;padding:20px 0 60px}.uht-title{font-size:clamp(48px,6vw,82px)}.uht-song-name{font-size:32px}.uht-artist-name{font-size:20px}.uht-note{font-size:19px}.uht-video{max-width:1400px}.uht-end p{font-size:26px}}
+.vote-section{padding:32px 20px 28px;max-width:500px;margin:0 auto;width:100%}
+.vote-label{font-size:9px;letter-spacing:.35em;text-transform:uppercase;color:rgba(237,232,223,0.2);text-align:center;margin-bottom:20px}
+.vote-row{display:flex;flex-direction:column;gap:12px}
+.vote-btn{width:100%;padding:20px;border-radius:12px;border:1px solid rgba(255,255,255,0.09);background:rgba(255,255,255,0.025);color:rgba(237,232,223,0.75);font-family:Georgia,"Times New Roman",serif;font-size:16px;cursor:pointer;transition:all .25s;text-align:center;letter-spacing:.03em}
+.vote-btn:hover{background:rgba(255,255,255,0.07);border-color:rgba(255,255,255,0.18);color:#ede8df;transform:translateY(-2px)}
+.vote-btn:active{transform:translateY(0)}
+.vote-btn:disabled{opacity:.2;cursor:default;transform:none}
+.vote-msg{text-align:center;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:rgba(237,232,223,0.3);min-height:22px;padding:12px 0 0}
+.vote-lock{text-align:center;padding:8px 0 22px;transition:opacity .5s,max-height .6s ease,padding .6s ease;max-height:80px;overflow:hidden}
+.vote-lock.unlocked{opacity:0;max-height:0;padding:0;pointer-events:none}
+.vote-lock-label{font-size:9px;letter-spacing:.28em;text-transform:uppercase;color:rgba(237,232,223,0.3);margin-bottom:10px}
+.vote-lock-bar{height:2px;background:rgba(237,232,223,0.08);border-radius:2px;margin:0 auto;max-width:160px;overflow:hidden}
+.vote-lock-fill{height:100%;width:0%;background:#E8B84B;transition:width .9s linear}
+.vote-btns-wrap{transition:opacity .5s}
+.vote-btns-wrap.locked{opacity:.22;pointer-events:none}
+@media(min-width:600px){.vote-row{flex-direction:row}.vote-btn{flex:1}}
 ${submitModalCSS}
 </style>
 </head>
@@ -2826,16 +2842,81 @@ ${submitModalCSS}
     </div>
   </div>` : `<div class="no-video"><p style="opacity:.4">No playback source available.</p></div>`}
 </section>
+
+<div class="vote-section">
+  <div class="vote-lock" id="voteLock">
+    <div class="vote-lock-label" id="lockLabel">Listen for 60s to unlock your vote</div>
+    <div class="vote-lock-bar"><div class="vote-lock-fill" id="lockFill"></div></div>
+  </div>
+  <div class="vote-btns-wrap locked" id="voteBtns">
+    <div class="vote-label">Is this an undeniable hit?</div>
+    <div class="vote-row">
+      <button class="vote-btn" id="vMega" onclick="vote('mega_hit')">🔥 Mega Hit</button>
+      <button class="vote-btn" id="vHit" onclick="vote('hit')">🎯 Hit</button>
+      <button class="vote-btn" id="vDenied" onclick="vote('deny')">💀 Denied</button>
+    </div>
+    <div class="vote-msg" id="voteMsg"></div>
+  </div>
+</div>
+
 ${submitModalHTML('community', null, featuredDrop, featuredLabel, featuredGenre)}
 ${ytId ? `
 <script src="https://www.youtube.com/iframe_api"></script>
 <script>
 let player,shown=false,timerStarted=false;
 function onYouTubeIframeAPIReady(){player=new YT.Player('player',{videoId:'${ytId}',playerVars:{rel:0,modestbranding:1,playsinline:1},events:{onStateChange:onPlayerStateChange}});}
-function onPlayerStateChange(e){if(e.data===YT.PlayerState.PLAYING){var p=document.getElementById('uhtPlay');if(p)p.style.opacity='0';if(!timerStarted){timerStarted=true;setInterval(checkTime,500);}}}
-function checkTime(){if(!player||shown)return;var c=player.getCurrentTime(),d=player.getDuration();if(d&&(d-c<=10)){document.getElementById('endMessage').classList.add('show');shown=true;}}
+function onPlayerStateChange(e){
+  if(e.data===YT.PlayerState.PLAYING){
+    var p=document.getElementById('uhtPlay');if(p)p.style.opacity='0';
+    if(!timerStarted){timerStarted=true;setInterval(checkTime,500);}
+    startListenTimer();
+  } else { pauseListenTimer(); }
+}
+function checkTime(){if(!player||shown)return;var c=player.getCurrentTime(),dur=player.getDuration();if(dur&&(dur-c<=10)){document.getElementById('endMessage').classList.add('show');shown=true;}}
 function replayVideo(){if(!player)return;player.seekTo(0);player.playVideo();document.getElementById('endMessage').classList.remove('show');shown=false;}
 </script>` : ''}
+
+<script>
+var _listenSecs=0,_unlocked=false,_lockIv=null,_LOCK=60;
+function startListenTimer(){
+  if(_lockIv||_unlocked) return;
+  _lockIv=setInterval(function(){
+    if(_unlocked) return;
+    _listenSecs++;
+    var pct=Math.min(100,(_listenSecs/_LOCK)*100);
+    var fill=document.getElementById('lockFill');
+    if(fill) fill.style.width=pct+'%';
+    var lbl=document.getElementById('lockLabel');
+    var rem=Math.max(0,_LOCK-_listenSecs);
+    if(lbl&&rem>0) lbl.textContent=rem+'s left to unlock your vote';
+    if(_listenSecs>=_LOCK) unlockVote();
+  },1000);
+}
+function pauseListenTimer(){ clearInterval(_lockIv); _lockIv=null; }
+function unlockVote(){
+  if(_unlocked) return; _unlocked=true; pauseListenTimer();
+  var lock=document.getElementById('voteLock');
+  var btns=document.getElementById('voteBtns');
+  if(lock) lock.classList.add('unlocked');
+  if(btns) btns.classList.remove('locked');
+}
+${ytId ? '' : 'startListenTimer();'}
+function vote(v){
+  ['vMega','vHit','vDenied'].forEach(function(id){var b=document.getElementById(id);if(b)b.disabled=true;});
+  var msg=document.getElementById('voteMsg');
+  fetch('/api/genre-vote',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({submission_id:${d.id},vote:v})})
+  .then(function(r){return r.json();})
+  .then(function(){
+    var labels={mega_hit:'🔥 Mega Hit recorded!',hit:'🎯 Hit recorded!',deny:'💀 Denied recorded!'};
+    if(msg) msg.textContent=labels[v]||'Recorded!';
+  })
+  .catch(function(){
+    if(msg)msg.textContent='Try again.';
+    ['vMega','vHit','vDenied'].forEach(function(id){var b=document.getElementById(id);if(b)b.disabled=false;});
+  });
+}
+</script>
 </body>
 </html>`);
   } catch(e) {
