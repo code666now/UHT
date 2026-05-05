@@ -808,10 +808,13 @@ async function loadCurators() {
   } catch(e) { tbody.innerHTML=`<tr class="empty-row"><td colspan="6">${esc(e.message)}</td></tr>`; }
 }
 
+let _subsMap = {};
 async function loadSubscribers() {
   const tbody = document.getElementById('subs-tbody');
   try {
     const {subscribers} = await api('GET','/api/subscribers');
+    _subsMap = {};
+    subscribers.forEach(s => { _subsMap[s.user_id] = s; });
     tbody.innerHTML = subscribers.length
       ? subscribers.map(s=>`<tr>
           <td style="color:var(--muted)">#${s.id}</td><td>${esc(s.name||'—')}</td><td>${esc(s.phone)}</td>
@@ -820,7 +823,7 @@ async function loadSubscribers() {
           <td><span class="tag ${s.is_active?'tag-active':'tag-inactive'}">${s.is_active?'active':'paused'}</span></td>
           <td>${fmtDate(s.created_at)}</td>
           <td>
-            <button class="btn" onclick="openEditSubscriber(${s.user_id},${JSON.stringify(esc(s.name||''))},${JSON.stringify(esc(s.email||''))},${JSON.stringify(esc(s.phone))})">Edit</button>
+            <button class="btn" onclick="openEditSubscriber(${s.user_id})">Edit</button>
             <button class="btn" style="margin-left:4px" onclick="toggleSub(${s.id},${s.is_active})">${s.is_active?'Pause':'Resume'}</button>
             <button class="btn btn-danger" style="margin-left:4px" onclick="deleteSub(${s.id})">Remove</button>
           </td>
@@ -1003,11 +1006,12 @@ async function submitSubscriber() {
   } catch(e) { toast(e.message,'err'); }
 }
 
-function openEditSubscriber(userId, name, email, phone) {
+function openEditSubscriber(userId) {
+  const s = _subsMap[userId] || {};
   document.getElementById('edit-sub-user-id').value = userId;
-  document.getElementById('edit-sub-name').value = name || '';
-  document.getElementById('edit-sub-email').value = email || '';
-  document.getElementById('edit-sub-phone').value = phone || '';
+  document.getElementById('edit-sub-name').value = s.name || '';
+  document.getElementById('edit-sub-email').value = s.email || '';
+  document.getElementById('edit-sub-phone').value = s.phone || '';
   openModal('edit-subscriber');
 }
 
