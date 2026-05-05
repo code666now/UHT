@@ -1690,11 +1690,14 @@ app.post('/api/drop/test-genre', async (req, res) => {
     );
     if (!songs.length) return res.status(404).json({ error: `No song found for genre ${genre_id}` });
     const song = songs[0];
+    // Look up taste_token for this phone so the link is personalized
+    const { rows: userRows } = await db.query('SELECT taste_token FROM users WHERE phone=$1 LIMIT 1', [phone]);
+    const tasteToken = userRows[0]?.taste_token || null;
     const { buildDropMessage } = require('./scheduler');
-    const msg = buildDropMessage(song);
+    const msg = buildDropMessage(song, tasteToken);
     const twilio = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
     await twilio.messages.create({ from: process.env.TWILIO_FROM || process.env.TWILIO_PHONE_NUMBER, to: phone, body: msg });
-    res.json({ ok: true, sent_to: phone, genre: song.genre_name, song: song.title, artist: song.artist });
+    res.json({ ok: true, sent_to: phone, genre: song.genre_name, song: song.title, artist: song.artist, tokenized: !!tasteToken });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
