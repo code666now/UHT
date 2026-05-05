@@ -2936,28 +2936,50 @@ app.patch('/api/genre-submissions/:id/community-pick', async (req, res) => {
 
 // ── PATCH /api/community-submissions/:id/promote ─────────────────────────────
 // Promotes a community submission to the active community pick on the drop page
+// AND creates/replaces the Community genre drop row so it shows in Genre Drops panel
 app.patch('/api/community-submissions/:id/promote', async (req, res) => {
   try {
     const { rows } = await db.query(`SELECT * FROM community_submissions WHERE id=$1`, [req.params.id]);
     if (!rows.length) return res.status(404).json({ error: 'Submission not found' });
     const s = rows[0];
-    // Clear existing community pick
-    await db.query(`UPDATE genre_submissions SET is_community_pick = FALSE`);
-    // Upsert into genre_submissions as the community pick
+
+    // Next Friday's date for drop_date
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0=Sun, 5=Fri
+    const daysToFri = ((5 - dayOfWeek) + 7) % 7 || 7;
+    const nextFri = new Date(today);
+    nextFri.setDate(today.getDate() + daysToFri);
+    const dropDate = nextFri.toISOString().split('T')[0];
+
+    // Clear all existing community picks
+    await db.query(`UPDATE genre_submissions SET is_community_pick = FALSE WHERE genre = 'community'`);
+
+    // Replace the genre drop row for Community genre entirely
+    // Delete old community genre drop to avoid stale rows piling up
+    await db.query(`DELETE FROM genre_submissions WHERE genre = 'community' AND is_community_pick = FALSE`);
+
+    // Upsert: if this exact song already exists update it, else insert fresh
     const { rows: existing } = await db.query(
-      `SELECT id FROM genre_submissions WHERE LOWER(title)=LOWER($1) AND LOWER(artist)=LOWER($2) LIMIT 1`,
+      `SELECT id FROM genre_submissions WHERE LOWER(title)=LOWER($1) AND LOWER(artist)=LOWER($2) AND genre='community' LIMIT 1`,
       [s.song, s.artist]
     );
     if (existing.length) {
-      await db.query(`UPDATE genre_submissions SET is_community_pick=TRUE WHERE id=$1`, [existing[0].id]);
+      await db.query(
+        `UPDATE genre_submissions SET
+           week_title='Undeniable Community Hit of the Week',
+           youtube_url=$1, drop_date=$2, week_number=1, is_community_pick=TRUE
+         WHERE id=$3`,
+        [s.youtube_url||null, dropDate, existing[0].id]
+      );
     } else {
       await db.query(
-        `INSERT INTO genre_submissions (genre, title, artist, youtube_url, is_community_pick)
-         VALUES ($1,$2,$3,$4,TRUE)`,
-        [s.genre||'community', s.song, s.artist, s.youtube_url||null]
+        `INSERT INTO genre_submissions
+           (genre, week_title, title, artist, youtube_url, week_number, drop_date, is_community_pick)
+         VALUES ('community', 'Undeniable Community Hit of the Week', $1, $2, $3, 1, $4, TRUE)`,
+        [s.song, s.artist, s.youtube_url||null, dropDate]
       );
     }
-    res.json({ ok: true });
+    res.json({ ok: true, drop_date: dropDate });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
