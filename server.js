@@ -678,7 +678,7 @@ ${fd && fdYtId ? `
     <div>
       <form class="sub-form" id="subForm" onsubmit="handleSubscribe(event)">
         <input class="sub-input" id="subPhone" type="tel" placeholder="Phone number *" autocomplete="tel">
-        <input class="sub-input" id="subName" type="text" placeholder="Full name *" autocomplete="name">
+        <input class="sub-input" id="subName" type="text" placeholder="Name *" autocomplete="name">
         <input class="sub-input" id="subEmail" type="email" placeholder="Email (optional)">
         <div class="sub-toggle">
           <button type="button" class="sub-pill active" id="pillGenre" onclick="switchPill('genre')">By Genre</button>
@@ -824,7 +824,7 @@ function handleSubscribe(e){
   var btn=document.getElementById('subBtn');
   var name=document.getElementById('subName').value.trim();
   if(!phone){msg.textContent='Phone number required.';return}
-  if(!name){msg.textContent='Full name required.';return}
+  if(!name){msg.textContent='Name required.';return}
   if(!_agreed){msg.textContent='Please agree to receive SMS messages.';return}
   if(_activePill==='genre'&&!document.getElementById('subGenre').value){msg.textContent='Choose a genre.';return}
   if(_activePill==='curator'&&!document.getElementById('subCurator').value){msg.textContent='Choose a curator.';return}
