@@ -99,6 +99,11 @@ db.query('ALTER TABLE songs ADD COLUMN IF NOT EXISTS youtube_url TEXT')
   .then(() => console.log('[Migration] songs.youtube_url column ready'))
   .catch(e => console.error('[Migration] songs.youtube_url:', e.message));
 
+// Attach user_id to votes table
+db.query(`ALTER TABLE curator_submission_votes ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL`)
+  .then(() => console.log('[Migration] curator_submission_votes.user_id ready'))
+  .catch(e => console.error('[Migration] curator_submission_votes.user_id:', e.message));
+
 // Member identity columns (safe — IF NOT EXISTS)
 db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS member_number INTEGER`)
   .then(() => db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS member_tier TEXT`))
@@ -3590,13 +3595,43 @@ app.post('/api/genre-vote', async (req, res) => {
   if (!['hit', 'denied'].includes(dbVote)) {
     return res.status(400).json({ error: 'vote must be hit, denied, mega_hit, or deny.' });
   }
-  // Voter fingerprint: prefer client UUID (localStorage), fall back to IP+UA
-  const clientId = req.body.voter_id || '';
-  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
-  const ua = req.headers['user-agent'] || '';
+
+  // Resolve user identity: session cookie > anonymous fingerprint
+  const cookieHeader = req.headers.cookie || '';
+  const sessionPart  = cookieHeader.split(';').map(c => c.trim()).find(c => c.startsWith('uht_session='));
+  const sessionVal   = sessionPart ? decodeURIComponent(sessionPart.split('=').slice(1).join('=')) : null;
+  const userId       = sessionVal ? verifySession(sessionVal) : null;
+
+  // Fallback fingerprint for anonymous voters
+  const clientId    = req.body.voter_id || '';
+  const ip          = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+  const ua          = req.headers['user-agent'] || '';
   const fingerprint = clientId || (ip + ua);
-  const voterHash = require('crypto').createHash('sha256').update(fingerprint).digest('hex');
+  const voterHash   = crypto.createHash('sha256').update(fingerprint).digest('hex');
+
   try {
+    // If identified user: check for existing vote and upsert
+    if (userId) {
+      const { rows: existing } = await db.query(
+        `SELECT id FROM curator_submission_votes WHERE submission_id=$1 AND user_id=$2 LIMIT 1`,
+        [submission_id, userId]
+      );
+      if (existing.length) {
+        // Update existing vote (allow change of mind)
+        await db.query(
+          `UPDATE curator_submission_votes SET vote=$1, voted_at=NOW() WHERE id=$2`,
+          [dbVote, existing[0].id]
+        );
+        return res.json({ ok: true, updated: true });
+      }
+      await db.query(
+        `INSERT INTO curator_submission_votes (submission_id, vote, voter_hash, user_id) VALUES ($1,$2,$3,$4)`,
+        [submission_id, dbVote, voterHash, userId]
+      );
+      return res.json({ ok: true });
+    }
+
+    // Anonymous path — dedup by voter_hash
     const { rows } = await db.query(
       `INSERT INTO curator_submission_votes (submission_id, vote, voter_hash)
        VALUES ($1, $2, $3)
@@ -3604,9 +3639,7 @@ app.post('/api/genre-vote', async (req, res) => {
        DO NOTHING RETURNING *`,
       [submission_id, dbVote, voterHash]
     );
-    if (rows.length === 0) {
-      return res.json({ ok: true, duplicate: true });
-    }
+    if (rows.length === 0) return res.json({ ok: true, duplicate: true });
     res.json({ ok: true, vote: rows[0] });
   } catch (e) {
     console.error('[genre-vote error]', e.message);
