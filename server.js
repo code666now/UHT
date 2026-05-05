@@ -3557,7 +3557,7 @@ app.get('/api/votes', async (req, res) => {
         NULL             AS name,
         cs.title, cs.artist,
         csv.vote,
-        csv.created_at   AS voted_at
+        cs.submitted_at  AS voted_at
       FROM curator_submission_votes csv
       JOIN curator_submissions cs ON cs.id = csv.submission_id
 
