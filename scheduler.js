@@ -23,7 +23,7 @@ async function runWeeklyDrop() {
 
   // Get all active subscriptions with subscriber phone
   const { rows: subs } = await db.query(`
-    SELECT s.id AS sub_id, s.user_id, s.genre_id, s.curator_id, u.phone
+    SELECT s.id AS sub_id, s.user_id, s.genre_id, s.curator_id, u.phone, u.taste_token
     FROM subscriptions s
     JOIN users u ON u.id = s.user_id
     WHERE s.is_active = TRUE
@@ -63,8 +63,8 @@ async function runWeeklyDrop() {
 
       const song = songs[0];
 
-      // Build the SMS message
-      const msg = buildDropMessage(song);
+      // Build the SMS message (personalized with taste_token if available)
+      const msg = buildDropMessage(song, sub.taste_token);
 
       // Send via Twilio
       await client.messages.create({
@@ -93,12 +93,13 @@ async function runWeeklyDrop() {
 }
 
 // ── Message builder ───────────────────────────────────────────────────────────
-function buildDropMessage(song) {
+function buildDropMessage(song, tasteToken) {
   const base = process.env.BASE_URL || '';
   const target = song.curator_name
     ? `/drop/curator/${song.curator_name.toLowerCase().replace(/\s+/g, '-')}`
     : `/drop/${(song.genre_name || '').toLowerCase().replace(/\s+/g, '-')}`;
-  const link = base ? `${base}${target}` : (song.url || '');
+  const tokenParam = tasteToken ? `?t=${tasteToken}` : '';
+  const link = base ? `${base}${target}${tokenParam}` : (song.url || '');
 
   const genre = song.genre_name || song.curator_name || '';
   let msg = `Undeniable ${genre} Hit of the Week\n\n`;

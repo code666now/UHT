@@ -22,6 +22,7 @@ async function runCuratorDrop() {
       s.user_id,
       s.curator_id,
       u.phone,
+      u.taste_token,
       c.name              AS curator_name,
       c.image_url         AS curator_image,
       c.playlist_image_url AS curator_playlist_image,
@@ -99,7 +100,7 @@ async function runCuratorDrop() {
       const base = process.env.BASE_URL || '';
       const headshot = sub.curator_image?.startsWith('data:') ? `${base}/curator-image/${sub.curator_id}` : sub.curator_image;
       const playlistArt = sub.curator_playlist_image?.startsWith('data:') ? `${base}/curator-playlist-image/${sub.curator_id}` : sub.curator_playlist_image;
-      const { body, mediaUrl } = buildCuratorMessage(song, sub.curator_name, headshot, sub.curator_month, playlistArt);
+      const { body, mediaUrl } = buildCuratorMessage(song, sub.curator_name, headshot, sub.curator_month, playlistArt, sub.taste_token);
 
       // Send via Twilio — MMS if curator has a photo, SMS otherwise
       const msgParams = {
@@ -133,10 +134,11 @@ async function runCuratorDrop() {
 // ── Curator message builder ───────────────────────────────────────────────────
 // Returns { body, mediaUrl } — mediaUrl is the curator photo for MMS (or null for SMS).
 // Week 1: intro message ("Meet the curator"). Week 2-4: shorter drop notice.
-function buildCuratorMessage(song, curatorName, curatorImage, curatorMonth, playlistImage) {
+function buildCuratorMessage(song, curatorName, curatorImage, curatorMonth, playlistImage, tasteToken) {
   const base = process.env.BASE_URL || '';
   const slug = curatorName.toLowerCase().replace(/\s+/g, '');
-  const link = base ? `${base}/drop/curator/${slug}`.replace('https://','') : null;
+  const tokenParam = tasteToken ? `?t=${tasteToken}` : '';
+  const link = base ? `${base}/drop/curator/${slug}${tokenParam}`.replace('https://','') : null;
   const firstName = curatorName.split(' ')[0];
   const month = curatorMonth || 'this month';
   const week = parseInt(song.week_number) || 1;

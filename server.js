@@ -33,6 +33,63 @@ function requireAdmin(req, res, next) {
   res.redirect('/admin/login');
 }
 
+// ── Session helpers (drop page identity) ─────────────────────────────────────
+const SESSION_SECRET = (process.env.SESSION_SECRET || process.env.ADMIN_SECRET || 'uht-session-2026').trim();
+
+function signSession(userId) {
+  const hmac = crypto.createHmac('sha256', SESSION_SECRET).update(String(userId)).digest('hex');
+  return `${userId}.${hmac}`;
+}
+
+function verifySession(cookieVal) {
+  if (!cookieVal) return null;
+  const dot = cookieVal.indexOf('.');
+  if (dot < 0) return null;
+  const id  = cookieVal.slice(0, dot);
+  const sig = cookieVal.slice(dot + 1);
+  const expected = crypto.createHmac('sha256', SESSION_SECRET).update(id).digest('hex');
+  if (sig !== expected) return null;
+  return parseInt(id, 10);
+}
+
+// Resolves the requesting user from ?t= token or uht_session cookie.
+// Attaches req.dropUser = users row | null.  Never throws — silently degrades.
+async function identifyDropUser(req, res, next) {
+  req.dropUser = null;
+  const token = (req.query.t || '').trim();
+  const cookieHeader = req.headers.cookie || '';
+  const sessionPart  = cookieHeader.split(';').map(c => c.trim()).find(c => c.startsWith('uht_session='));
+  const sessionVal   = sessionPart ? decodeURIComponent(sessionPart.split('=').slice(1).join('=')) : null;
+  const isProd = process.env.NODE_ENV === 'production';
+
+  try {
+    if (token) {
+      // Token from SMS link — highest trust
+      const { rows } = await db.query(
+        'SELECT * FROM users WHERE taste_token=$1 LIMIT 1', [token]
+      );
+      if (rows.length) {
+        req.dropUser = rows[0];
+        // Refresh session cookie (60-day)
+        const signed = signSession(rows[0].id);
+        res.setHeader('Set-Cookie',
+          `uht_session=${signed}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 24 * 3600}${isProd ? '; Secure' : ''}`
+        );
+        // Fire-and-forget last_seen update
+        db.query('UPDATE users SET last_seen_at=NOW() WHERE id=$1', [rows[0].id]).catch(() => {});
+      }
+    } else if (sessionVal) {
+      // Returning browser — validate signed session
+      const userId = verifySession(sessionVal);
+      if (userId) {
+        const { rows } = await db.query('SELECT * FROM users WHERE id=$1 LIMIT 1', [userId]);
+        if (rows.length) req.dropUser = rows[0];
+      }
+    }
+  } catch (_) { /* silently degrade — drop page still works anonymously */ }
+  next();
+}
+
 // ── Startup migrations ────────────────────────────────────────────────────────
 db.query('ALTER TABLE curators ADD COLUMN IF NOT EXISTS playlist_image_url TEXT')
   .then(() => console.log('[Migration] playlist_image_url column ready'))
@@ -41,6 +98,18 @@ db.query('ALTER TABLE curators ADD COLUMN IF NOT EXISTS playlist_image_url TEXT'
 db.query('ALTER TABLE songs ADD COLUMN IF NOT EXISTS youtube_url TEXT')
   .then(() => console.log('[Migration] songs.youtube_url column ready'))
   .catch(e => console.error('[Migration] songs.youtube_url:', e.message));
+
+// Member identity columns (safe — IF NOT EXISTS)
+db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS member_number INTEGER`)
+  .then(() => db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS member_tier TEXT`))
+  .then(() => db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS taste_token TEXT`))
+  .then(() => db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS share_slug TEXT`))
+  .then(() => db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP`))
+  .then(() => db.query(`CREATE UNIQUE INDEX IF NOT EXISTS users_member_number_uidx ON users(member_number) WHERE member_number IS NOT NULL`))
+  .then(() => db.query(`CREATE UNIQUE INDEX IF NOT EXISTS users_taste_token_uidx  ON users(taste_token)  WHERE taste_token  IS NOT NULL`))
+  .then(() => db.query(`CREATE UNIQUE INDEX IF NOT EXISTS users_share_slug_uidx   ON users(share_slug)   WHERE share_slug   IS NOT NULL`))
+  .then(() => console.log('[Migration] Member identity columns ready'))
+  .catch(e => console.error('[Migration] Member identity columns:', e.message));
 
 // Make deliveries.song_id cascade on delete so songs can be removed freely
 db.query(`ALTER TABLE deliveries DROP CONSTRAINT IF EXISTS deliveries_song_id_fkey`)
@@ -127,8 +196,12 @@ app.get("/admin", requireAdmin, (req, res) => res.sendFile(require("path").join(
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may1-v10' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may5-v11' });
 });
+
+// ── GET /join — public referral/share landing ─────────────────────────────────
+// Share links point here (never includes taste_token). ?ref= is for analytics only.
+app.get('/join', (req, res) => res.redirect('/'));
 
 
 
@@ -2255,7 +2328,7 @@ function submitFollow(){
 });
 
 // ── GET /drop/curator/:slug ──────────────────────────────────────────────────
-app.get('/drop/curator/:slug', async (req, res) => {
+app.get('/drop/curator/:slug', identifyDropUser, async (req, res) => {
   const slug = req.params.slug.toLowerCase().replace(/-/g, '');
   // Cache so repeat SMS taps are served instantly
   res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600');
@@ -2310,6 +2383,7 @@ app.get('/drop/curator/:slug', async (req, res) => {
     const ytId = d.youtube_url ? (d.youtube_url.match(/(?:v=|youtu\.be\/)([^&?/]+)/) || [])[1] : null;
     const pageUrl = '/drop/curator/' + slug;
     const firstName = curator.name.split(' ')[0];
+    const { headerHTML: idHeader, cardHTML: idCard, cardCSS: idCSS, cardJS: idCardJS } = memberIdentityBlocks(req.dropUser);
 
     res.send(`<!DOCTYPE html>
 <html lang="en">
@@ -2429,9 +2503,11 @@ html,body{background:#080808;color:#ede8df;font-family:'Inter',sans-serif;overfl
 .modal-btn:hover{opacity:.9}
 .modal-close{position:absolute;top:16px;right:20px;background:none;border:none;color:rgba(237,232,223,0.4);font-size:20px;cursor:pointer;font-family:'Inter',sans-serif}
 .modal-msg{text-align:center;font-size:12px;color:rgba(237,232,223,0.4);margin-top:12px;min-height:18px}
+\${idCSS}
 </style>
 </head>
 <body>
+\${idHeader}
 <div class="page">
 
 <div class="stamp">
@@ -2621,6 +2697,8 @@ function submitFollow(){
   .catch(function(){msg.textContent='Network error. Try again.';});
 }
 </script>
+\${idCard}
+\${idCardJS}
 </body>
 </html>`);
   } catch(e) {
@@ -2630,6 +2708,95 @@ function submitFollow(){
   }
 });
 
+
+// ── Shared: member identity header + collectible card ────────────────────────
+// Returns { headerHTML, cardHTML, cardCSS, cardJS }
+// dropUser = req.dropUser (null if anonymous)
+function memberIdentityBlocks(dropUser) {
+  if (!dropUser || !dropUser.member_number) return { headerHTML: '', cardHTML: '', cardCSS: '', cardJS: '' };
+
+  const u = dropUser;
+  const numPadded  = String(u.member_number).padStart(3, '0');
+  const displayName = u.name || 'Music Lover';
+  const isFirst100  = u.member_tier === 'FIRST 100';
+  const shareUrl    = `${process.env.BASE_URL || 'https://undeniablehits.com'}/join?ref=${u.share_slug || numPadded}`;
+
+  const cardCSS = `
+.identity-bar{text-align:center;padding:24px 20px 0;opacity:0;animation:fadeInId .8s ease .3s forwards}
+@keyframes fadeInId{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.identity-welcome{font-size:13px;opacity:.5;letter-spacing:.05em;margin-bottom:4px}
+.identity-number{font-size:11px;letter-spacing:.35em;color:#E8B84B;text-transform:uppercase}
+.identity-tier{display:inline-block;font-size:8px;letter-spacing:.35em;border:1px solid rgba(232,184,75,0.35);color:#E8B84B;padding:2px 8px;margin-top:6px;text-transform:uppercase}
+.card-section{padding:32px 20px;text-align:center}
+.card-section-label{font-size:9px;letter-spacing:.35em;text-transform:uppercase;opacity:.25;margin-bottom:20px}
+#music-card{background:#000;border:1px solid rgba(232,184,75,0.25);color:#f3f1ea;font-family:Georgia,"Times New Roman",serif;padding:36px 28px;max-width:300px;margin:0 auto;text-align:center;position:relative}
+#music-card::before{content:'';position:absolute;inset:6px;border:1px solid rgba(232,184,75,0.08);pointer-events:none}
+.mc-label{font-size:7px;letter-spacing:.5em;opacity:.3;text-transform:uppercase;margin-bottom:28px}
+.mc-name{font-size:22px;font-weight:600;margin-bottom:10px;letter-spacing:.02em}
+.mc-number{font-size:10px;letter-spacing:.4em;color:#E8B84B;margin-bottom:8px}
+.mc-tier{font-size:7px;letter-spacing:.4em;border:1px solid rgba(232,184,75,0.35);display:inline-block;padding:3px 10px;margin-bottom:24px;color:#E8B84B}
+.mc-quote{font-size:12px;font-style:italic;opacity:.55;margin-bottom:6px}
+.mc-sub{font-size:9px;opacity:.3;margin-bottom:20px;letter-spacing:.05em}
+.mc-footer{font-size:7px;letter-spacing:.3em;opacity:.18;text-transform:uppercase}
+.card-actions{display:flex;gap:10px;justify-content:center;margin-top:20px}
+.card-act-btn{font-family:Georgia,"Times New Roman",serif;font-size:10px;letter-spacing:.2em;text-transform:uppercase;background:transparent;border:1px solid rgba(243,241,234,0.18);color:rgba(243,241,234,0.55);padding:11px 18px;cursor:pointer;transition:all .25s}
+.card-act-btn:hover{border-color:rgba(232,184,75,0.5);color:#E8B84B}
+.card-act-btn:active{opacity:.7}`;
+
+  const headerHTML = `
+<div class="identity-bar">
+  <div class="identity-welcome">Welcome back, ${displayName}.</div>
+  <div class="identity-number">Music Lover #${numPadded}</div>
+  ${isFirst100 ? '<div class="identity-tier">First 100 Member</div>' : ''}
+</div>`;
+
+  const cardHTML = `
+<div class="card-section">
+  <div class="card-section-label">Your Collectible</div>
+  <div id="music-card">
+    <div class="mc-label">UHT · Undeniable Hit Theory</div>
+    <div class="mc-name">${displayName}</div>
+    <div class="mc-number">MUSIC LOVER #${numPadded}</div>
+    ${isFirst100 ? '<div class="mc-tier">First 100 Member</div>' : ''}
+    <div class="mc-quote">Good taste travels early.</div>
+    <div class="mc-sub">Thank you for joining this early adventure.</div>
+    <div class="mc-footer">Join the archive.</div>
+  </div>
+  <div class="card-actions">
+    <button class="card-act-btn" onclick="downloadCard()">Download Card</button>
+    <button class="card-act-btn" onclick="shareCard()">Share Card</button>
+  </div>
+</div>`;
+
+  const cardJS = `
+<script src="https://unpkg.com/html-to-image@1.11.11/dist/html-to-image.js"></script>
+<script>
+function downloadCard(){
+  var node=document.getElementById('music-card');
+  if(!node||typeof htmlToImage==='undefined'){alert('Card not available.');return;}
+  htmlToImage.toPng(node,{pixelRatio:2}).then(function(dataUrl){
+    var a=document.createElement('a');
+    a.download='music-lover-${numPadded}.png';
+    a.href=dataUrl;
+    a.click();
+  }).catch(function(){ alert('Could not generate card. Try again.'); });
+}
+function shareCard(){
+  var url='${shareUrl}';
+  if(navigator.share){
+    navigator.share({title:'Music Lover #${numPadded} — Undeniable Hit Theory',text:'Good taste travels early.',url:url});
+  } else {
+    navigator.clipboard.writeText(url).then(function(){
+      var btns=document.querySelectorAll('.card-act-btn');
+      btns[1].textContent='Link Copied';
+      setTimeout(function(){btns[1].textContent='Share Card';},2000);
+    });
+  }
+}
+</script>`;
+
+  return { headerHTML, cardHTML, cardCSS, cardJS };
+}
 
 // ── Shared: submit modal HTML appended to all drop pages ─────────────────────
 function submitModalHTML(genre, communityPick, featuredDrop, featuredLabel, featuredGenre) {
@@ -2742,7 +2909,7 @@ const submitModalCSS = `
 `;
 
 // ── GET /drop/community ───────────────────────────────────────────────────────
-app.get('/drop/community', async (req, res) => {
+app.get('/drop/community', identifyDropUser, async (req, res) => {
   // Cache so repeat SMS taps are served instantly
   res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600');
 
@@ -2773,6 +2940,7 @@ app.get('/drop/community', async (req, res) => {
   }
   try {
     const ytId = d.youtube_url ? (d.youtube_url.match(/(?:v=|youtu\.be\/)([^&?/]+)/) || [])[1] : null;
+    const { headerHTML: idHeader, cardHTML: idCard, cardCSS: idCSS, cardJS: idCardJS } = memberIdentityBlocks(req.dropUser);
 
     res.send(`<!DOCTYPE html>
 <html lang="en">
@@ -2818,9 +2986,11 @@ html,body{background:#000;margin:0;padding:0;overflow-x:hidden;font-family:Georg
 .vote-btns-wrap.locked{opacity:.22;pointer-events:none}
 @media(min-width:600px){.vote-row{flex-direction:row}.vote-btn{flex:1}}
 ${submitModalCSS}
+\${idCSS}
 </style>
 </head>
 <body>
+\${idHeader}
 <section class="uht-hit">
   <div class="uht-header">
     <div class="uht-label">WILDCARD</div>
@@ -2917,6 +3087,8 @@ function vote(v){
   });
 }
 </script>
+\${idCard}
+\${idCardJS}
 </body>
 </html>`);
   } catch(e) {
@@ -3037,7 +3209,7 @@ app.post('/api/migrate-community-pick', async (req, res) => {
 });
 
 // ── GET /drop/:genre ─────────────────────────────────────────────────────────
-app.get('/drop/:genre', async (req, res) => {
+app.get('/drop/:genre', identifyDropUser, async (req, res) => {
   const genre = req.params.genre.toLowerCase();
   // Cache so repeat SMS taps are served instantly; stale-while-revalidate
   // lets the browser/CDN serve cached HTML while fetching fresh data.
@@ -3081,6 +3253,8 @@ app.get('/drop/:genre', async (req, res) => {
     const archive = rows.slice(1);
     const ytId = d.youtube_url ? (d.youtube_url.match(/(?:v=|youtu\.be\/)([^&?/]+)/) || [])[1] : null;
     const weekTitle = d.week_title || ('Undeniable ' + genre.charAt(0).toUpperCase() + genre.slice(1) + ' Hit of the Week');
+
+    const { headerHTML: idHeader, cardHTML: idCard, cardCSS: idCSS, cardJS: idCardJS } = memberIdentityBlocks(req.dropUser);
 
     res.send(`<!DOCTYPE html>
 <html lang="en">
@@ -3156,6 +3330,7 @@ html,body{background:#000;margin:0;padding:0;overflow-x:hidden;font-family:Georg
 .no-video{padding:40px 14px;text-align:center}
 .spotify-btn{display:inline-block;margin-top:16px;padding:12px 28px;border-radius:999px;background:#1DB954;color:#fff;text-decoration:none;font-size:15px;letter-spacing:1px}
 ${submitModalCSS}
+\${idCSS}
 @media(min-width:768px){
   .uht-hit{align-items:center;padding:20px 0 60px}
   .uht-title{font-size:clamp(48px,6vw,82px)}
@@ -3167,6 +3342,7 @@ ${submitModalCSS}
 </style>
 </head>
 <body>
+\${idHeader}
 <section class="uht-hit">
   <div class="uht-header">
     <div class="uht-label">Hit of the Week</div>
@@ -3392,6 +3568,8 @@ function scrollToNext(targetId){
   if(el){el.scrollIntoView({behavior:'smooth',block:'start'});}
 }
 </script>
+\${idCard}
+\${idCardJS}
 </body>
 </html>`);
   } catch(e) {
