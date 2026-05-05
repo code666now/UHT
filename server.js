@@ -2508,11 +2508,11 @@ html,body{background:#080808;color:#ede8df;font-family:'Inter',sans-serif;overfl
 .modal-btn:hover{opacity:.9}
 .modal-close{position:absolute;top:16px;right:20px;background:none;border:none;color:rgba(237,232,223,0.4);font-size:20px;cursor:pointer;font-family:'Inter',sans-serif}
 .modal-msg{text-align:center;font-size:12px;color:rgba(237,232,223,0.4);margin-top:12px;min-height:18px}
-\${idCSS}
+${idCSS}
 </style>
 </head>
 <body>
-\${idHeader}
+${idHeader}
 <div class="page">
 
 <div class="stamp">
@@ -2702,8 +2702,8 @@ function submitFollow(){
   .catch(function(){msg.textContent='Network error. Try again.';});
 }
 </script>
-\${idCard}
-\${idCardJS}
+${idCard}
+${idCardJS}
 </body>
 </html>`);
   } catch(e) {
@@ -2991,11 +2991,11 @@ html,body{background:#000;margin:0;padding:0;overflow-x:hidden;font-family:Georg
 .vote-btns-wrap.locked{opacity:.22;pointer-events:none}
 @media(min-width:600px){.vote-row{flex-direction:row}.vote-btn{flex:1}}
 ${submitModalCSS}
-\${idCSS}
+${idCSS}
 </style>
 </head>
 <body>
-\${idHeader}
+${idHeader}
 <section class="uht-hit">
   <div class="uht-header">
     <div class="uht-label">WILDCARD</div>
@@ -3092,8 +3092,8 @@ function vote(v){
   });
 }
 </script>
-\${idCard}
-\${idCardJS}
+${idCard}
+${idCardJS}
 </body>
 </html>`);
   } catch(e) {
@@ -3335,7 +3335,7 @@ html,body{background:#000;margin:0;padding:0;overflow-x:hidden;font-family:Georg
 .no-video{padding:40px 14px;text-align:center}
 .spotify-btn{display:inline-block;margin-top:16px;padding:12px 28px;border-radius:999px;background:#1DB954;color:#fff;text-decoration:none;font-size:15px;letter-spacing:1px}
 ${submitModalCSS}
-\${idCSS}
+${idCSS}
 @media(min-width:768px){
   .uht-hit{align-items:center;padding:20px 0 60px}
   .uht-title{font-size:clamp(48px,6vw,82px)}
@@ -3347,7 +3347,7 @@ ${submitModalCSS}
 </style>
 </head>
 <body>
-\${idHeader}
+${idHeader}
 <section class="uht-hit">
   <div class="uht-header">
     <div class="uht-label">Hit of the Week</div>
@@ -3573,8 +3573,8 @@ function scrollToNext(targetId){
   if(el){el.scrollIntoView({behavior:'smooth',block:'start'});}
 }
 </script>
-\${idCard}
-\${idCardJS}
+${idCard}
+${idCardJS}
 </body>
 </html>`);
   } catch(e) {
