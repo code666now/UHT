@@ -2632,12 +2632,25 @@ function submitFollow(){
 
 
 // ── Shared: submit modal HTML appended to all drop pages ─────────────────────
-function submitModalHTML(genre) {
+function submitModalHTML(genre, communityPick) {
+  const wildcardCard = communityPick ? `
+  <a href="/drop/community" class="bottom-card bottom-card-wildcard">
+    <div class="bc-eyebrow">🃏 This Week's Wildcard</div>
+    <div class="bc-title">${communityPick.title}</div>
+    <div class="bc-artist">${communityPick.artist}</div>
+    <div class="bc-sub">A real listener picked this one.</div>
+    <div class="bc-cta">Listen &amp; Vote →</div>
+  </a>` : '';
+
   return `
-<div class="uht-submit-wrap">
-  <div class="uht-submit-title">Do you have a hit you'd like to share?</div>
-  <div class="uht-submit-copy">Submit it for a chance to be selected and shared with the community.</div>
-  <button type="button" class="uht-submit-btn" onclick="openSubmitModal()">Submit a Hit</button>
+<div class="bottom-cards-wrap">
+  ${wildcardCard}
+  <div class="bottom-card bottom-card-submit">
+    <div class="bc-eyebrow">🎯 Think You Know</div>
+    <div class="bc-title">An Undeniable Hit?</div>
+    <div class="bc-sub">Submit it. If the community calls it a HIT, your pick goes out to everyone.</div>
+    <button type="button" class="uht-submit-btn" onclick="openSubmitModal()">Submit a Hit →</button>
+  </div>
 </div>
 <div class="uht-modal" id="uhtSubmitModal">
   <div class="uht-modal-card">
@@ -2692,11 +2705,18 @@ async function submitHit(e, genre){
 }
 
 const submitModalCSS = `
-.uht-submit-wrap{margin:16px auto 0;max-width:520px;padding:0 16px 16px;text-align:center;color:#f3f1ea;font-family:Georgia,"Times New Roman",serif}
-.uht-submit-title{font-size:12px;letter-spacing:.18em;text-transform:uppercase;opacity:.7;margin-bottom:10px}
-.uht-submit-copy{font-size:14px;line-height:1.6;opacity:.6;margin-bottom:20px}
-.uht-submit-btn{appearance:none;background:rgba(255,255,255,.04);color:#f3f1ea;border:1px solid rgba(243,241,234,.22);padding:12px 22px;border-radius:999px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;cursor:pointer;transition:.25s;font-family:inherit}
-.uht-submit-btn:hover{background:#f3f1ea;color:#000}
+.bottom-cards-wrap{display:flex;gap:14px;max-width:680px;margin:32px auto 0;padding:0 16px 24px;font-family:Georgia,"Times New Roman",serif}
+.bottom-card{flex:1;border:1px solid rgba(243,241,234,.12);padding:22px 20px;display:flex;flex-direction:column;gap:8px;color:#f3f1ea;text-decoration:none;transition:border-color .2s,background .2s}
+.bottom-card:hover{border-color:rgba(243,241,234,.28);background:rgba(255,255,255,.03)}
+.bottom-card-wildcard{cursor:pointer}
+.bc-eyebrow{font-size:9px;letter-spacing:.3em;text-transform:uppercase;color:rgba(243,241,234,.4)}
+.bc-title{font-size:18px;color:#f3f1ea;line-height:1.2}
+.bc-artist{font-size:13px;color:rgba(243,241,234,.55)}
+.bc-sub{font-size:12px;line-height:1.55;color:rgba(243,241,234,.45);margin-top:2px}
+.bc-cta{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#E8B84B;margin-top:auto;padding-top:10px}
+.uht-submit-btn{appearance:none;background:#E8B84B;color:#000;border:none;padding:11px 20px;font-size:10px;letter-spacing:.2em;text-transform:uppercase;cursor:pointer;transition:.2s;font-family:inherit;margin-top:auto;font-weight:700;align-self:flex-start}
+.uht-submit-btn:hover{background:#d4a73c}
+@media(max-width:520px){.bottom-cards-wrap{flex-direction:column}}
 .uht-modal{position:fixed;inset:0;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:.25s;z-index:9999}
 .uht-modal.show{opacity:1;pointer-events:auto}
 .uht-modal-card{position:relative;width:100%;max-width:520px;background:#050505;border:1px solid rgba(243,241,234,.16);border-radius:18px;padding:24px;color:#f3f1ea;text-align:center;font-family:Georgia,"Times New Roman",serif}
@@ -2894,22 +2914,28 @@ app.get('/drop/:genre', async (req, res) => {
   // lets the browser/CDN serve cached HTML while fetching fresh data.
   res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600');
 
-  let rows = [];
+  let rows = [], communityPick = null;
   try {
     const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('DB timeout')), 4000));
-    const query   = db.query(
-      `SELECT gs.*,
-         COUNT(*) FILTER (WHERE v.vote='hit') AS hits,
-         COUNT(*) FILTER (WHERE v.vote='denied') AS denies
-       FROM genre_submissions gs
-       LEFT JOIN curator_submission_votes v ON v.submission_id = gs.id
-       WHERE LOWER(gs.genre)=$1
-       GROUP BY gs.id
-       ORDER BY gs.drop_date DESC NULLS LAST, gs.created_at DESC`,
-      [genre]
-    );
-    const result = await Promise.race([query, timeout]);
+    const [result, cpResult] = await Promise.all([
+      Promise.race([
+        db.query(
+          `SELECT gs.*,
+             COUNT(*) FILTER (WHERE v.vote='hit') AS hits,
+             COUNT(*) FILTER (WHERE v.vote='denied') AS denies
+           FROM genre_submissions gs
+           LEFT JOIN curator_submission_votes v ON v.submission_id = gs.id
+           WHERE LOWER(gs.genre)=$1
+           GROUP BY gs.id
+           ORDER BY gs.drop_date DESC NULLS LAST, gs.created_at DESC`,
+          [genre]
+        ),
+        timeout
+      ]),
+      db.query(`SELECT title, artist FROM genre_submissions WHERE is_community_pick=TRUE LIMIT 1`)
+    ]);
     rows = result.rows;
+    communityPick = cpResult.rows[0] || null;
   } catch(e) {
     console.error('/drop/:genre DB error:', e.message);
     rows = [];
@@ -3208,10 +3234,10 @@ ${archive.length ? `
     <button class="next-drop-btn" id="nxt-${a.id}" onclick="scrollToNext('${nextId}')">Next Drop →</button>
   </div>`;
   }).join('')}
-  <div id="arc-end">${submitModalHTML(genre)}</div>
+  <div id="arc-end">${submitModalHTML(genre, communityPick)}</div>
   <div class="uht-footer">UHT · Your next hit arrives Friday</div>
 </div>` : `
-<div id="arc-end">${submitModalHTML(genre)}</div>
+<div id="arc-end">${submitModalHTML(genre, communityPick)}</div>
 <div class="uht-footer">UHT · Your next hit arrives Friday</div>
 `}
 
