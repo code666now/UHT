@@ -11,6 +11,27 @@ const express = require('express');
 const db      = require('./db');
 const twilio  = require('twilio');
 const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+const crypto  = require('crypto');
+
+// ── Admin auth helpers ────────────────────────────────────────────────────────
+const ADMIN_USER   = process.env.ADMIN_USER || 'admin';
+const ADMIN_PASS   = process.env.ADMIN_PASS || 'changeme';
+const ADMIN_SECRET = process.env.ADMIN_SECRET || 'uht-admin-secret-2026';
+
+function makeAdminToken() {
+  return crypto.createHmac('sha256', ADMIN_SECRET)
+    .update(ADMIN_USER + ':' + ADMIN_PASS)
+    .digest('hex');
+}
+
+function requireAdmin(req, res, next) {
+  const cookie = (req.headers.cookie || '').split(';')
+    .map(c => c.trim().split('='))
+    .find(([k]) => k === 'uht_admin');
+  const token = cookie ? decodeURIComponent(cookie[1]) : null;
+  if (token === makeAdminToken()) return next();
+  res.redirect('/admin/login');
+}
 
 // ── Startup migrations ────────────────────────────────────────────────────────
 db.query('ALTER TABLE curators ADD COLUMN IF NOT EXISTS playlist_image_url TEXT')
@@ -48,7 +69,61 @@ app.use(express.json({ limit: "50mb" }));
 app.use(require("express").static(require("path").join(__dirname, "public")));
 
 // Admin panel
-app.get("/admin", (req, res) => res.sendFile(require("path").join(__dirname, "public", "admin.html")));
+// ── Admin login ───────────────────────────────────────────────────────────────
+app.get('/admin/login', (req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>UHT Admin</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:Georgia,'Times New Roman',serif}
+.card{width:340px;padding:40px 32px;border:1px solid rgba(232,184,75,0.25);background:#0a0a0a}
+.logo{font-size:22px;letter-spacing:.2em;color:#f3f1ea;text-align:center;margin-bottom:6px}
+.sub{font-size:9px;letter-spacing:.35em;text-transform:uppercase;color:rgba(232,184,75,0.5);text-align:center;margin-bottom:32px}
+label{display:block;font-size:9px;letter-spacing:.25em;text-transform:uppercase;color:rgba(243,241,234,0.4);margin-bottom:6px}
+input{width:100%;background:#111;border:1px solid rgba(243,241,234,0.1);color:#f3f1ea;padding:11px 14px;font-size:14px;font-family:inherit;margin-bottom:18px;outline:none}
+input:focus{border-color:rgba(232,184,75,0.4)}
+button{width:100%;background:#E8B84B;color:#000;border:none;padding:13px;font-family:Georgia,serif;font-size:12px;letter-spacing:.2em;text-transform:uppercase;cursor:pointer;font-weight:700;margin-top:4px}
+button:hover{background:#d4a73c}
+.err{font-size:12px;color:#ff6b6b;text-align:center;margin-top:12px;min-height:16px}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">UHT</div>
+  <div class="sub">Admin Access</div>
+  <form method="POST" action="/admin/login">
+    <label>Username</label>
+    <input type="text" name="username" autocomplete="username" autofocus>
+    <label>Password</label>
+    <input type="password" name="password" autocomplete="current-password">
+    <button type="submit">Enter</button>
+    <div class="err">${req.query.err ? 'Invalid credentials.' : ''}</div>
+  </form>
+</div>
+</body>
+</html>`);
+});
+
+app.post('/admin/login', express.urlencoded({ extended: false }), (req, res) => {
+  const { username, password } = req.body;
+  if (username === ADMIN_USER && password === ADMIN_PASS) {
+    const token = makeAdminToken();
+    res.setHeader('Set-Cookie', `uht_admin=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${60 * 60 * 24 * 7}`);
+    return res.redirect('/admin');
+  }
+  res.redirect('/admin/login?err=1');
+});
+
+app.get('/admin/logout', (req, res) => {
+  res.setHeader('Set-Cookie', 'uht_admin=; Path=/; HttpOnly; Max-Age=0');
+  res.redirect('/admin/login');
+});
+
+app.get("/admin", requireAdmin, (req, res) => res.sendFile(require("path").join(__dirname, "public", "admin.html")));
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
