@@ -213,6 +213,41 @@ app.get('/api/debug-token', async (req, res) => {
   } catch(e) { res.json({ error: e.message }); }
 });
 
+// ── POST /api/admin/backfill-members — run member backfill on Railway DB ─────
+app.post('/api/admin/backfill-members', requireAdmin, async (req, res) => {
+  try {
+    await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS member_number INTEGER`);
+    await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS member_tier TEXT`);
+    await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS taste_token TEXT`);
+    await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS share_slug TEXT`);
+    await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP`);
+    await db.query(`CREATE UNIQUE INDEX IF NOT EXISTS users_member_number_uidx ON users(member_number) WHERE member_number IS NOT NULL`);
+    await db.query(`CREATE UNIQUE INDEX IF NOT EXISTS users_taste_token_uidx  ON users(taste_token)  WHERE taste_token  IS NOT NULL`);
+    await db.query(`CREATE UNIQUE INDEX IF NOT EXISTS users_share_slug_uidx   ON users(share_slug)   WHERE share_slug   IS NOT NULL`);
+    await db.query(`ALTER TABLE curator_submission_votes ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL`);
+
+    const { rows: users } = await db.query(`SELECT id, name, member_number, taste_token, share_slug, member_tier FROM users ORDER BY created_at ASC, id ASC`);
+    const { rows: maxRow } = await db.query(`SELECT COALESCE(MAX(member_number),0) AS max_num FROM users`);
+    let nextNum = parseInt(maxRow[0].max_num) + 1;
+    const log = [];
+
+    for (const u of users) {
+      const upd = {};
+      if (!u.member_number) { upd.member_number = nextNum++; }
+      const num = u.member_number || upd.member_number;
+      if (!u.member_tier && num <= 100) upd.member_tier = 'FIRST 100';
+      if (!u.taste_token || u.taste_token.length > 16) upd.taste_token = crypto.randomBytes(8).toString('hex');
+      if (!u.share_slug) upd.share_slug = String(num).padStart(3, '0');
+      if (Object.keys(upd).length === 0) { log.push({ id: u.id, status: 'skipped' }); continue; }
+      const sets = Object.keys(upd).map((k, i) => `${k}=$${i+2}`).join(', ');
+      await db.query(`UPDATE users SET ${sets} WHERE id=$1`, [u.id, ...Object.values(upd)]);
+      log.push({ id: u.id, name: u.name, ...upd });
+    }
+
+    res.json({ ok: true, processed: users.length, log });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── GET /join — public referral/share landing ─────────────────────────────────
 // Share links point here (never includes taste_token). ?ref= is for analytics only.
 app.get('/join', (req, res) => res.redirect('/'));
