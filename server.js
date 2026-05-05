@@ -230,7 +230,9 @@ app.get('/api/debug-token', async (req, res) => {
   const t = req.query.t || '';
   try {
     const { rows } = await db.query('SELECT id, name, member_number, member_tier, taste_token FROM users WHERE taste_token=$1 LIMIT 1', [t]);
-    res.json({ token: t, found: rows.length > 0, user: rows[0] || null });
+    // Also return all users (masked) so we can see what tokens were assigned
+    const { rows: all } = await db.query('SELECT id, name, LEFT(phone,7) AS phone_prefix, member_number, taste_token, share_slug FROM users ORDER BY id');
+    res.json({ token: t, found: rows.length > 0, user: rows[0] || null, all_users: all });
   } catch(e) { res.json({ error: e.message }); }
 });
 
