@@ -66,9 +66,14 @@ app.get('/api/admin/user-lookup', async (req, res) => {
   const { rows: deliveries } = await db.query(`
     SELECT d.*, s.title, s.artist FROM deliveries d
     JOIN songs s ON s.id = d.song_id WHERE d.user_id=$1`, [uid]);
-  const { rows: genreSongs } = await db.query(`SELECT id, title, artist, genre, created_at, drop_date FROM genre_submissions ORDER BY created_at DESC LIMIT 20`);
-  const { rows: genres } = await db.query(`SELECT * FROM genres ORDER BY id`);
-  res.json({ user: users[0], subscriptions: subs, deliveries, genres, genre_songs_available: genreSongs });
+  let genreSongs = [], genres = [], lookupErr = null;
+  try {
+    const r1 = await db.query(`SELECT id, title, artist, genre, created_at FROM genre_submissions ORDER BY created_at DESC LIMIT 20`);
+    genreSongs = r1.rows;
+    const r2 = await db.query(`SELECT * FROM genres ORDER BY id`);
+    genres = r2.rows;
+  } catch(lookupE) { lookupErr = lookupE.message; }
+  res.json({ user: users[0], subscriptions: subs, deliveries, genres, genre_songs_available: genreSongs, lookupErr });
 });
 
 
