@@ -201,7 +201,16 @@ app.get("/admin", requireAdmin, (req, res) => res.sendFile(require("path").join(
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may5-v11' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may5-v12' });
+});
+
+// ── GET /api/debug-token — temporary token lookup test ───────────────────────
+app.get('/api/debug-token', async (req, res) => {
+  const t = req.query.t || '';
+  try {
+    const { rows } = await db.query('SELECT id, name, member_number, member_tier, taste_token FROM users WHERE taste_token=$1 LIMIT 1', [t]);
+    res.json({ token: t, found: rows.length > 0, user: rows[0] || null });
+  } catch(e) { res.json({ error: e.message }); }
 });
 
 // ── GET /join — public referral/share landing ─────────────────────────────────
