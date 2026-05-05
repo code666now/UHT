@@ -66,14 +66,17 @@ app.get('/api/admin/user-lookup', async (req, res) => {
   const { rows: deliveries } = await db.query(`
     SELECT d.*, s.title, s.artist FROM deliveries d
     JOIN songs s ON s.id = d.song_id WHERE d.user_id=$1`, [uid]);
-  // Also check genre submissions for his genres
+  // Check genres and genre submissions
   const genreIds = subs.filter(s=>s.genre_id).map(s=>s.genre_id);
+  let genres = [];
   let genreSongs = [];
-  for (const gid of genreIds) {
-    const { rows } = await db.query(`SELECT gs.id, gs.title, gs.artist, gs.genre_id, gs.created_at, g.name as genre_name FROM genre_submissions gs JOIN genres g ON g.id=gs.genre_id WHERE gs.genre_id=$1 ORDER BY gs.created_at DESC LIMIT 5`, [gid]);
-    genreSongs.push(...rows);
+  if (genreIds.length) {
+    const { rows: gRows } = await db.query(`SELECT id, name FROM genres WHERE id=ANY($1::int[])`, [genreIds]);
+    genres = gRows;
+    const { rows: gsRows } = await db.query(`SELECT id, title, artist, genre, created_at, drop_date FROM genre_submissions ORDER BY created_at DESC LIMIT 20`);
+    genreSongs = gsRows;
   }
-  res.json({ user: users[0], subscriptions: subs, deliveries, genre_songs_available: genreSongs });
+  res.json({ user: users[0], subscriptions: subs, deliveries, genres, genre_songs_available: genreSongs });
 });
 
 
