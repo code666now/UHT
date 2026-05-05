@@ -55,6 +55,20 @@ app.get('/health', (req, res) => {
   res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may1-v10' });
 });
 
+// TEMP: user lookup — remove after use
+app.get('/api/admin/user-lookup', async (req, res) => {
+  if (req.query.t !== 'uht2026') return res.status(403).end();
+  const phone = req.query.phone;
+  const { rows: users } = await db.query('SELECT * FROM users WHERE phone=$1', [phone]);
+  if (!users.length) return res.json({ error: 'user not found' });
+  const uid = users[0].id;
+  const { rows: subs } = await db.query('SELECT * FROM subscriptions WHERE user_id=$1', [uid]);
+  const { rows: deliveries } = await db.query(`
+    SELECT d.*, s.title, s.artist FROM deliveries d
+    JOIN songs s ON s.id = d.song_id WHERE d.user_id=$1`, [uid]);
+  res.json({ user: users[0], subscriptions: subs, deliveries });
+});
+
 
 // ── GET / — Home page ─────────────────────────────────────────────────────────
 app.get('/', async (req, res) => {
