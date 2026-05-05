@@ -3537,11 +3537,44 @@ app.get('/api/deliveries', async (req, res) => {
 app.get('/api/votes', async (req, res) => {
   try {
     const { rows } = await db.query(`
-      SELECT v.*, u.phone, u.name, u.email, s.title, s.artist
+      -- SMS votes (reply HIT/DENIED to text)
+      SELECT
+        'sms'            AS source,
+        u.phone, u.name,
+        s.title, s.artist,
+        v.vote,
+        v.updated_at     AS voted_at
       FROM votes v
       JOIN users u ON u.id = v.user_id
       JOIN songs s ON s.id = v.song_id
-      ORDER BY v.updated_at DESC
+
+      UNION ALL
+
+      -- Web votes on curator drop page
+      SELECT
+        'web'            AS source,
+        NULL             AS phone,
+        NULL             AS name,
+        cs.title, cs.artist,
+        csv.vote,
+        csv.created_at   AS voted_at
+      FROM curator_submission_votes csv
+      JOIN curator_submissions cs ON cs.id = csv.submission_id
+
+      UNION ALL
+
+      -- Web votes via song_votes table
+      SELECT
+        'web'            AS source,
+        NULL             AS phone,
+        NULL             AS name,
+        s.title, s.artist,
+        sv.vote_type     AS vote,
+        sv.created_at    AS voted_at
+      FROM song_votes sv
+      JOIN songs s ON s.id = sv.song_id
+
+      ORDER BY voted_at DESC
     `);
     res.json({ votes: rows });
   } catch (e) { res.status(500).json({ error: e.message }); }
