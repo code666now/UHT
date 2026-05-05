@@ -66,7 +66,14 @@ app.get('/api/admin/user-lookup', async (req, res) => {
   const { rows: deliveries } = await db.query(`
     SELECT d.*, s.title, s.artist FROM deliveries d
     JOIN songs s ON s.id = d.song_id WHERE d.user_id=$1`, [uid]);
-  res.json({ user: users[0], subscriptions: subs, deliveries });
+  // Also check genre submissions for his genres
+  const genreIds = subs.filter(s=>s.genre_id).map(s=>s.genre_id);
+  let genreSongs = [];
+  if (genreIds.length) {
+    const { rows } = await db.query(`SELECT gs.*, g.name as genre_name FROM genre_submissions gs JOIN genres g ON g.id=gs.genre_id WHERE gs.genre_id=ANY($1) ORDER BY gs.created_at DESC LIMIT 10`, [genreIds]);
+    genreSongs = rows;
+  }
+  res.json({ user: users[0], subscriptions: subs, deliveries, genre_songs_available: genreSongs });
 });
 
 
