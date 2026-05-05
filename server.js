@@ -14,9 +14,9 @@ const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_A
 const crypto  = require('crypto');
 
 // ── Admin auth helpers ────────────────────────────────────────────────────────
-const ADMIN_USER   = process.env.ADMIN_USER || 'admin';
-const ADMIN_PASS   = process.env.ADMIN_PASS || 'changeme';
-const ADMIN_SECRET = process.env.ADMIN_SECRET || 'uht-admin-secret-2026';
+const ADMIN_USER   = (process.env.ADMIN_USER || 'admin').trim();
+const ADMIN_PASS   = (process.env.ADMIN_PASS || 'changeme').trim();
+const ADMIN_SECRET = (process.env.ADMIN_SECRET || 'uht-admin-secret-2026').trim();
 
 function makeAdminToken() {
   return crypto.createHmac('sha256', ADMIN_SECRET)
