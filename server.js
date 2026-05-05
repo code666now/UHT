@@ -678,7 +678,7 @@ ${fd && fdYtId ? `
     <div>
       <form class="sub-form" id="subForm" onsubmit="handleSubscribe(event)">
         <input class="sub-input" id="subPhone" type="tel" placeholder="Phone number *" autocomplete="tel">
-        <input class="sub-input" id="subName" type="text" placeholder="Name (optional)">
+        <input class="sub-input" id="subName" type="text" placeholder="Full name *" autocomplete="name">
         <input class="sub-input" id="subEmail" type="email" placeholder="Email (optional)">
         <div class="sub-toggle">
           <button type="button" class="sub-pill active" id="pillGenre" onclick="switchPill('genre')">By Genre</button>
@@ -822,7 +822,9 @@ function handleSubscribe(e){
   var phone=document.getElementById('subPhone').value.trim();
   var msg=document.getElementById('subMsg');
   var btn=document.getElementById('subBtn');
+  var name=document.getElementById('subName').value.trim();
   if(!phone){msg.textContent='Phone number required.';return}
+  if(!name){msg.textContent='Full name required.';return}
   if(!_agreed){msg.textContent='Please agree to receive SMS messages.';return}
   if(_activePill==='genre'&&!document.getElementById('subGenre').value){msg.textContent='Choose a genre.';return}
   if(_activePill==='curator'&&!document.getElementById('subCurator').value){msg.textContent='Choose a curator.';return}
@@ -831,7 +833,7 @@ function handleSubscribe(e){
   var genreEl=document.getElementById('subGenre');
   var genreId=_activePill==='genre'?(genreEl.options[genreEl.selectedIndex]&&genreEl.options[genreEl.selectedIndex].dataset.id):'';
   var curatorId=_activePill==='curator'?document.getElementById('subCurator').value:'';
-  var body={phone:phone,name:document.getElementById('subName').value||undefined,email:document.getElementById('subEmail').value||undefined};
+  var body={phone:phone,name:name||undefined,email:document.getElementById('subEmail').value.trim()||undefined};
   if(curatorId)body.curator_id=parseInt(curatorId);
   else if(genreId)body.genre_id=parseInt(genreId);
   fetch('/api/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
