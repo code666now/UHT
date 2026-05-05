@@ -2,7 +2,7 @@
 // Safe one-time script. Run with: node backfill-members.js
 // - Assigns sequential member_number to users missing one (by created_at ASC)
 // - Sets member_tier = 'FIRST 100' for member_number <= 100
-// - Generates taste_token for users missing one (32-byte hex)
+// - Generates taste_token for users missing one (8-byte / 16-char hex)
 // - Generates share_slug for users missing one (zero-padded member number)
 // - NEVER overwrites existing values
 
@@ -57,9 +57,9 @@ async function run() {
       tiered++;
     }
 
-    // Generate taste_token if missing
-    if (!user.taste_token) {
-      updates.taste_token = crypto.randomBytes(32).toString('hex');
+    // Generate taste_token if missing OR if it's the old long 64-char format
+    if (!user.taste_token || user.taste_token.length > 16) {
+      updates.taste_token = crypto.randomBytes(8).toString('hex');
       tokenized++;
     }
 
