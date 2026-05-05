@@ -69,9 +69,9 @@ app.get('/api/admin/user-lookup', async (req, res) => {
   // Also check genre submissions for his genres
   const genreIds = subs.filter(s=>s.genre_id).map(s=>s.genre_id);
   let genreSongs = [];
-  if (genreIds.length) {
-    const { rows } = await db.query(`SELECT gs.*, g.name as genre_name FROM genre_submissions gs JOIN genres g ON g.id=gs.genre_id WHERE gs.genre_id=ANY($1) ORDER BY gs.created_at DESC LIMIT 10`, [genreIds]);
-    genreSongs = rows;
+  for (const gid of genreIds) {
+    const { rows } = await db.query(`SELECT gs.id, gs.title, gs.artist, gs.genre_id, gs.created_at, g.name as genre_name FROM genre_submissions gs JOIN genres g ON g.id=gs.genre_id WHERE gs.genre_id=$1 ORDER BY gs.created_at DESC LIMIT 5`, [gid]);
+    genreSongs.push(...rows);
   }
   res.json({ user: users[0], subscriptions: subs, deliveries, genre_songs_available: genreSongs });
 });
