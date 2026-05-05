@@ -355,7 +355,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <div class="panel" id="panel-subscribers">
       <div class="section-header">
         <div class="section-title">Subscribers</div>
-        <button class="btn btn-primary" onclick="openModal('subscriber')">+ Add Subscriber</button>
+        <button class="btn btn-primary" onclick="document.getElementById('sub-name').value='';document.getElementById('sub-email').value='';document.getElementById('sub-phone').value='';openModal('subscriber')">+ Add Subscriber</button>
       </div>
       <div class="table-wrap"><table>
         <thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Subscribed To</th><th>Type</th><th>Status</th><th>Joined</th><th></th></tr></thead>
@@ -636,6 +636,10 @@ tr:hover td{background:rgba(255,255,255,.025)}
 <div class="modal-overlay" id="modal-subscriber">
   <div class="modal">
     <div class="modal-title">Add Subscriber</div>
+    <div class="field-row">
+      <div class="field"><label>Name</label><input type="text" id="sub-name" placeholder="First Last"></div>
+      <div class="field"><label>Email</label><input type="email" id="sub-email" placeholder="email@example.com"></div>
+    </div>
     <div class="field"><label>Phone (E.164) *</label><input type="tel" id="sub-phone" placeholder="+12125551234"></div>
     <div class="field-row">
       <div class="field"><label>Genre</label><select id="sub-genre"><option value="">— None —</option></select></div>
@@ -645,6 +649,24 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('subscriber')">Cancel</button>
       <button class="btn btn-primary" onclick="submitSubscriber()">Save Subscriber</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Subscriber modal -->
+<div class="modal-overlay" id="modal-edit-subscriber">
+  <div class="modal">
+    <div class="modal-title">Edit Subscriber</div>
+    <input type="hidden" id="edit-sub-user-id">
+    <div class="field-row">
+      <div class="field"><label>Name</label><input type="text" id="edit-sub-name" placeholder="First Last"></div>
+      <div class="field"><label>Email</label><input type="email" id="edit-sub-email" placeholder="email@example.com"></div>
+    </div>
+    <div class="field"><label>Phone</label><input type="tel" id="edit-sub-phone" placeholder="+12125551234" disabled style="opacity:.5;cursor:not-allowed"></div>
+    <small style="color:var(--muted);font-size:12px">Phone cannot be changed (used as identifier). To change, remove and re-add.</small>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('edit-subscriber')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditSubscriber()">Save Changes</button>
     </div>
   </div>
 </div>
@@ -798,8 +820,9 @@ async function loadSubscribers() {
           <td><span class="tag ${s.is_active?'tag-active':'tag-inactive'}">${s.is_active?'active':'paused'}</span></td>
           <td>${fmtDate(s.created_at)}</td>
           <td>
-            <button class="btn" onclick="toggleSub(${s.id},${s.is_active})">${s.is_active?'Pause':'Resume'}</button>
-            <button class="btn btn-danger" style="margin-left:6px" onclick="deleteSub(${s.id})">Remove</button>
+            <button class="btn" onclick="openEditSubscriber(${s.user_id},${JSON.stringify(esc(s.name||''))},${JSON.stringify(esc(s.email||''))},${JSON.stringify(esc(s.phone))})">Edit</button>
+            <button class="btn" style="margin-left:4px" onclick="toggleSub(${s.id},${s.is_active})">${s.is_active?'Pause':'Resume'}</button>
+            <button class="btn btn-danger" style="margin-left:4px" onclick="deleteSub(${s.id})">Remove</button>
           </td>
         </tr>`).join('')
       : '<tr class="empty-row"><td colspan="7">No subscribers yet.</td></tr>';
@@ -963,13 +986,42 @@ async function openCuratorProfile(id) {
 }
 async function submitSubscriber() {
   const phone=document.getElementById('sub-phone').value.trim();
+  const name=document.getElementById('sub-name').value.trim()||null;
+  const email=document.getElementById('sub-email').value.trim()||null;
   const genre_id=document.getElementById('sub-genre').value||null;
   const curator_id=document.getElementById('sub-curator').value||null;
   if(!phone) return toast('Phone required.','err');
   if(!genre_id&&!curator_id) return toast('Choose genre or curator.','err');
   if(genre_id&&curator_id) return toast('Choose genre OR curator, not both.','err');
-  try { await api('POST','/api/subscribe',{phone,genre_id,curator_id}); toast('Subscriber added!','ok'); closeModal('subscriber'); loadSubscribers(); loadDashboard(); }
-  catch(e) { toast(e.message,'err'); }
+  try {
+    const res = await api('POST','/api/subscribe',{phone,genre_id,curator_id});
+    // If we got a user_id back, also save name/email
+    if((name||email) && res.user_id) {
+      await api('PATCH',`/api/users/${res.user_id}`,{name,email}).catch(()=>{});
+    }
+    toast('Subscriber added!','ok'); closeModal('subscriber'); loadSubscribers(); loadDashboard();
+  } catch(e) { toast(e.message,'err'); }
+}
+
+function openEditSubscriber(userId, name, email, phone) {
+  document.getElementById('edit-sub-user-id').value = userId;
+  document.getElementById('edit-sub-name').value = name || '';
+  document.getElementById('edit-sub-email').value = email || '';
+  document.getElementById('edit-sub-phone').value = phone || '';
+  openModal('edit-subscriber');
+}
+
+async function saveEditSubscriber() {
+  const userId = document.getElementById('edit-sub-user-id').value;
+  const name = document.getElementById('edit-sub-name').value.trim() || null;
+  const email = document.getElementById('edit-sub-email').value.trim() || null;
+  if (!userId) return;
+  try {
+    await api('PATCH', `/api/users/${userId}`, { name, email });
+    toast('Saved.', 'ok');
+    closeModal('edit-subscriber');
+    loadSubscribers();
+  } catch(e) { toast(e.message, 'err'); }
 }
 
 // ── Deletes / toggles ─────────────────────────────────────────
