@@ -247,6 +247,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
       <div class="nav-item" data-panel="curators"><span class="icon">◉</span> Curators</div>
       <div class="nav-item" data-panel="submissions"><span class="icon">🎧</span> Curator Drops</div>
       <div class="nav-item" data-panel="genre-drops"><span class="icon">🎵</span> Genre Drops</div>
+      <div class="nav-item" data-panel="community"><span class="icon">🃏</span> Community Picks</div>
       <div class="nav-label" style="margin-top:8px">Subscribers</div>
       <div class="nav-item" data-panel="subscribers"><span class="icon">◷</span> Subscribers</div>
       <div class="nav-item" data-panel="votes"><span class="icon">◈</span> Votes</div>
@@ -371,6 +372,14 @@ tr:hover td{background:rgba(255,255,255,.025)}
         <thead><tr><th>Source</th><th>Phone / Name</th><th>Song</th><th>Artist</th><th>Vote</th><th>Date</th></tr></thead>
         <tbody id="votes-tbody"><tr class="empty-row"><td colspan="6">Loading…</td></tr></tbody>
       </table></div>
+    </div>
+
+    <!-- Community Submissions -->
+    <div class="panel" id="panel-community">
+      <div class="section-header">
+        <div class="section-title">Community Submissions</div>
+      </div>
+      <div id="community-cards" style="display:flex;flex-direction:column;gap:16px;padding:4px 0"></div>
     </div>
   </div>
 
@@ -713,7 +722,7 @@ async function checkHealth() {
 
 // ── Data loaders ──────────────────────────────────────────────
 async function loadAll() {
-  await Promise.allSettled([loadDashboard(),loadSongs(),loadGenres(),loadCurators(),loadSubmissions(),loadGenreDrops(),loadSubscribers(),loadVotes()]);
+  await Promise.allSettled([loadDashboard(),loadSongs(),loadGenres(),loadCurators(),loadSubmissions(),loadGenreDrops(),loadSubscribers(),loadVotes(),loadCommunity()]);
 }
 
 async function loadDashboard() {
@@ -847,6 +856,49 @@ async function loadVotes() {
         </tr>`).join('')
       : '<tr class="empty-row"><td colspan="6">No votes yet.</td></tr>';
   } catch(e) { tbody.innerHTML=`<tr class="empty-row"><td colspan="5">${esc(e.message)}</td></tr>`; }
+}
+
+async function loadCommunity() {
+  const wrap = document.getElementById('community-cards');
+  try {
+    const {submissions} = await api('GET','/api/community-submissions');
+    if (!submissions.length) {
+      wrap.innerHTML = '<div class="empty-row" style="padding:32px;text-align:center;color:var(--muted)">No community submissions yet.</div>';
+      return;
+    }
+    wrap.innerHTML = submissions.map(s => {
+      const ytId = (s.youtube_url||'').match(/(?:v=|youtu\.be\/)([^&?\/]+)/)?.[1];
+      const thumb = ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : '';
+      return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:20px;display:flex;gap:20px;align-items:flex-start">
+        ${thumb ? `<a href="${esc(s.youtube_url)}" target="_blank" style="flex-shrink:0">
+          <img src="${thumb}" style="width:120px;height:68px;object-fit:cover;border-radius:2px;display:block">
+        </a>` : ''}
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+            <span style="font-size:16px;color:var(--ink);font-weight:600">${esc(s.song)}</span>
+            <span style="color:var(--muted);font-size:13px">by ${esc(s.artist)}</span>
+            <span class="tag tag-genre" style="margin-left:auto">${esc(s.genre||'—')}</span>
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:8px">
+            From <strong style="color:var(--ink)">${esc(s.name||'—')}</strong> · ${esc(s.phone||'')} · ${fmtDate(s.submitted_at)}
+          </div>
+          ${s.why ? `<div style="font-size:13px;color:rgba(243,241,234,0.6);font-style:italic;margin-bottom:12px;line-height:1.5">"${esc(s.why)}"</div>` : ''}
+          <div style="display:flex;gap:8px">
+            ${s.youtube_url ? `<a href="${esc(s.youtube_url)}" target="_blank" class="btn" style="text-decoration:none">▶ Listen</a>` : ''}
+            <button class="btn btn-primary" onclick="promoteToPickFn(${s.id},'${esc(s.song)}','${esc(s.artist)}')">★ Make Community Pick</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) { wrap.innerHTML = `<div class="empty-row" style="padding:32px;text-align:center">${esc(e.message)}</div>`; }
+}
+
+async function promoteToPickFn(id, song, artist) {
+  if (!confirm(`Make "${song}" by ${artist} the community pick? This replaces the current pick.`)) return;
+  try {
+    await api('PATCH', `/api/community-submissions/${id}/promote`);
+    toast('Community pick updated!', 'ok');
+  } catch(e) { toast(e.message, 'err'); }
 }
 
 // ── Submits ───────────────────────────────────────────────────

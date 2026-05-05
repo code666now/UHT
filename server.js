@@ -2807,6 +2807,33 @@ app.patch('/api/genre-submissions/:id/community-pick', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── PATCH /api/community-submissions/:id/promote ─────────────────────────────
+// Promotes a community submission to the active community pick on the drop page
+app.patch('/api/community-submissions/:id/promote', async (req, res) => {
+  try {
+    const { rows } = await db.query(`SELECT * FROM community_submissions WHERE id=$1`, [req.params.id]);
+    if (!rows.length) return res.status(404).json({ error: 'Submission not found' });
+    const s = rows[0];
+    // Clear existing community pick
+    await db.query(`UPDATE genre_submissions SET is_community_pick = FALSE`);
+    // Upsert into genre_submissions as the community pick
+    const { rows: existing } = await db.query(
+      `SELECT id FROM genre_submissions WHERE LOWER(title)=LOWER($1) AND LOWER(artist)=LOWER($2) LIMIT 1`,
+      [s.song, s.artist]
+    );
+    if (existing.length) {
+      await db.query(`UPDATE genre_submissions SET is_community_pick=TRUE WHERE id=$1`, [existing[0].id]);
+    } else {
+      await db.query(
+        `INSERT INTO genre_submissions (genre, title, artist, youtube_url, is_community_pick)
+         VALUES ($1,$2,$3,$4,TRUE)`,
+        [s.genre||'community', s.song, s.artist, s.youtube_url||null]
+      );
+    }
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── POST /api/community-submissions ──────────────────────────────────────────
 app.post('/api/community-submissions', async (req, res) => {
   const { name, phone, artist, song, youtube_url, why, genre } = req.body;
