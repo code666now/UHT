@@ -2632,15 +2632,28 @@ function submitFollow(){
 
 
 // ── Shared: submit modal HTML appended to all drop pages ─────────────────────
-function submitModalHTML(genre, communityPick) {
-  const wildcardCard = communityPick ? `
-  <a href="/drop/community" class="bottom-card bottom-card-wildcard">
+function submitModalHTML(genre, communityPick, featuredDrop, featuredLabel, featuredGenre) {
+  // Genre drop pages: show wildcard card pointing to community page
+  // Community page: show featured genre card (rotating weekly)
+  let leftCard = '';
+  if (communityPick) {
+    leftCard = `<a href="/drop/community" class="bottom-card bottom-card-wildcard">
     <div class="bc-eyebrow">🃏 This Week's Wildcard</div>
     <div class="bc-title">${communityPick.title}</div>
     <div class="bc-artist">${communityPick.artist}</div>
     <div class="bc-sub">A real listener picked this one.</div>
     <div class="bc-cta">Listen &amp; Vote →</div>
-  </a>` : '';
+  </a>`;
+  } else if (featuredDrop) {
+    leftCard = `<a href="/drop/${featuredGenre}" class="bottom-card bottom-card-wildcard">
+    <div class="bc-eyebrow">This Week's Undeniable</div>
+    <div class="bc-title">${featuredLabel} Hit</div>
+    <div class="bc-artist">${featuredDrop.title}</div>
+    <div class="bc-sub">${featuredDrop.artist}</div>
+    <div class="bc-cta">Listen &amp; Vote →</div>
+  </a>`;
+  }
+  const wildcardCard = leftCard;
 
   return `
 <div class="bottom-cards-wrap">
@@ -2732,12 +2745,25 @@ const submitModalCSS = `
 app.get('/drop/community', async (req, res) => {
   // Cache so repeat SMS taps are served instantly
   res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600');
-  let d;
+
+  // Rotating featured genre by ISO week number: rock → punk → pop → country
+  const FEATURED_GENRES = ['rock', 'punk', 'pop', 'country'];
+  const weekNum = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 1).getTime()) / 604800000);
+  const featuredGenre = FEATURED_GENRES[weekNum % FEATURED_GENRES.length];
+  const featuredLabel = featuredGenre.charAt(0).toUpperCase() + featuredGenre.slice(1);
+
+  let d, featuredDrop = null;
   try {
     const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('DB timeout')), 4000));
-    const query   = db.query(`SELECT * FROM genre_submissions WHERE is_community_pick = TRUE ORDER BY created_at DESC LIMIT 1`);
-    const { rows } = await Promise.race([query, timeout]);
-    d = rows[0] || null;
+    const [communityRes, featuredRes] = await Promise.all([
+      Promise.race([
+        db.query(`SELECT * FROM genre_submissions WHERE is_community_pick = TRUE ORDER BY created_at DESC LIMIT 1`),
+        timeout
+      ]),
+      db.query(`SELECT title, artist FROM genre_submissions WHERE LOWER(genre)=$1 ORDER BY drop_date DESC NULLS LAST, created_at DESC LIMIT 1`, [featuredGenre])
+    ]);
+    d = communityRes.rows[0] || null;
+    featuredDrop = featuredRes.rows[0] || null;
   } catch(e) {
     console.error('/drop/community DB error:', e.message);
     d = null;
@@ -2800,7 +2826,7 @@ ${submitModalCSS}
     </div>
   </div>` : `<div class="no-video"><p style="opacity:.4">No playback source available.</p></div>`}
 </section>
-${submitModalHTML('community')}
+${submitModalHTML('community', null, featuredDrop, featuredLabel, featuredGenre)}
 ${ytId ? `
 <script src="https://www.youtube.com/iframe_api"></script>
 <script>
