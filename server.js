@@ -104,6 +104,12 @@ db.query(`ALTER TABLE curator_submission_votes ADD COLUMN IF NOT EXISTS user_id 
   .then(() => console.log('[Migration] curator_submission_votes.user_id ready'))
   .catch(e => console.error('[Migration] curator_submission_votes.user_id:', e.message));
 
+// Curator phone + welcome tracking columns
+db.query(`ALTER TABLE curators ADD COLUMN IF NOT EXISTS phone TEXT`)
+  .then(() => db.query(`ALTER TABLE curators ADD COLUMN IF NOT EXISTS welcome_sent_at TIMESTAMP`))
+  .then(() => console.log('[Migration] curators.phone + welcome_sent_at ready'))
+  .catch(e => console.error('[Migration] curators phone/welcome:', e.message));
+
 // Member identity columns (safe — IF NOT EXISTS)
 db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS member_number INTEGER`)
   .then(() => db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS member_tier TEXT`))
@@ -274,6 +280,285 @@ app.post('/api/admin/backfill-members', requireAdmin, async (req, res) => {
 // ── GET /join — public referral/share landing ─────────────────────────────────
 // Share links point here (never includes taste_token). ?ref= is for analytics only.
 app.get('/join', (req, res) => res.redirect('/'));
+
+// ── GET /follow/curator/:slug — curator follow landing page ───────────────────
+// A clean subscribe-to-curator page. People tap the link, enter their phone,
+// and they're subscribed to that curator's weekly picks. No genre step.
+app.get('/follow/curator/:slug', async (req, res) => {
+  const slug = req.params.slug.toLowerCase().replace(/\s+/g, '');
+  try {
+    const { rows: curators } = await db.query(
+      `SELECT * FROM curators WHERE LOWER(REPLACE(name,' ','')) = $1 LIMIT 1`, [slug]
+    );
+    if (!curators.length) return res.status(404).send('Curator not found');
+    const c = curators[0];
+    const firstName = c.name.split(' ')[0];
+    const base = process.env.BASE_URL || '';
+    const headshot = c.image_url?.startsWith('data:') ? `${base}/curator-image/${c.id}` : (c.image_url || '');
+    const month = c.curator_month || '';
+
+    const [countRes, pickRes, voteRes] = await Promise.all([
+      db.query(`SELECT COUNT(*) AS cnt FROM subscriptions WHERE curator_id=$1 AND is_active=TRUE`, [c.id]),
+      db.query(`SELECT title, artist, curator_note, week_number FROM curator_submissions WHERE curator_id=$1 ORDER BY submitted_at DESC LIMIT 1`, [c.id]),
+      db.query(`
+        SELECT
+          COUNT(*) FILTER (WHERE v.vote='hit')    AS hits,
+          COUNT(*) FILTER (WHERE v.vote='denied') AS denies
+        FROM curator_submissions cs
+        JOIN curator_submission_votes v ON v.submission_id = cs.id
+        WHERE cs.curator_id=$1
+      `, [c.id])
+    ]);
+    const subCount  = parseInt(countRes.rows[0].cnt) || 0;
+    const latestPick = pickRes.rows[0] || null;
+    const totalHits   = parseInt(voteRes.rows[0]?.hits   || 0);
+    const totalDenies = parseInt(voteRes.rows[0]?.denies || 0);
+    const totalVotes  = totalHits + totalDenies;
+    const hitPct = totalVotes > 0 ? Math.round(totalHits / totalVotes * 100) : null;
+
+    // Build sample score card HTML (real pick if available, placeholder if not)
+    const sampleCard = latestPick ? `
+<div class="sample-wrap">
+  <div class="sample-label">This week's pick</div>
+  <div class="sample-card">
+    <div class="sample-song">
+      <div class="sample-title">${latestPick.title}</div>
+      <div class="sample-artist">${latestPick.artist}</div>
+      ${latestPick.curator_note ? `<div class="sample-note">"${latestPick.curator_note}"</div>` : ''}
+    </div>
+    ${totalVotes > 0 ? `
+    <div class="sample-votes">
+      <div class="sample-bar-wrap">
+        <div class="sample-bar-fill" style="width:${hitPct}%"></div>
+      </div>
+      <div class="sample-tally">
+        <span style="color:#E8B84B">${totalHits} HIT</span>
+        <span style="opacity:.35">&middot;</span>
+        <span>${totalDenies} DENIED</span>
+      </div>
+    </div>` : ''}
+    <div class="sample-btns">
+      <button class="sample-btn hit" onclick="sampleVote(this,'HIT')">HIT</button>
+      <button class="sample-btn denied" onclick="sampleVote(this,'DENIED')">DENIED</button>
+    </div>
+    <div class="sample-cta-note">Follow ${firstName} to vote for real every Friday</div>
+  </div>
+</div>` : '';
+
+    res.setHeader('Content-Type', 'text/html');
+    res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Follow ${c.name} — Undeniable Hit Theory</title>
+<meta property="og:title" content="Follow ${c.name} on UHT">
+<meta property="og:description" content="${firstName}'s weekly pick — vote HIT or DENIED.">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #000;
+    color: #f3f1ea;
+    font-family: Georgia, "Times New Roman", serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2.5rem 1.25rem 4rem;
+  }
+  .wrap {
+    width: 100%;
+    max-width: 420px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    text-align: center;
+  }
+  .brand { font-size: 0.65rem; letter-spacing: 0.25em; text-transform: uppercase; opacity: 0.35; }
+  .avatar { width: 88px; height: 88px; border-radius: 50%; object-fit: cover; border: 2px solid #2a2a2a; }
+  .avatar-placeholder { width: 88px; height: 88px; border-radius: 50%; background: #111; border: 2px solid #2a2a2a; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; }
+  h1 { font-size: 1.65rem; font-weight: normal; }
+  .meta { font-size: 0.75rem; opacity: 0.4; letter-spacing: 0.08em; text-transform: uppercase; margin-top: 4px; }
+  .bio { font-size: 0.88rem; line-height: 1.7; opacity: 0.65; font-style: italic; max-width: 340px; }
+  .listener-count { font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: #E8B84B; }
+  .divider { width: 32px; height: 1px; background: #1e1e1e; }
+
+  /* ── Sample score card ── */
+  .sample-wrap { width: 100%; }
+  .sample-label { font-size: 0.62rem; letter-spacing: 0.2em; text-transform: uppercase; opacity: 0.3; margin-bottom: 10px; }
+  .sample-card {
+    background: #0d0d0d;
+    border: 1px solid #1e1e1e;
+    border-top: 2px solid #E8B84B;
+    border-radius: 6px;
+    padding: 20px 18px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    text-align: left;
+  }
+  .sample-song {}
+  .sample-title { font-size: 1.2rem; line-height: 1.25; margin-bottom: 4px; }
+  .sample-artist { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.45; }
+  .sample-note { font-size: 0.82rem; font-style: italic; opacity: 0.5; margin-top: 8px; line-height: 1.55; }
+  .sample-votes { display: flex; flex-direction: column; gap: 6px; }
+  .sample-bar-wrap { height: 3px; background: #1e1e1e; border-radius: 2px; overflow: hidden; }
+  .sample-bar-fill { height: 100%; background: #E8B84B; border-radius: 2px; transition: width 0.6s ease; }
+  .sample-tally { font-size: 0.7rem; letter-spacing: 0.06em; display: flex; gap: 8px; opacity: 0.75; }
+  .sample-btns { display: flex; gap: 8px; }
+  .sample-btn {
+    flex: 1;
+    padding: 12px 0;
+    border-radius: 6px;
+    border: 1px solid #2a2a2a;
+    background: #0a0a0a;
+    color: rgba(243,241,234,0.6);
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 0.82rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.18s;
+  }
+  .sample-btn.hit:hover, .sample-btn.hit.chosen  { background: rgba(232,184,75,0.12); border-color: #E8B84B; color: #E8B84B; }
+  .sample-btn.denied:hover, .sample-btn.denied.chosen { background: rgba(255,68,68,0.1); border-color: #ff4444; color: #ff6b6b; }
+  .sample-cta-note { font-size: 0.68rem; opacity: 0.3; text-align: center; letter-spacing: 0.04em; }
+
+  /* ── Form ── */
+  form { width: 100%; display: flex; flex-direction: column; gap: 0.7rem; }
+  .form-label { font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.4; text-align: left; }
+  input[type="tel"] {
+    width: 100%; background: #0d0d0d; border: 1px solid #2a2a2a;
+    color: #f3f1ea; font-family: Georgia, "Times New Roman", serif;
+    font-size: 1rem; padding: 0.85rem 1rem; border-radius: 4px;
+    outline: none; transition: border-color 0.2s;
+  }
+  input[type="tel"]:focus { border-color: #E8B84B; }
+  button[type="submit"] {
+    width: 100%; background: #f3f1ea; color: #000;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 0.82rem; font-weight: bold; letter-spacing: 0.14em;
+    text-transform: uppercase; padding: 0.95rem;
+    border: none; border-radius: 4px; cursor: pointer;
+    transition: background 0.15s, opacity 0.15s;
+  }
+  button[type="submit"]:hover { background: #fff; }
+  button[type="submit"]:disabled { opacity: 0.4; cursor: default; }
+  .msg { font-size: 0.85rem; min-height: 1.4em; }
+  .msg.success { color: #E8B84B; }
+  .msg.error   { color: #ff6b6b; }
+  .fine-print { font-size: 0.67rem; opacity: 0.25; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">Undeniable Hit Theory</div>
+
+  ${headshot
+    ? `<img src="${headshot}" alt="${c.name}" class="avatar">`
+    : `<div class="avatar-placeholder">♪</div>`}
+
+  <div>
+    <h1>${c.name}</h1>
+    ${month ? `<div class="meta">${month} Curator</div>` : ''}
+  </div>
+
+  ${c.bio ? `<p class="bio">${c.bio.length > 200 ? c.bio.slice(0, 197) + '…' : c.bio}</p>` : ''}
+  ${subCount > 0 ? `<div class="listener-count">${subCount} listener${subCount === 1 ? '' : 's'} following</div>` : ''}
+
+  ${sampleCard}
+
+  <div class="divider"></div>
+
+  <form id="follow-form">
+    <div class="form-label">Your phone number</div>
+    <input type="tel" id="phone" placeholder="+1 (555) 000-0000" autocomplete="tel" required>
+    <button type="submit" id="submit-btn">Follow ${firstName}</button>
+    <div class="msg" id="msg"></div>
+  </form>
+
+  <p class="fine-print">One text per week. Reply STOP anytime.</p>
+</div>
+
+<script>
+const form = document.getElementById('follow-form');
+const phoneInput = document.getElementById('phone');
+const submitBtn = document.getElementById('submit-btn');
+const msgEl = document.getElementById('msg');
+const CURATOR_ID = ${c.id};
+
+function sampleVote(btn, label) {
+  document.querySelectorAll('.sample-btn').forEach(b => b.classList.remove('chosen'));
+  btn.classList.add('chosen');
+  setTimeout(() => {
+    btn.closest('.sample-card').querySelector('.sample-cta-note').textContent =
+      'Follow ' + '${firstName}' + ' to cast your real vote';
+  }, 300);
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const phone = phoneInput.value.trim();
+  if (!phone) return;
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Sending code…';
+  msgEl.className = 'msg';
+  msgEl.textContent = '';
+
+  try {
+    const r1 = await fetch('/api/send_code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone })
+    });
+    const d1 = await r1.json();
+    if (!d1.ok) throw new Error(d1.error || 'Could not send code');
+
+    const code = prompt('Enter the 6-digit code we just sent you:');
+    if (!code) { submitBtn.disabled = false; submitBtn.textContent = 'Follow ${firstName}'; return; }
+
+    submitBtn.textContent = 'Verifying…';
+
+    const r2 = await fetch('/api/verify_code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, code })
+    });
+    const d2 = await r2.json();
+    if (!d2.ok) throw new Error(d2.error || 'Invalid code');
+
+    const r3 = await fetch('/api/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, curator_id: CURATOR_ID, genre_id: null })
+    });
+    const d3 = await r3.json();
+    if (!d3.ok && d3.error !== 'already_subscribed') throw new Error(d3.error || 'Subscribe failed');
+
+    msgEl.className = 'msg success';
+    msgEl.textContent = d3.error === 'already_subscribed'
+      ? "You're already following ${firstName}."
+      : "You're in. ${firstName}'s next pick comes Friday.";
+    submitBtn.textContent = 'Following ✓';
+    form.querySelector('input').disabled = true;
+
+  } catch (err) {
+    msgEl.className = 'msg error';
+    msgEl.textContent = err.message;
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Follow ${firstName}';
+  }
+});
+</script>
+</body>
+</html>`);
+  } catch (err) {
+    console.error('[follow/curator]', err.message);
+    res.status(500).send('Server error');
+  }
+});
 
 
 
@@ -3836,12 +4121,12 @@ app.get('/api/curators-admin', async (req, res) => {
 
 // ── POST /api/curators ────────────────────────────────────────────────────────
 app.post('/api/curators', async (req, res) => {
-  const { name, bio, statement, image_url, playlist_image_url, instagram, curator_month, monthly_theme } = req.body;
+  const { name, bio, statement, image_url, playlist_image_url, instagram, phone, curator_month, monthly_theme } = req.body;
   if (!name) return res.status(400).json({ error: 'name required.' });
   try {
     const { rows } = await db.query(
-      `INSERT INTO curators (name, bio, statement, image_url, playlist_image_url, instagram, curator_month, monthly_theme) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-      [name, bio || null, statement || null, image_url || null, playlist_image_url || null, instagram || null, curator_month || null, monthly_theme || null]
+      `INSERT INTO curators (name, bio, statement, image_url, playlist_image_url, instagram, phone, curator_month, monthly_theme) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+      [name, bio || null, statement || null, image_url || null, playlist_image_url || null, instagram || null, phone || null, curator_month || null, monthly_theme || null]
     );
     res.json({ curator: rows[0] });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -4045,12 +4330,12 @@ app.get('/api/votes', async (req, res) => {
 
 // ── PATCH /api/curators/:id ───────────────────────────────────────────────────
 app.patch('/api/curators/:id', async (req, res) => {
-  const { name, bio, statement, image_url, playlist_image_url, instagram, curator_month, monthly_theme } = req.body;
+  const { name, bio, statement, image_url, playlist_image_url, instagram, phone, curator_month, monthly_theme } = req.body;
   if (!name) return res.status(400).json({ error: 'name required.' });
   try {
     // Only overwrite image fields if a value is explicitly provided — prevents wiping images on metadata-only saves
-    const fields = ['name=$1','bio=$2','statement=$3','instagram=$4','curator_month=$5','monthly_theme=$6'];
-    const vals = [name, bio||null, statement||null, instagram||null, curator_month||null, monthly_theme||null];
+    const fields = ['name=$1','bio=$2','statement=$3','instagram=$4','phone=$5','curator_month=$6','monthly_theme=$7'];
+    const vals = [name, bio||null, statement||null, instagram||null, phone||null, curator_month||null, monthly_theme||null];
     let idx = vals.length + 1;
     if (image_url !== undefined) { fields.push(`image_url=$${idx++}`); vals.push(image_url||null); }
     if (playlist_image_url !== undefined) { fields.push(`playlist_image_url=$${idx++}`); vals.push(playlist_image_url||null); }

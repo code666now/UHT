@@ -169,6 +169,13 @@ try {
     runCuratorDrop().catch(err => console.error('[CuratorScheduler] Drop failed:', err.message));
   }, { scheduled: true, timezone: 'America/Los_Angeles' });
   console.log('[CuratorScheduler] Monday curator drop scheduled for 8:00am PT every week.');
+
+  // 0 9 * * 3  =  9:00am every Wednesday — send welcome SMS to any new curator not yet welcomed
+  cron.schedule('0 9 * * 3', () => {
+    console.log('[CuratorScheduler] Wednesday 9am PT — checking for new curators to welcome!');
+    runCuratorWelcome().catch(err => console.error('[CuratorScheduler] Welcome failed:', err.message));
+  }, { scheduled: true, timezone: 'America/Los_Angeles' });
+  console.log('[CuratorScheduler] Wednesday curator welcome scheduled for 9:00am PT every week.');
 } catch (e) {
   console.log('[CuratorScheduler] node-cron not installed — manual drops only via POST /api/curator-drop/send');
 }
@@ -238,4 +245,64 @@ async function runCuratorIntroBlast(curatorId) {
   return { sent, skipped, errors };
 }
 
-module.exports = { runCuratorDrop, buildCuratorMessage, runCuratorIntroBlast };
+// ── Curator welcome SMS ───────────────────────────────────────────────────────
+// Runs every Wednesday. Finds curators with a phone but no welcome_sent_at,
+// sends a personal thank-you SMS, then stamps welcome_sent_at so it never repeats.
+async function runCuratorWelcome() {
+  console.log(`\n[CuratorWelcome] Checking for new curators to welcome at ${new Date().toISOString()}`);
+
+  const { rows: curators } = await db.query(`
+    SELECT * FROM curators
+    WHERE phone IS NOT NULL
+      AND welcome_sent_at IS NULL
+    ORDER BY created_at ASC
+  `);
+
+  if (!curators.length) {
+    console.log('[CuratorWelcome] No new curators to welcome. Done.');
+    return { sent: 0, errors: 0 };
+  }
+
+  let sent = 0, errors = 0;
+  const base = process.env.BASE_URL || 'https://undeniablehits.com';
+
+  for (const c of curators) {
+    try {
+      const firstName = c.name.split(' ')[0];
+      const slug = c.name.toLowerCase().replace(/\s+/g, '');
+      const followLink = `${base}/follow/curator/${slug}`.replace('https://', '');
+
+      // Get current follower count
+      const { rows: countRows } = await db.query(
+        `SELECT COUNT(*) AS cnt FROM subscriptions WHERE curator_id=$1 AND is_active=TRUE`, [c.id]
+      );
+      const subCount = parseInt(countRows[0].cnt) || 0;
+
+      const listenerLine = subCount > 0
+        ? `You have ${subCount} listener${subCount === 1 ? '' : 's'} following you as a curator so far!`
+        : `You have listeners following you as a curator so far!`;
+
+      const body = `${firstName}, thank you for being a curator of Undeniable Hits. ${listenerLine} Share this with a friend\n${followLink}`;
+
+      await client.messages.create({
+        from: process.env.TWILIO_FROM || process.env.TWILIO_PHONE_NUMBER,
+        to:   c.phone,
+        body,
+      });
+
+      // Stamp so it never fires again
+      await db.query(`UPDATE curators SET welcome_sent_at=NOW() WHERE id=$1`, [c.id]);
+
+      console.log(`[CuratorWelcome] ✓ Welcomed ${c.name} → ${c.phone}`);
+      sent++;
+    } catch (err) {
+      console.error(`[CuratorWelcome] ✗ Error for ${c.name}:`, err.message);
+      errors++;
+    }
+  }
+
+  console.log(`[CuratorWelcome] Done. Sent: ${sent} | Errors: ${errors}\n`);
+  return { sent, errors };
+}
+
+module.exports = { runCuratorDrop, buildCuratorMessage, runCuratorIntroBlast, runCuratorWelcome };
