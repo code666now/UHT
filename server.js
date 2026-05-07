@@ -338,7 +338,7 @@ app.get('/follow/curator/:slug', async (req, res) => {
       </div>
     </div>` : ''}
     <button class="sample-vote-cta" onclick="document.getElementById('phone').focus();document.getElementById('phone').scrollIntoView({behavior:'smooth',block:'center'})">
-      Vote HIT or DENIED — follow ${firstName} to cast yours
+      Follow ${firstName} — Curator of the Month
     </button>
   </div>
 </div>` : '';
