@@ -316,7 +316,7 @@ app.get('/follow/curator/:slug', async (req, res) => {
     const totalVotes  = totalHits + totalDenies;
     const hitPct = totalVotes > 0 ? Math.round(totalHits / totalVotes * 100) : null;
 
-    // Build sample score card HTML (real pick if available, placeholder if not)
+    // Build sample score card — read-only teaser, no vote buttons
     const sampleCard = latestPick ? `
 <div class="sample-wrap">
   <div class="sample-label">This week's pick</div>
@@ -337,11 +337,9 @@ app.get('/follow/curator/:slug', async (req, res) => {
         <span>${totalDenies} DENIED</span>
       </div>
     </div>` : ''}
-    <div class="sample-btns">
-      <button class="sample-btn hit" onclick="sampleVote(this,'HIT')">HIT</button>
-      <button class="sample-btn denied" onclick="sampleVote(this,'DENIED')">DENIED</button>
-    </div>
-    <div class="sample-cta-note">Follow ${firstName} to vote for real every Friday</div>
+    <button class="sample-vote-cta" onclick="document.getElementById('phone').focus();document.getElementById('phone').scrollIntoView({behavior:'smooth',block:'center'})">
+      Vote HIT or DENIED — follow ${firstName} to cast yours
+    </button>
   </div>
 </div>` : '';
 
@@ -381,8 +379,14 @@ app.get('/follow/curator/:slug', async (req, res) => {
   h1 { font-size: 1.65rem; font-weight: normal; }
   .meta { font-size: 0.75rem; opacity: 0.4; letter-spacing: 0.08em; text-transform: uppercase; margin-top: 4px; }
   .bio { font-size: 0.88rem; line-height: 1.7; opacity: 0.65; font-style: italic; max-width: 340px; }
+  .founding-badge { font-size: 0.62rem; letter-spacing: 0.22em; text-transform: uppercase; color: #E8B84B; border: 1px solid rgba(232,184,75,0.35); padding: 3px 10px; border-radius: 20px; }
+  .theme-label { font-size: 0.8rem; font-style: italic; opacity: 0.45; }
   .listener-count { font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: #E8B84B; }
   .divider { width: 32px; height: 1px; background: #1e1e1e; }
+  /* Inline verify step */
+  #verify-step { display: none; flex-direction: column; gap: 0.7rem; width: 100%; }
+  #verify-step.visible { display: flex; }
+  .verify-hint { font-size: 0.75rem; opacity: 0.45; text-align: center; }
 
   /* ── Sample score card ── */
   .sample-wrap { width: 100%; }
@@ -406,24 +410,21 @@ app.get('/follow/curator/:slug', async (req, res) => {
   .sample-bar-wrap { height: 3px; background: #1e1e1e; border-radius: 2px; overflow: hidden; }
   .sample-bar-fill { height: 100%; background: #E8B84B; border-radius: 2px; transition: width 0.6s ease; }
   .sample-tally { font-size: 0.7rem; letter-spacing: 0.06em; display: flex; gap: 8px; opacity: 0.75; }
-  .sample-btns { display: flex; gap: 8px; }
-  .sample-btn {
-    flex: 1;
-    padding: 12px 0;
-    border-radius: 6px;
+  .sample-vote-cta {
+    width: 100%;
+    padding: 11px 0;
+    border-radius: 5px;
     border: 1px solid #2a2a2a;
-    background: #0a0a0a;
-    color: rgba(243,241,234,0.6);
+    background: transparent;
+    color: rgba(243,241,234,0.45);
     font-family: Georgia, "Times New Roman", serif;
-    font-size: 0.82rem;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    text-align: center;
     cursor: pointer;
-    transition: all 0.18s;
+    transition: border-color 0.2s, color 0.2s;
   }
-  .sample-btn.hit:hover, .sample-btn.hit.chosen  { background: rgba(232,184,75,0.12); border-color: #E8B84B; color: #E8B84B; }
-  .sample-btn.denied:hover, .sample-btn.denied.chosen { background: rgba(255,68,68,0.1); border-color: #ff4444; color: #ff6b6b; }
-  .sample-cta-note { font-size: 0.68rem; opacity: 0.3; text-align: center; letter-spacing: 0.04em; }
+  .sample-vote-cta:hover { border-color: #E8B84B; color: #E8B84B; }
 
   /* ── Form ── */
   form { width: 100%; display: flex; flex-direction: column; gap: 0.7rem; }
@@ -464,7 +465,9 @@ app.get('/follow/curator/:slug', async (req, res) => {
     ${month ? `<div class="meta">${month} Curator</div>` : ''}
   </div>
 
-  ${c.bio ? `<p class="bio">${c.bio.length > 200 ? c.bio.slice(0, 197) + '…' : c.bio}</p>` : ''}
+  <div class="founding-badge">Founding Curator</div>
+  ${c.monthly_theme ? `<div class="theme-label">${c.monthly_theme}</div>` : ''}
+  ${c.bio ? `<p class="bio">${c.bio.length > 220 ? c.bio.slice(0, 217) + '…' : c.bio}</p>` : ''}
   ${subCount > 0 ? `<div class="listener-count">${subCount} listener${subCount === 1 ? '' : 's'} following</div>` : ''}
 
   ${sampleCard}
@@ -475,6 +478,11 @@ app.get('/follow/curator/:slug', async (req, res) => {
     <div class="form-label">Your phone number</div>
     <input type="tel" id="phone" placeholder="+1 (555) 000-0000" autocomplete="tel" required>
     <button type="submit" id="submit-btn">Follow ${firstName}</button>
+    <div id="verify-step">
+      <div class="verify-hint">Enter the code we just texted you</div>
+      <input type="text" id="code" placeholder="6-digit code" maxlength="6" inputmode="numeric" autocomplete="one-time-code" style="width:100%;background:#0d0d0d;border:1px solid #2a2a2a;color:#f3f1ea;font-family:Georgia,'Times New Roman',serif;font-size:1.1rem;padding:.85rem 1rem;border-radius:4px;outline:none;letter-spacing:0.2em;text-align:center">
+      <button type="button" id="verify-btn" onclick="submitCode()" style="width:100%;background:#f3f1ea;color:#000;font-family:Georgia,'Times New Roman',serif;font-size:0.82rem;font-weight:bold;letter-spacing:0.14em;text-transform:uppercase;padding:.95rem;border:none;border-radius:4px;cursor:pointer;">Confirm</button>
+    </div>
     <div class="msg" id="msg"></div>
   </form>
 
@@ -482,21 +490,15 @@ app.get('/follow/curator/:slug', async (req, res) => {
 </div>
 
 <script>
-const form = document.getElementById('follow-form');
-const phoneInput = document.getElementById('phone');
-const submitBtn = document.getElementById('submit-btn');
-const msgEl = document.getElementById('msg');
-const CURATOR_ID = ${c.id};
+const form        = document.getElementById('follow-form');
+const phoneInput  = document.getElementById('phone');
+const submitBtn   = document.getElementById('submit-btn');
+const verifyStep  = document.getElementById('verify-step');
+const codeInput   = document.getElementById('code');
+const msgEl       = document.getElementById('msg');
+const CURATOR_ID  = ${c.id};
 
-function sampleVote(btn, label) {
-  document.querySelectorAll('.sample-btn').forEach(b => b.classList.remove('chosen'));
-  btn.classList.add('chosen');
-  setTimeout(() => {
-    btn.closest('.sample-card').querySelector('.sample-cta-note').textContent =
-      'Follow ' + '${firstName}' + ' to cast your real vote';
-  }, 300);
-}
-
+// Step 1 — send code
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const phone = phoneInput.value.trim();
@@ -508,19 +510,40 @@ form.addEventListener('submit', async (e) => {
   msgEl.textContent = '';
 
   try {
-    const r1 = await fetch('/api/send_code', {
+    const r = await fetch('/api/send_code', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone })
     });
-    const d1 = await r1.json();
-    if (!d1.ok) throw new Error(d1.error || 'Could not send code');
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Could not send code');
 
-    const code = prompt('Enter the 6-digit code we just sent you:');
-    if (!code) { submitBtn.disabled = false; submitBtn.textContent = 'Follow ${firstName}'; return; }
+    // Show inline verify step
+    submitBtn.style.display = 'none';
+    verifyStep.classList.add('visible');
+    setTimeout(() => codeInput.focus(), 50);
 
-    submitBtn.textContent = 'Verifying…';
+  } catch (err) {
+    msgEl.className = 'msg error';
+    msgEl.textContent = err.message;
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Follow ${firstName}';
+  }
+});
 
+// Step 2 — verify + subscribe
+async function submitCode() {
+  const phone = phoneInput.value.trim();
+  const code  = codeInput.value.trim();
+  if (!code) return;
+
+  const verifyBtn = document.getElementById('verify-btn');
+  verifyBtn.disabled = true;
+  verifyBtn.textContent = 'Verifying…';
+  msgEl.className = 'msg';
+  msgEl.textContent = '';
+
+  try {
     const r2 = await fetch('/api/verify_code', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -537,20 +560,23 @@ form.addEventListener('submit', async (e) => {
     const d3 = await r3.json();
     if (!d3.ok && d3.error !== 'already_subscribed') throw new Error(d3.error || 'Subscribe failed');
 
+    verifyStep.style.display = 'none';
+    phoneInput.disabled = true;
     msgEl.className = 'msg success';
     msgEl.textContent = d3.error === 'already_subscribed'
       ? "You're already following ${firstName}."
       : "You're in. ${firstName}'s next pick comes Friday.";
-    submitBtn.textContent = 'Following ✓';
-    form.querySelector('input').disabled = true;
 
   } catch (err) {
     msgEl.className = 'msg error';
     msgEl.textContent = err.message;
-    submitBtn.disabled = false;
-    submitBtn.textContent = 'Follow ${firstName}';
+    verifyBtn.disabled = false;
+    verifyBtn.textContent = 'Confirm';
   }
-});
+}
+
+// Allow pressing Enter in code field
+codeInput && codeInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); submitCode(); } });
 </script>
 </body>
 </html>`);
