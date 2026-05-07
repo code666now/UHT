@@ -554,7 +554,7 @@ input[type="tel"]:focus, input[type="text"]:focus { border-color: #E8B84B; }
 <!-- Content -->
 <div class="content">
 
-  ${c.bio ? `<p class="bio">${c.bio.length > 240 ? c.bio.slice(0, 237) + '…' : c.bio}</p>` : ''}
+  ${(c.statement || c.bio) ? `<p class="bio">${(c.statement || c.bio)}</p>` : ''}
 
   ${sampleCard}
 
