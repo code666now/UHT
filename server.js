@@ -302,19 +302,19 @@ app.get('/follow/curator/:slug', async (req, res) => {
       db.query(`SELECT title, artist, curator_note, week_number FROM curator_submissions WHERE curator_id=$1 ORDER BY submitted_at DESC LIMIT 1`, [c.id]),
       db.query(`
         SELECT
-          COUNT(*) FILTER (WHERE v.vote='hit')    AS hits,
-          COUNT(*) FILTER (WHERE v.vote='denied') AS denies
+          COUNT(*) FILTER (WHERE v.vote='mega_hit') AS mega_hits,
+          COUNT(*) FILTER (WHERE v.vote='hit')      AS hits,
+          COUNT(*) FILTER (WHERE v.vote='denied')   AS denies
         FROM curator_submissions cs
         JOIN curator_submission_votes v ON v.submission_id = cs.id
         WHERE cs.curator_id=$1
       `, [c.id])
     ]);
-    const subCount  = parseInt(countRes.rows[0].cnt) || 0;
+    const subCount   = parseInt(countRes.rows[0].cnt) || 0;
     const latestPick = pickRes.rows[0] || null;
-    const totalHits   = parseInt(voteRes.rows[0]?.hits   || 0);
-    const totalDenies = parseInt(voteRes.rows[0]?.denies || 0);
-    const totalVotes  = totalHits + totalDenies;
-    const hitPct = totalVotes > 0 ? Math.round(totalHits / totalVotes * 100) : null;
+    const megaHits   = parseInt(voteRes.rows[0]?.mega_hits || 0);
+    const totalHits  = parseInt(voteRes.rows[0]?.hits      || 0);
+    const totalDenies = parseInt(voteRes.rows[0]?.denies   || 0);
 
     // Build sample score card — read-only teaser, no vote buttons
     const sampleCard = latestPick ? `
@@ -326,17 +326,11 @@ app.get('/follow/curator/:slug', async (req, res) => {
       <div class="sample-artist">${latestPick.artist}</div>
       ${latestPick.curator_note ? `<div class="sample-note">"${latestPick.curator_note}"</div>` : ''}
     </div>
-    ${totalVotes > 0 ? `
-    <div class="sample-votes">
-      <div class="sample-bar-wrap">
-        <div class="sample-bar-fill" style="width:${hitPct}%"></div>
-      </div>
-      <div class="sample-tally">
-        <span style="color:#E8B84B">${totalHits} HIT</span>
-        <span style="opacity:.35">&middot;</span>
-        <span>${totalDenies} DENIED</span>
-      </div>
-    </div>` : ''}
+    <div class="sample-tally">
+      <div class="tally-item"><span class="tally-emoji">🔥</span><span class="tally-label">Mega Hit</span><span class="tally-count">${megaHits}</span></div>
+      <div class="tally-item"><span class="tally-emoji">🎯</span><span class="tally-label">Hit</span><span class="tally-count">${totalHits}</span></div>
+      <div class="tally-item"><span class="tally-emoji">💀</span><span class="tally-label">Denied</span><span class="tally-count">${totalDenies}</span></div>
+    </div>
     <button class="sample-vote-cta" onclick="document.getElementById('phone').focus();document.getElementById('phone').scrollIntoView({behavior:'smooth',block:'center'})">
       Follow ${firstName} — Curator of the Month
     </button>
@@ -477,6 +471,12 @@ body {
 .vote-bar-wrap { height: 2px; background: #1e1e1e; border-radius: 2px; overflow: hidden; }
 .vote-bar-fill { height: 100%; background: #E8B84B; border-radius: 2px; }
 .vote-tally { font-size: 0.68rem; letter-spacing: 0.05em; display: flex; gap: 8px; opacity: 0.6; }
+/* three-tier tally */
+.sample-tally { display: flex; gap: 6px; }
+.tally-item { flex: 1; background: #111; border: 1px solid #1e1e1e; border-radius: 5px; padding: 8px 4px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.tally-emoji { font-size: 1rem; }
+.tally-label { font-size: 0.55rem; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.35; }
+.tally-count { font-size: 1rem; color: #f3f1ea; }
 
 /* ── Form section ── */
 .form-section { display: flex; flex-direction: column; gap: 10px; }
