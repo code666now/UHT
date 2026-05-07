@@ -343,240 +343,307 @@ app.get('/follow/curator/:slug', async (req, res) => {
   </div>
 </div>` : '';
 
+    const dropSlug = c.name.toLowerCase().replace(/\s+/g, '-');
+
     res.setHeader('Content-Type', 'text/html');
     res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Follow ${c.name} — Undeniable Hit Theory</title>
-<meta property="og:title" content="Follow ${c.name} on UHT">
-<meta property="og:description" content="${firstName}'s weekly pick — vote HIT or DENIED.">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>${c.name} — UHT</title>
+<meta property="og:title" content="${c.name} · Undeniable Hits">
+<meta property="og:description" content="${firstName}'s weekly pick. Vote HIT or DENIED.">
+${headshot ? `<meta property="og:image" content="${headshot}">` : ''}
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: #000;
-    color: #f3f1ea;
-    font-family: Georgia, "Times New Roman", serif;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 2.5rem 1.25rem 4rem;
-  }
-  .wrap {
-    width: 100%;
-    max-width: 420px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1.5rem;
-    text-align: center;
-  }
-  .brand { font-size: 0.65rem; letter-spacing: 0.25em; text-transform: uppercase; opacity: 0.35; }
-  .avatar { width: 88px; height: 88px; border-radius: 50%; object-fit: cover; border: 2px solid #2a2a2a; }
-  .avatar-placeholder { width: 88px; height: 88px; border-radius: 50%; background: #111; border: 2px solid #2a2a2a; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; }
-  h1 { font-size: 1.65rem; font-weight: normal; }
-  .meta { font-size: 0.75rem; opacity: 0.4; letter-spacing: 0.08em; text-transform: uppercase; margin-top: 4px; }
-  .bio { font-size: 0.88rem; line-height: 1.7; opacity: 0.65; font-style: italic; max-width: 340px; }
-  .founding-badge { font-size: 0.62rem; letter-spacing: 0.22em; text-transform: uppercase; color: #E8B84B; border: 1px solid rgba(232,184,75,0.35); padding: 3px 10px; border-radius: 20px; }
-  .theme-label { font-size: 0.8rem; font-style: italic; opacity: 0.45; }
-  .listener-count { font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: #E8B84B; }
-  .divider { width: 32px; height: 1px; background: #1e1e1e; }
-  /* Inline verify step */
-  #verify-step { display: none; flex-direction: column; gap: 0.7rem; width: 100%; }
-  #verify-step.visible { display: flex; }
-  .verify-hint { font-size: 0.75rem; opacity: 0.45; text-align: center; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  /* ── Sample score card ── */
-  .sample-wrap { width: 100%; }
-  .sample-label { font-size: 0.62rem; letter-spacing: 0.2em; text-transform: uppercase; opacity: 0.3; margin-bottom: 10px; }
-  .sample-card {
-    background: #0d0d0d;
-    border: 1px solid #1e1e1e;
-    border-top: 2px solid #E8B84B;
-    border-radius: 6px;
-    padding: 20px 18px 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    text-align: left;
-  }
-  .sample-song {}
-  .sample-title { font-size: 1.2rem; line-height: 1.25; margin-bottom: 4px; }
-  .sample-artist { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.45; }
-  .sample-note { font-size: 0.82rem; font-style: italic; opacity: 0.5; margin-top: 8px; line-height: 1.55; }
-  .sample-votes { display: flex; flex-direction: column; gap: 6px; }
-  .sample-bar-wrap { height: 3px; background: #1e1e1e; border-radius: 2px; overflow: hidden; }
-  .sample-bar-fill { height: 100%; background: #E8B84B; border-radius: 2px; transition: width 0.6s ease; }
-  .sample-tally { font-size: 0.7rem; letter-spacing: 0.06em; display: flex; gap: 8px; opacity: 0.75; }
-  .sample-vote-cta {
-    width: 100%;
-    padding: 11px 0;
-    border-radius: 5px;
-    border: 1px solid #2a2a2a;
-    background: transparent;
-    color: rgba(243,241,234,0.45);
-    font-family: Georgia, "Times New Roman", serif;
-    font-size: 0.75rem;
-    letter-spacing: 0.06em;
-    text-align: center;
-    cursor: pointer;
-    transition: border-color 0.2s, color 0.2s;
-  }
-  .sample-vote-cta:hover { border-color: #E8B84B; color: #E8B84B; }
+body {
+  background: #000;
+  color: #f3f1ea;
+  font-family: Georgia, "Times New Roman", serif;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overscroll-behavior: none;
+}
 
-  /* ── Form ── */
-  form { width: 100%; display: flex; flex-direction: column; gap: 0.7rem; }
-  .form-label { font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.4; text-align: left; }
-  input[type="tel"] {
-    width: 100%; background: #0d0d0d; border: 1px solid #2a2a2a;
-    color: #f3f1ea; font-family: Georgia, "Times New Roman", serif;
-    font-size: 1rem; padding: 0.85rem 1rem; border-radius: 4px;
-    outline: none; transition: border-color 0.2s;
-  }
-  input[type="tel"]:focus { border-color: #E8B84B; }
-  button[type="submit"] {
-    width: 100%; background: #f3f1ea; color: #000;
-    font-family: Georgia, "Times New Roman", serif;
-    font-size: 0.82rem; font-weight: bold; letter-spacing: 0.14em;
-    text-transform: uppercase; padding: 0.95rem;
-    border: none; border-radius: 4px; cursor: pointer;
-    transition: background 0.15s, opacity 0.15s;
-  }
-  button[type="submit"]:hover { background: #fff; }
-  button[type="submit"]:disabled { opacity: 0.4; cursor: default; }
-  .msg { font-size: 0.85rem; min-height: 1.4em; }
-  .msg.success { color: #E8B84B; }
-  .msg.error   { color: #ff6b6b; }
-  .fine-print { font-size: 0.67rem; opacity: 0.25; line-height: 1.6; }
+/* ── Hero — full-bleed, 45vh, image fills it ── */
+.hero {
+  position: relative;
+  width: 100%;
+  height: 45vh;
+  min-height: 240px;
+  max-height: 360px;
+  overflow: hidden;
+  background: #111;
+}
+.hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  display: block;
+}
+.hero-placeholder {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 4rem; opacity: 0.2;
+}
+/* gradient overlay — name sits on top */
+.hero-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.7) 75%, #000 100%);
+}
+.hero-text {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 0 20px 20px;
+}
+.uht-wordmark {
+  font-size: 0.55rem;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  opacity: 0.4;
+  margin-bottom: 8px;
+}
+.hero-name {
+  font-size: clamp(2rem, 9vw, 3rem);
+  font-weight: normal;
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+.hero-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.badge-founding {
+  font-size: 0.58rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #E8B84B;
+  border: 1px solid rgba(232,184,75,0.4);
+  padding: 3px 9px;
+  border-radius: 20px;
+}
+.badge-month {
+  font-size: 0.58rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  opacity: 0.4;
+}
+
+/* ── Content below hero ── */
+.content {
+  padding: 20px 20px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 480px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* bio */
+.bio {
+  font-size: 0.88rem;
+  line-height: 1.75;
+  opacity: 0.55;
+  font-style: italic;
+}
+
+/* ── Pick card ── */
+.pick-card {
+  background: #0d0d0d;
+  border: 1px solid #1e1e1e;
+  border-top: 2px solid #E8B84B;
+  border-radius: 6px;
+  padding: 18px 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.pick-label {
+  font-size: 0.58rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  opacity: 0.3;
+}
+.pick-title { font-size: 1.25rem; line-height: 1.2; }
+.pick-artist { font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.4; margin-top: 3px; }
+.pick-note { font-size: 0.82rem; font-style: italic; opacity: 0.45; line-height: 1.6; margin-top: 2px; }
+.vote-bar-wrap { height: 2px; background: #1e1e1e; border-radius: 2px; overflow: hidden; }
+.vote-bar-fill { height: 100%; background: #E8B84B; border-radius: 2px; }
+.vote-tally { font-size: 0.68rem; letter-spacing: 0.05em; display: flex; gap: 8px; opacity: 0.6; }
+
+/* ── Form section ── */
+.form-section { display: flex; flex-direction: column; gap: 10px; }
+.listener-line {
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #E8B84B;
+  opacity: 0.8;
+  text-align: center;
+}
+input[type="tel"], input[type="text"] {
+  width: 100%;
+  background: #0d0d0d;
+  border: 1px solid #2a2a2a;
+  color: #f3f1ea;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1rem;
+  padding: 1rem;
+  border-radius: 6px;
+  outline: none;
+  transition: border-color 0.2s;
+  -webkit-appearance: none;
+}
+input[type="tel"]:focus, input[type="text"]:focus { border-color: #E8B84B; }
+.btn-primary {
+  width: 100%;
+  background: #f3f1ea;
+  color: #000;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 0.85rem;
+  font-weight: bold;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 1.05rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-primary:active { background: #ddd; }
+.btn-primary:disabled { opacity: 0.35; cursor: default; }
+
+/* verify step hidden by default */
+#verify-step { display: none; flex-direction: column; gap: 10px; }
+#verify-step.visible { display: flex; }
+.verify-hint { font-size: 0.72rem; opacity: 0.4; text-align: center; letter-spacing: 0.03em; }
+#code { letter-spacing: 0.25em; text-align: center; font-size: 1.2rem; }
+
+.msg { font-size: 0.85rem; min-height: 1.2em; text-align: center; }
+.msg.success { color: #E8B84B; }
+.msg.error   { color: #ff6b6b; }
+.fine-print { font-size: 0.65rem; opacity: 0.2; line-height: 1.6; text-align: center; }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="brand">Undeniable Hit Theory</div>
 
+<!-- Hero -->
+<div class="hero">
   ${headshot
-    ? `<img src="${headshot}" alt="${c.name}" class="avatar">`
-    : `<div class="avatar-placeholder">♪</div>`}
-
-  <div>
-    <h1>${c.name}</h1>
-    ${month ? `<div class="meta">${month} Curator</div>` : ''}
+    ? `<img src="${headshot}" alt="${c.name}" class="hero-img">`
+    : `<div class="hero-placeholder">♪</div>`}
+  <div class="hero-overlay"></div>
+  <div class="hero-text">
+    <div class="uht-wordmark">UHT</div>
+    <div class="hero-name">${c.name}</div>
+    <div class="hero-badges">
+      <span class="badge-founding">Founding Curator</span>
+      ${month ? `<span class="badge-month">${month}</span>` : ''}
+    </div>
   </div>
+</div>
 
-  <div class="founding-badge">Founding Curator</div>
-  ${c.monthly_theme ? `<div class="theme-label">${c.monthly_theme}</div>` : ''}
-  ${c.bio ? `<p class="bio">${c.bio.length > 220 ? c.bio.slice(0, 217) + '…' : c.bio}</p>` : ''}
-  ${subCount > 0 ? `<div class="listener-count">${subCount} listener${subCount === 1 ? '' : 's'} following</div>` : ''}
+<!-- Content -->
+<div class="content">
+
+  ${c.bio ? `<p class="bio">${c.bio.length > 240 ? c.bio.slice(0, 237) + '…' : c.bio}</p>` : ''}
 
   ${sampleCard}
 
-  <div class="divider"></div>
+  <div class="form-section">
+    ${subCount > 0 ? `<div class="listener-line">${subCount} listener${subCount === 1 ? '' : 's'} following</div>` : ''}
 
-  <form id="follow-form">
-    <div class="form-label">Your phone number</div>
-    <input type="tel" id="phone" placeholder="+1 (555) 000-0000" autocomplete="tel" required>
-    <button type="submit" id="submit-btn">Follow ${firstName}</button>
-    <div id="verify-step">
-      <div class="verify-hint">Enter the code we just texted you</div>
-      <input type="text" id="code" placeholder="6-digit code" maxlength="6" inputmode="numeric" autocomplete="one-time-code" style="width:100%;background:#0d0d0d;border:1px solid #2a2a2a;color:#f3f1ea;font-family:Georgia,'Times New Roman',serif;font-size:1.1rem;padding:.85rem 1rem;border-radius:4px;outline:none;letter-spacing:0.2em;text-align:center">
-      <button type="button" id="verify-btn" onclick="submitCode()" style="width:100%;background:#f3f1ea;color:#000;font-family:Georgia,'Times New Roman',serif;font-size:0.82rem;font-weight:bold;letter-spacing:0.14em;text-transform:uppercase;padding:.95rem;border:none;border-radius:4px;cursor:pointer;">Confirm</button>
-    </div>
-    <div class="msg" id="msg"></div>
-  </form>
+    <form id="follow-form">
+      <input type="tel" id="phone" placeholder="Your phone number" autocomplete="tel" required style="margin-bottom:2px">
+      <button type="submit" id="submit-btn" class="btn-primary">Listen &amp; Vote</button>
+      <div id="verify-step">
+        <div class="verify-hint">Enter the 6-digit code we just texted you</div>
+        <input type="text" id="code" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+        <button type="button" id="verify-btn" class="btn-primary" onclick="submitCode()">Confirm</button>
+      </div>
+      <div class="msg" id="msg"></div>
+    </form>
 
-  <p class="fine-print">One text per week. Reply STOP anytime.</p>
+    <p class="fine-print">One text per week. Reply STOP anytime.</p>
+  </div>
+
 </div>
 
 <script>
-const form        = document.getElementById('follow-form');
-const phoneInput  = document.getElementById('phone');
-const submitBtn   = document.getElementById('submit-btn');
-const verifyStep  = document.getElementById('verify-step');
-const codeInput   = document.getElementById('code');
-const msgEl       = document.getElementById('msg');
-const CURATOR_ID  = ${c.id};
+const form       = document.getElementById('follow-form');
+const phoneInput = document.getElementById('phone');
+const submitBtn  = document.getElementById('submit-btn');
+const verifyStep = document.getElementById('verify-step');
+const codeInput  = document.getElementById('code');
+const msgEl      = document.getElementById('msg');
+const CURATOR_ID = ${c.id};
+const DROP_SLUG  = '${dropSlug}';
+const BASE       = '${process.env.BASE_URL || ''}';
 
-// Step 1 — send code
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const phone = phoneInput.value.trim();
   if (!phone) return;
-
   submitBtn.disabled = true;
   submitBtn.textContent = 'Sending code…';
-  msgEl.className = 'msg';
-  msgEl.textContent = '';
-
+  msgEl.className = 'msg'; msgEl.textContent = '';
   try {
-    const r = await fetch('/api/send_code', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const d = await fetch('/api/send_code', {
+      method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ phone })
-    });
-    const d = await r.json();
+    }).then(r => r.json());
     if (!d.ok) throw new Error(d.error || 'Could not send code');
-
-    // Show inline verify step
     submitBtn.style.display = 'none';
     verifyStep.classList.add('visible');
-    setTimeout(() => codeInput.focus(), 50);
-
-  } catch (err) {
-    msgEl.className = 'msg error';
-    msgEl.textContent = err.message;
-    submitBtn.disabled = false;
-    submitBtn.textContent = 'Follow ${firstName}';
+    setTimeout(() => codeInput.focus(), 80);
+  } catch(err) {
+    msgEl.className = 'msg error'; msgEl.textContent = err.message;
+    submitBtn.disabled = false; submitBtn.textContent = 'Listen & Vote';
   }
 });
 
-// Step 2 — verify + subscribe
 async function submitCode() {
   const phone = phoneInput.value.trim();
   const code  = codeInput.value.trim();
   if (!code) return;
-
   const verifyBtn = document.getElementById('verify-btn');
-  verifyBtn.disabled = true;
-  verifyBtn.textContent = 'Verifying…';
-  msgEl.className = 'msg';
-  msgEl.textContent = '';
-
+  verifyBtn.disabled = true; verifyBtn.textContent = 'Verifying…';
+  msgEl.className = 'msg'; msgEl.textContent = '';
   try {
-    const r2 = await fetch('/api/verify_code', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const d2 = await fetch('/api/verify_code', {
+      method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ phone, code })
-    });
-    const d2 = await r2.json();
+    }).then(r => r.json());
     if (!d2.ok) throw new Error(d2.error || 'Invalid code');
 
-    const r3 = await fetch('/api/subscribe', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const d3 = await fetch('/api/subscribe', {
+      method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ phone, curator_id: CURATOR_ID, genre_id: null })
-    });
-    const d3 = await r3.json();
+    }).then(r => r.json());
     if (!d3.ok && d3.error !== 'already_subscribed') throw new Error(d3.error || 'Subscribe failed');
 
-    verifyStep.style.display = 'none';
-    phoneInput.disabled = true;
-    msgEl.className = 'msg success';
-    msgEl.textContent = d3.error === 'already_subscribed'
-      ? "You're already following ${firstName}."
-      : "You're in. ${firstName}'s next pick comes Friday.";
+    // Redirect to drop page — they're in, now let them vote
+    const token = d2.taste_token || d3.taste_token || '';
+    const dest = '/drop/curator/' + DROP_SLUG + (token ? '?t=' + token : '');
+    window.location.href = dest;
 
-  } catch (err) {
-    msgEl.className = 'msg error';
-    msgEl.textContent = err.message;
-    verifyBtn.disabled = false;
-    verifyBtn.textContent = 'Confirm';
+  } catch(err) {
+    msgEl.className = 'msg error'; msgEl.textContent = err.message;
+    verifyBtn.disabled = false; verifyBtn.textContent = 'Confirm';
   }
 }
 
-// Allow pressing Enter in code field
-codeInput && codeInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); submitCode(); } });
+codeInput && codeInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); submitCode(); }
+});
 </script>
 </body>
 </html>`);
@@ -2146,7 +2213,7 @@ app.post('/api/verify_code', async (req, res) => {
       }
     }
 
-    res.json({ ok: true, status: 'approved' });
+    res.json({ ok: true, status: 'approved', taste_token: user.taste_token || null });
   } catch (err) {
     console.error('verify_code error:', err.message);
     res.status(500).json({ error: err.message });
