@@ -181,6 +181,13 @@ try {
     runCuratorWelcome().catch(err => console.error('[CuratorScheduler] Welcome failed:', err.message));
   }, { scheduled: true, timezone: 'America/Los_Angeles' });
   console.log('[CuratorScheduler] Wednesday curator welcome scheduled for 9:00am PT every week.');
+
+  // One-time: May 8 2026 at 10:30am PT — Lucas Moon curator invite to 6 new genre subscribers
+  cron.schedule('30 10 8 5 *', () => {
+    console.log('[LucasInvite] Firing one-time Lucas Moon invite blast at 10:30am PT!');
+    runTargetedLucasInvite().catch(err => console.error('[LucasInvite] Failed:', err.message));
+  }, { scheduled: true, timezone: 'America/Los_Angeles' });
+  console.log('[LucasInvite] One-time Lucas Moon invite scheduled for 10:30am PT May 8 2026.');
 } catch (e) {
   console.log('[CuratorScheduler] node-cron not installed — manual drops only via POST /api/curator-drop/send');
 }
@@ -313,4 +320,52 @@ async function runCuratorWelcome() {
   return { sent, errors };
 }
 
-module.exports = { runCuratorDrop, buildCuratorMessage, runCuratorIntroBlast, runCuratorWelcome };
+// ── One-time: May 8 2026 Lucas Moon invite to 6 new genre subscribers ─────────
+async function runTargetedLucasInvite() {
+  const targetPhones = [
+    '+19014889810', // Samantha Rauen
+    '+15416225540', // Jade
+    '+17078631181', // Elaine Chow
+    '+19492578109', // Cassie Robertson
+    '+19169457174', // Lindsay
+    '+15109985312', // Es
+  ];
+
+  const { rows: curators } = await db.query(`SELECT * FROM curators WHERE id=1 LIMIT 1`);
+  if (!curators.length) { console.error('[LucasInvite] Curator not found'); return; }
+  const curator = curators[0];
+  const base = process.env.BASE_URL || 'https://undeniablehits.com';
+  const link = `${base}/follow/curator/lucasmoon`.replace('https://', '');
+  const introImg = curator.image_url?.startsWith('data:') ? `${base}/curator-image/${curator.id}` : curator.image_url;
+
+  let sent = 0, errors = 0;
+
+  for (const phone of targetPhones) {
+    try {
+      const { rows: users } = await db.query(`SELECT taste_token FROM users WHERE phone=$1 LIMIT 1`, [phone]);
+      const token = users[0]?.taste_token;
+      const personalLink = token ? `${link}?t=${token}` : link;
+
+      const body = `Meet Lucas Moon, our founding Curator of the Month. For May 2026 he sends you 4 picks with a theme of his choice. His second drop lands this Monday. Follow him to get it!\n${personalLink}`;
+
+      const msgParams = {
+        from: process.env.TWILIO_FROM || process.env.TWILIO_PHONE_NUMBER,
+        to:   phone,
+        body,
+      };
+      if (introImg) msgParams.mediaUrl = [introImg];
+
+      await client.messages.create(msgParams);
+      console.log(`[LucasInvite] ✓ Sent to ${phone}`);
+      sent++;
+    } catch(err) {
+      console.error(`[LucasInvite] ✗ Error for ${phone}:`, err.message);
+      errors++;
+    }
+  }
+
+  console.log(`[LucasInvite] Done. Sent: ${sent} | Errors: ${errors}`);
+  return { sent, errors };
+}
+
+module.exports = { runCuratorDrop, buildCuratorMessage, runCuratorIntroBlast, runCuratorWelcome, runTargetedLucasInvite };
