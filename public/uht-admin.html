@@ -1654,7 +1654,18 @@ async function loadGenreSubmissions() {
         </td>
         <td style="display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn ${s.is_community_pick ? 'btn-primary' : ''}" onclick="setCommunityPick(${s.id})" title="Feature on Community page">${s.is_community_pick ? '★ Community Pick' : 'Set Community Pick'}</button>
-          <button class="btn" onclick="openEditGenreSubmission(${s.id})">Edit</button>
+          <button class="btn"
+            data-id="${s.id}"
+            data-genre="${esc(s.genre||'')}"
+            data-title="${esc(s.title||'')}"
+            data-artist="${esc(s.artist||'')}"
+            data-week-title="${esc(s.week_title||'')}"
+            data-spotify="${esc(s.spotify_url||'')}"
+            data-youtube="${esc(s.youtube_url||'')}"
+            data-week="${s.week_number||1}"
+            data-drop-date="${s.drop_date ? s.drop_date.slice(0,10) : ''}"
+            data-note="${esc(s.note||'')}"
+            onclick="openEditGenreSubmission(this)">Edit</button>
           <button class="btn btn-danger" onclick="deleteGenreSubmission(${s.id},'${esc(s.title)} by ${esc(s.artist)}')">Delete</button>
         </td>
       </tr>
@@ -1730,29 +1741,28 @@ function autoGenreWeekTitle(prefix) {
   if (titleEl && _genreWeekTitles[genre]) titleEl.value = _genreWeekTitles[genre];
 }
 
-async function openEditGenreSubmission(id) {
-  const s = window._genreSubsMap[id];
-  if (!s) return toast('Could not find submission data.', 'err');
-  // Populate genre dropdown if not yet loaded
+async function openEditGenreSubmission(btn) {
+  const d = btn.dataset;
+  // Populate genre dropdown if empty
   const sel = document.getElementById('gse-genre');
-  if (!sel.options.length || (sel.options.length === 1 && sel.options[0].value === '')) {
+  if (sel.options.length <= 1) {
     try {
       const data = await api('GET', '/api/genres');
       sel.innerHTML = '<option value="">— Select Genre —</option>' +
         (data.genres||data).map(g => `<option value="${esc(g.name)}">${esc(g.name)}</option>`).join('');
     } catch(e) {}
   }
-  document.getElementById('gse-id').value         = s.id;
-  document.getElementById('gse-genre').value       = s.genre || '';
-  document.getElementById('gse-title').value       = s.title || '';
-  document.getElementById('gse-artist').value      = s.artist || '';
-  const autoTitle = _genreWeekTitles[(s.genre||'').toLowerCase()];
-  document.getElementById('gse-week-title').value  = s.week_title || autoTitle || '';
-  document.getElementById('gse-spotify').value     = s.spotify_url || '';
-  document.getElementById('gse-youtube').value     = s.youtube_url || '';
-  document.getElementById('gse-week').value        = s.week_number || 1;
-  document.getElementById('gse-drop-date').value   = s.drop_date ? s.drop_date.slice(0,10) : '';
-  document.getElementById('gse-note').value        = s.note || '';
+  document.getElementById('gse-id').value        = d.id;
+  document.getElementById('gse-genre').value     = d.genre;
+  document.getElementById('gse-title').value     = d.title;
+  document.getElementById('gse-artist').value    = d.artist;
+  const autoTitle = _genreWeekTitles[(d.genre||'').toLowerCase()];
+  document.getElementById('gse-week-title').value = d.weekTitle || autoTitle || '';
+  document.getElementById('gse-spotify').value   = d.spotify;
+  document.getElementById('gse-youtube').value   = d.youtube;
+  document.getElementById('gse-week').value      = d.week || 1;
+  document.getElementById('gse-drop-date').value = d.dropDate || '';
+  document.getElementById('gse-note').value      = d.note;
   openModal('genre-submission-edit');
 }
 
