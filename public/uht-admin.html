@@ -1625,6 +1625,8 @@ async function deleteCommunitySubmission(id, label) {
   } catch(e) { toast(e.message, 'err'); }
 }
 
+window._genreSubsMap = {};
+
 async function loadGenreSubmissions() {
   const tbody = document.getElementById('genre-submissions-tbody');
   try {
@@ -1634,6 +1636,8 @@ async function loadGenreSubmissions() {
       tbody.innerHTML = '<tr class="empty-row"><td colspan="9">No genre submissions yet.</td></tr>';
       return;
     }
+    window._genreSubsMap = {};
+    rows.forEach(s => { window._genreSubsMap[s.id] = s; });
     tbody.innerHTML = rows.map((s, i) => `
       <tr>
         <td style="color:var(--muted)">#${i+1}</td>
@@ -1650,7 +1654,7 @@ async function loadGenreSubmissions() {
         </td>
         <td style="display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn ${s.is_community_pick ? 'btn-primary' : ''}" onclick="setCommunityPick(${s.id})" title="Feature on Community page">${s.is_community_pick ? '★ Community Pick' : 'Set Community Pick'}</button>
-          <button class="btn" onclick="openEditGenreSubmission(this)" data-sub='${JSON.stringify(s).replace(/'/g,"&apos;")}'>Edit</button>
+          <button class="btn" onclick="openEditGenreSubmission(${s.id})">Edit</button>
           <button class="btn btn-danger" onclick="deleteGenreSubmission(${s.id},'${esc(s.title)} by ${esc(s.artist)}')">Delete</button>
         </td>
       </tr>
@@ -1713,8 +1717,9 @@ async function deleteGenreSubmission(id, label) {
   } catch(e) { toast(e.message, 'err'); }
 }
 
-async function openEditGenreSubmission(btn) {
-  const s = JSON.parse(btn.dataset.sub);
+async function openEditGenreSubmission(id) {
+  const s = window._genreSubsMap[id];
+  if (!s) return toast('Could not find submission data.', 'err');
   // Populate genre dropdown if not yet loaded
   const sel = document.getElementById('gse-genre');
   if (!sel.options.length || (sel.options.length === 1 && sel.options[0].value === '')) {
