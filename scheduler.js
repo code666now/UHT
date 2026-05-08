@@ -40,8 +40,9 @@ async function runWeeklyDrop() {
 
   for (const sub of subs) {
     try {
-      // Find the oldest song for this sub's genre/curator that hasn't
-      // been delivered to this user yet
+      // Find the NEWEST song for this sub's genre that hasn't been delivered yet.
+      // Newest-first ensures subscribers always get the current week — never
+      // catches up on old weeks and causes double texts for new subscribers.
       const { rows: songs } = await db.query(`
         SELECT s.*, g.name AS genre_name, c.name AS curator_name
         FROM songs s
@@ -53,7 +54,7 @@ async function runWeeklyDrop() {
         AND s.id NOT IN (
           SELECT song_id FROM deliveries WHERE user_id = $3
         )
-        ORDER BY s.created_at ASC
+        ORDER BY s.created_at DESC
         LIMIT 1
       `, [sub.genre_id, sub.curator_id, sub.user_id]);
 
