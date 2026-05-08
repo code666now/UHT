@@ -50,6 +50,7 @@ async function runCuratorDrop() {
                cs.week_number, cs.spotify_url, cs.youtube_url, cs.submitted_at
         FROM curator_submissions cs
         WHERE cs.curator_id = $1
+          AND COALESCE(cs.status, 'approved') = 'approved'
           AND NOT EXISTS (
             SELECT 1
             FROM songs s
@@ -112,10 +113,14 @@ async function runCuratorDrop() {
 
       await client.messages.create(msgParams);
 
-      // Record delivery
+      // Record delivery + stamp delivered_at on the submission
       await db.query(
         `INSERT INTO deliveries (user_id, song_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
         [sub.user_id, songId]
+      );
+      await db.query(
+        `UPDATE curator_submissions SET delivered_at=NOW() WHERE id=$1 AND delivered_at IS NULL`,
+        [cs.id]
       );
 
       console.log(`[CuratorDrop] ✓ Sent "${song.title}" by ${sub.curator_name} → ${sub.phone}`);
@@ -201,8 +206,9 @@ async function runCuratorIntroBlast(curatorId) {
   const link = base ? `${base}/drop/curator/${slug}`.replace('https://','') : null;
 
   // Get all active genre subscribers not already subscribed to this curator
+  // Include taste_token so each link is personalized
   const { rows: subs } = await db.query(`
-    SELECT DISTINCT u.phone
+    SELECT DISTINCT u.phone, u.taste_token
     FROM subscriptions s
     JOIN users u ON u.id = s.user_id
     WHERE s.is_active = TRUE
@@ -218,12 +224,14 @@ async function runCuratorIntroBlast(curatorId) {
     return { sent: 0, skipped: 0, errors: 0 };
   }
 
-  let body = `Meet ${curator.name}! Our founding 1st Curator of the Month - ${month}. His first pick drops Monday.\n${link || ''}`;
-
   let sent = 0, skipped = 0, errors = 0;
 
   for (const sub of subs) {
     try {
+      const tokenParam = sub.taste_token ? `?t=${sub.taste_token}` : '';
+      const personalLink = link ? `${link}${tokenParam}` : null;
+      const body = `${curator.name} is our Curator of the Month — ${month}. His second pick drops this Monday. Follow him to get it.\n${personalLink || ''}`;
+
       const msgParams = {
         from: process.env.TWILIO_FROM || process.env.TWILIO_PHONE_NUMBER,
         to:   sub.phone,
