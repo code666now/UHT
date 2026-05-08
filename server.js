@@ -899,10 +899,13 @@ function unlockCard() {
   }, 300);
 }
 
+let _sending = false;
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
+  if (_sending) return;
+  _sending = true;
   const phone = phoneInput.value.trim();
-  if (!phone) return;
+  if (!phone) { _sending = false; return; }
   submitBtn.disabled = true;
   submitBtn.textContent = 'Checking…';
   msgEl.className = 'msg'; msgEl.textContent = '';
@@ -932,13 +935,16 @@ form.addEventListener('submit', async (e) => {
   } catch(err) {
     msgEl.className = 'msg error'; msgEl.textContent = err.message;
     submitBtn.disabled = false; submitBtn.textContent = 'Join & Vote';
+    _sending = false;
   }
 });
 
 async function submitCode() {
+  if (_sending) return;
+  _sending = true;
   const phone = phoneInput.value.trim();
   const code  = codeInput.value.trim();
-  if (!code) return;
+  if (!code) { _sending = false; return; }
   verifyBtn.disabled = true; verifyBtn.textContent = 'Verifying…';
   msgEl.className = 'msg'; msgEl.textContent = '';
   try {
@@ -971,6 +977,7 @@ async function submitCode() {
   } catch(err) {
     msgEl.className = 'msg error'; msgEl.textContent = err.message;
     verifyBtn.disabled = false; verifyBtn.textContent = 'Enter Listening Circle';
+    _sending = false;
   }
 }
 
