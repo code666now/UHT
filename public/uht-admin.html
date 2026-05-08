@@ -571,7 +571,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <div class="modal-title">Add Genre Submission</div>
     <div class="field">
       <label>Genre *</label>
-      <select id="gs-genre"></select>
+      <select id="gs-genre" onchange="autoGenreWeekTitle('gs')"></select>
     </div>
     <div class="field-row">
       <div class="field"><label>Title *</label><input type="text" id="gs-title" placeholder="Song Title"></div>
@@ -599,7 +599,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <input type="hidden" id="gse-id">
     <div class="field">
       <label>Genre *</label>
-      <select id="gse-genre"></select>
+      <select id="gse-genre" onchange="autoGenreWeekTitle('gse')"></select>
     </div>
     <div class="field-row">
       <div class="field"><label>Title *</label><input type="text" id="gse-title" placeholder="Song Title"></div>
@@ -1717,6 +1717,19 @@ async function deleteGenreSubmission(id, label) {
   } catch(e) { toast(e.message, 'err'); }
 }
 
+const _genreWeekTitles = {
+  'rock':      'Undeniable Rock Hit of the Week',
+  'pop':       'Undeniable Pop Hit of the Week',
+  'punk':      'Undeniable Punk Hit of the Week',
+  'country':   'Undeniable Country Hit of the Week',
+  'community': 'Undeniable Community Hit of the Week',
+};
+function autoGenreWeekTitle(prefix) {
+  const genre = document.getElementById(`${prefix}-genre`).value.toLowerCase();
+  const titleEl = document.getElementById(`${prefix}-week-title`);
+  if (titleEl && _genreWeekTitles[genre]) titleEl.value = _genreWeekTitles[genre];
+}
+
 async function openEditGenreSubmission(id) {
   const s = window._genreSubsMap[id];
   if (!s) return toast('Could not find submission data.', 'err');
@@ -1733,7 +1746,8 @@ async function openEditGenreSubmission(id) {
   document.getElementById('gse-genre').value       = s.genre || '';
   document.getElementById('gse-title').value       = s.title || '';
   document.getElementById('gse-artist').value      = s.artist || '';
-  document.getElementById('gse-week-title').value  = s.week_title || '';
+  const autoTitle = _genreWeekTitles[(s.genre||'').toLowerCase()];
+  document.getElementById('gse-week-title').value  = s.week_title || autoTitle || '';
   document.getElementById('gse-spotify').value     = s.spotify_url || '';
   document.getElementById('gse-youtube').value     = s.youtube_url || '';
   document.getElementById('gse-week').value        = s.week_number || 1;
