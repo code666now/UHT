@@ -381,6 +381,15 @@ tr:hover td{background:rgba(255,255,255,.025)}
       <div class="section-header"><div class="section-title">Featured Drop</div></div>
       <div style="max-width:560px;padding:24px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)">
         <p style="font-size:12px;color:var(--muted);margin-bottom:20px;line-height:1.7">This controls the featured video section on the homepage. Paste a YouTube URL and it will embed automatically.</p>
+        <div class="field"><label>Genre</label>
+          <select id="fd-genre" style="width:100%;padding:10px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px">
+            <option value="rock">🎸 Rock</option>
+            <option value="pop">✨ Pop</option>
+            <option value="country">🤠 Country</option>
+            <option value="punk">⚡ Punk</option>
+            <option value="community">🃏 Community</option>
+          </select>
+        </div>
         <div class="field"><label>YouTube URL *</label><input type="url" id="fd-youtube" placeholder="https://youtube.com/watch?v=..." style="width:100%"></div>
         <div class="field"><label>Spotify URL <span style="color:var(--muted)">(optional)</span></label><input type="url" id="fd-spotify" placeholder="https://open.spotify.com/track/..." style="width:100%"></div>
         <div class="field"><label>Artist</label><input type="text" id="fd-artist" placeholder="Guns N' Roses" style="width:100%"></div>
@@ -579,6 +588,34 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('genre-submission-add')">Cancel</button>
       <button class="btn btn-primary" onclick="submitGenreSubmission()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Genre Submission Modal -->
+<div class="modal-overlay" id="modal-genre-submission-edit">
+  <div class="modal">
+    <div class="modal-title">Edit Genre Submission</div>
+    <input type="hidden" id="gse-id">
+    <div class="field">
+      <label>Genre *</label>
+      <select id="gse-genre"></select>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Title *</label><input type="text" id="gse-title" placeholder="Song Title"></div>
+      <div class="field"><label>Artist *</label><input type="text" id="gse-artist" placeholder="Artist Name"></div>
+    </div>
+    <div class="field"><label>Week Title</label><input type="text" id="gse-week-title" placeholder="e.g. Summer Vibes"></div>
+    <div class="field"><label>Spotify URL</label><input type="text" id="gse-spotify" placeholder="https://open.spotify.com/track/..."></div>
+    <div class="field"><label>YouTube URL</label><input type="text" id="gse-youtube" placeholder="https://youtube.com/watch?v=..."></div>
+    <div class="field-row">
+      <div class="field"><label>Week #</label><input type="number" id="gse-week" value="1" min="1" max="4"></div>
+      <div class="field"><label>Drop Date</label><input type="date" id="gse-drop-date"></div>
+    </div>
+    <div class="field"><label>Note</label><textarea id="gse-note" placeholder="Why this song?"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('genre-submission-edit')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditGenreSubmission()">Save Changes</button>
     </div>
   </div>
 </div>
@@ -833,6 +870,9 @@ async function loadCurators() {
           <td style="display:flex;gap:6px;flex-wrap:wrap">
             <button class="btn" style="color:#E8B84B;border-color:rgba(232,184,75,0.35)" onclick="featureCurator(${c.id})">📣 Feature</button>
             <button class="btn" onclick="openEditCurator(${c.id})">Edit</button>
+            <button class="btn" style="color:#7DF9FF;border-color:rgba(125,249,255,0.3)" onclick="copyFollowLink('${esc(c.name)}')">🔗 Copy Link</button>
+            <button class="btn" style="color:#aaa;border-color:rgba(255,255,255,0.15)" onclick="previewFollowPage('${esc(c.name)}')">👁 Preview</button>
+            ${c.submit_token ? `<button class="btn" style="color:#E8B84B;border-color:rgba(232,184,75,0.3)" onclick="copySubmitLink('${esc(c.submit_token)}')">📝 Submit Link</button>` : ''}
             <button class="btn btn-danger" style="opacity:.5" onclick="resetCuratorDrops(${c.id},'${esc(c.name)}')">Reset Drops</button>
             <button class="btn btn-danger" onclick="deleteCurator(${c.id},'${esc(c.name)}')">Delete</button>
           </td>
@@ -1080,6 +1120,39 @@ async function sendFeatureBlast() {
     btn.disabled = false;
     btn.textContent = 'Send to All Subscribers';
   }
+}
+
+function curatorSlug(name) {
+  return name.toLowerCase().replace(/\s+/g, '');
+}
+
+function followBase() {
+  return (API === 'http://localhost:3000') ? 'https://undeniablehits.com' : API;
+}
+
+async function copyFollowLink(name) {
+  const url = `${followBase()}/follow/curator/${curatorSlug(name)}`;
+  try {
+    await navigator.clipboard.writeText(url);
+    toast(`Link copied — ${url}`);
+  } catch(e) {
+    prompt('Copy this link:', url);
+  }
+}
+
+async function copySubmitLink(token) {
+  const url = `${followBase()}/submit/curator/${token}`;
+  try {
+    await navigator.clipboard.writeText(url);
+    toast('Submit link copied — send this to the curator.');
+  } catch(e) {
+    prompt('Copy this submit link:', url);
+  }
+}
+
+function previewFollowPage(name) {
+  const url = `${followBase()}/follow/curator/${curatorSlug(name)}`;
+  window.open(url, '_blank');
 }
 
 let _editCuratorImgBase64 = null;
@@ -1423,23 +1496,30 @@ async function loadSubmissions() {
       tbody.innerHTML = '<tr class="empty-row"><td colspan="9">No submissions yet.</td></tr>';
       return;
     }
-    tbody.innerHTML = data.submissions.map((s,i) => `
-      <tr>
+    const pending  = data.submissions.filter(s => s.status === 'pending');
+    const approved = data.submissions.filter(s => s.status !== 'pending');
+    const renderRow = (s, i) => `
+      <tr style="${s.status === 'pending' ? 'background:rgba(232,184,75,0.06);' : ''}">
         <td style="color:var(--muted)">#${i+1}</td>
         <td>${esc(s.curator_name||'—')}</td>
         <td><strong>${esc(s.title)}</strong></td>
         <td>${esc(s.artist)}</td>
         <td>${esc(s.theme||'—')}</td>
         <td style="color:var(--muted)">Wk ${s.week_number||1}</td>
-        <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)">${esc(s.curator_note||'—')}</td>
+        <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)">${esc(s.curator_note||'—')}</td>
         <td style="display:flex;gap:8px">
           ${s.spotify_url ? `<a href="${esc(s.spotify_url)}" target="_blank" style="color:var(--green);font-size:11px">♫ Spotify</a>` : ''}
           ${s.youtube_url ? `<a href="${esc(s.youtube_url)}" target="_blank" style="color:var(--accent);font-size:11px">▶ YT</a>` : ''}
           ${!s.spotify_url && !s.youtube_url ? '<span style="color:var(--muted)">—</span>' : ''}
         </td>
-        <td><button class="btn btn-danger" onclick="deleteSubmission(${s.id},'${esc(s.title)} by ${esc(s.artist)}')">Delete</button></td>
+        <td style="display:flex;gap:6px">
+          ${s.status === 'pending' ? `<button class="btn" style="color:#E8B84B;border-color:rgba(232,184,75,0.4)" onclick="approveSubmission(${s.id})">✓ Approve</button>` : '<span style="color:var(--muted);font-size:11px">Approved</span>'}
+          <button class="btn btn-danger" onclick="deleteSubmission(${s.id},'${esc(s.title)} by ${esc(s.artist)}')">Delete</button>
+        </td>
       </tr>
-    `).join('');
+    `;
+    tbody.innerHTML = [...pending, ...approved].map(renderRow).join('') ||
+      '<tr class="empty-row"><td colspan="9">No submissions yet.</td></tr>';
   } catch(e) {
     tbody.innerHTML = `<tr class="empty-row"><td colspan="9">${esc(e.message)}</td></tr>`;
     toast(e.message, 'err');
@@ -1469,6 +1549,14 @@ async function submitSubmission() {
       const el = document.getElementById(id); if(el) el.value = '';
     });
     document.getElementById('sub-week').value = '1';
+    loadSubmissions();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+async function approveSubmission(id) {
+  try {
+    await api('PATCH', `/api/curator-submissions/${id}/approve`);
+    toast('Pick approved — goes out next Monday drop.', 'ok');
     loadSubmissions();
   } catch(e) { toast(e.message, 'err'); }
 }
@@ -1562,6 +1650,7 @@ async function loadGenreSubmissions() {
         </td>
         <td style="display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn ${s.is_community_pick ? 'btn-primary' : ''}" onclick="setCommunityPick(${s.id})" title="Feature on Community page">${s.is_community_pick ? '★ Community Pick' : 'Set Community Pick'}</button>
+          <button class="btn" onclick="openEditGenreSubmission(this)" data-sub='${JSON.stringify(s).replace(/'/g,"&apos;")}'>Edit</button>
           <button class="btn btn-danger" onclick="deleteGenreSubmission(${s.id},'${esc(s.title)} by ${esc(s.artist)}')">Delete</button>
         </td>
       </tr>
@@ -1620,6 +1709,52 @@ async function deleteGenreSubmission(id, label) {
   try {
     await api('DELETE', `/api/genre-submissions/${id}`);
     toast('Deleted.', 'ok');
+    loadGenreSubmissions();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+async function openEditGenreSubmission(btn) {
+  const s = JSON.parse(btn.dataset.sub);
+  // Populate genre dropdown if not yet loaded
+  const sel = document.getElementById('gse-genre');
+  if (!sel.options.length || (sel.options.length === 1 && sel.options[0].value === '')) {
+    try {
+      const data = await api('GET', '/api/genres');
+      sel.innerHTML = '<option value="">— Select Genre —</option>' +
+        (data.genres||data).map(g => `<option value="${esc(g.name)}">${esc(g.name)}</option>`).join('');
+    } catch(e) {}
+  }
+  document.getElementById('gse-id').value         = s.id;
+  document.getElementById('gse-genre').value       = s.genre || '';
+  document.getElementById('gse-title').value       = s.title || '';
+  document.getElementById('gse-artist').value      = s.artist || '';
+  document.getElementById('gse-week-title').value  = s.week_title || '';
+  document.getElementById('gse-spotify').value     = s.spotify_url || '';
+  document.getElementById('gse-youtube').value     = s.youtube_url || '';
+  document.getElementById('gse-week').value        = s.week_number || 1;
+  document.getElementById('gse-drop-date').value   = s.drop_date ? s.drop_date.slice(0,10) : '';
+  document.getElementById('gse-note').value        = s.note || '';
+  openModal('genre-submission-edit');
+}
+
+async function saveEditGenreSubmission() {
+  const id         = document.getElementById('gse-id').value;
+  const genre      = document.getElementById('gse-genre').value;
+  const title      = document.getElementById('gse-title').value.trim();
+  const artist     = document.getElementById('gse-artist').value.trim();
+  const week_title = document.getElementById('gse-week-title').value.trim();
+  const spotify_url= document.getElementById('gse-spotify').value.trim();
+  const youtube_url= document.getElementById('gse-youtube').value.trim();
+  const week_number= parseInt(document.getElementById('gse-week').value) || 1;
+  const drop_date  = document.getElementById('gse-drop-date').value || null;
+  const note       = document.getElementById('gse-note').value.trim();
+  if (!genre || !title || !artist) return toast('Genre, title and artist required.', 'err');
+  try {
+    await api('PATCH', `/api/genre-submissions/${id}`, {
+      genre, title, artist, week_title, spotify_url, youtube_url, week_number, drop_date, note
+    });
+    toast('Submission updated.', 'ok');
+    closeModal('genre-submission-edit');
     loadGenreSubmissions();
   } catch(e) { toast(e.message, 'err'); }
 }
@@ -1812,6 +1947,7 @@ function normalizePhone(raw) {
 async function loadFeaturedDrop() {
   try {
     const data = await api('GET', '/api/featured-drop');
+    if (data.genre)       document.getElementById('fd-genre').value   = data.genre || 'rock';
     if (data.youtube_url) document.getElementById('fd-youtube').value = data.youtube_url || '';
     if (data.spotify_url) document.getElementById('fd-spotify').value = data.spotify_url || '';
     if (data.artist)      document.getElementById('fd-artist').value  = data.artist || '';
@@ -1822,6 +1958,7 @@ async function loadFeaturedDrop() {
 }
 
 async function saveFeaturedDrop() {
+  const genre        = document.getElementById('fd-genre').value;
   const youtube_url  = document.getElementById('fd-youtube').value.trim();
   const spotify_url  = document.getElementById('fd-spotify').value.trim();
   const artist       = document.getElementById('fd-artist').value.trim();
@@ -1831,7 +1968,7 @@ async function saveFeaturedDrop() {
   const st = document.getElementById('fd-status');
   st.textContent = 'Saving…';
   try {
-    await api('PUT', '/api/featured-drop', { youtube_url, spotify_url: spotify_url||null, artist, title, curator_note });
+    await api('PUT', '/api/featured-drop', { genre, youtube_url, spotify_url: spotify_url||null, artist, title, curator_note });
     st.style.color = 'var(--green)';
     st.textContent = '✓ Published — homepage updated.';
     toast('Featured drop saved!', 'ok');
