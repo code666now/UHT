@@ -2830,6 +2830,18 @@ app.post('/api/genre-submissions', async (req, res) => {
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
       [genre, week_title||null, title, artist, note||null, youtube_url||null, spotify_url||null, week_number||1, drop_date||null]
     );
+    // Auto-sync to songs table so the drop cron can pick it up
+    const { rows: genreRows } = await db.query(
+      `SELECT id FROM genres WHERE LOWER(name) = LOWER($1) LIMIT 1`, [genre]
+    );
+    if (genreRows.length) {
+      await db.query(
+        `INSERT INTO songs (title, artist, genre_id, url, youtube_url)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT DO NOTHING`,
+        [title, artist, genreRows[0].id, spotify_url||null, youtube_url||null]
+      );
+    }
     res.json({ submission: rows[0] });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -2845,6 +2857,20 @@ app.patch('/api/genre-submissions/:id', async (req, res) => {
       [genre, week_title||null, title, artist, note||null, youtube_url||null, spotify_url||null, week_number||1, drop_date||null, req.params.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Not found.' });
+    // Auto-sync to songs table
+    if (genre) {
+      const { rows: genreRows } = await db.query(
+        `SELECT id FROM genres WHERE LOWER(name) = LOWER($1) LIMIT 1`, [genre]
+      );
+      if (genreRows.length) {
+        await db.query(
+          `INSERT INTO songs (title, artist, genre_id, url, youtube_url)
+           VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT DO NOTHING`,
+          [title, artist, genreRows[0].id, spotify_url||null, youtube_url||null]
+        );
+      }
+    }
     res.json({ submission: rows[0] });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
