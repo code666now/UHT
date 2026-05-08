@@ -107,8 +107,53 @@ db.query(`ALTER TABLE curator_submission_votes ADD COLUMN IF NOT EXISTS user_id 
 // Curator phone + welcome tracking columns
 db.query(`ALTER TABLE curators ADD COLUMN IF NOT EXISTS phone TEXT`)
   .then(() => db.query(`ALTER TABLE curators ADD COLUMN IF NOT EXISTS welcome_sent_at TIMESTAMP`))
-  .then(() => console.log('[Migration] curators.phone + welcome_sent_at ready'))
-  .catch(e => console.error('[Migration] curators phone/welcome:', e.message));
+  .then(() => db.query(`ALTER TABLE curators ADD COLUMN IF NOT EXISTS submit_token TEXT`))
+  .then(() => db.query(`ALTER TABLE curator_submissions ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'approved'`))
+  .then(() => db.query(`ALTER TABLE curator_submissions ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMPTZ`))
+  // Backfill submit_token for any curators that don't have one yet
+  .then(async () => {
+    const { rows } = await db.query(`SELECT id FROM curators WHERE submit_token IS NULL`);
+    for (const c of rows) {
+      const token = crypto.randomBytes(12).toString('hex');
+      await db.query(`UPDATE curators SET submit_token=$1 WHERE id=$2`, [token, c.id]);
+    }
+    if (rows.length) console.log(`[Migration] Generated submit_token for ${rows.length} curator(s)`);
+  })
+  .then(() => console.log('[Migration] curators.phone + welcome_sent_at + submit_token ready'))
+  // Backfill: stamp delivered_at ONLY on the earliest week per curator (week 1 = already sent).
+  // Higher weeks stay NULL until the Monday cron fires for them.
+  .then(async () => {
+    const { rows } = await db.query(`
+      UPDATE curator_submissions cs
+      SET delivered_at = cs.submitted_at
+      FROM (
+        SELECT DISTINCT ON (curator_id) id
+        FROM curator_submissions
+        WHERE COALESCE(status,'approved') = 'approved'
+        ORDER BY curator_id, week_number ASC, submitted_at ASC
+      ) earliest
+      WHERE cs.id = earliest.id
+        AND cs.delivered_at IS NULL
+        AND cs.submitted_at < NOW() - INTERVAL '1 day'
+      RETURNING cs.id, cs.title, cs.artist, cs.week_number
+    `);
+    if (rows.length) console.log(`[Migration] Backfilled delivered_at for week-1 picks:`, rows.map(r=>r.title).join(', '));
+    // Clear any delivered_at on week 2+ that got accidentally stamped
+    const { rowCount } = await db.query(`
+      UPDATE curator_submissions
+      SET delivered_at = NULL
+      WHERE COALESCE(status,'approved') = 'approved'
+        AND week_number > 1
+        AND delivered_at IS NOT NULL
+        AND id NOT IN (
+          SELECT DISTINCT ON (curator_id) id FROM curator_submissions
+          WHERE COALESCE(status,'approved')='approved'
+          ORDER BY curator_id, week_number ASC
+        )
+    `);
+    if (rowCount) console.log(`[Migration] Cleared delivered_at from ${rowCount} future week submission(s)`);
+  })
+  .catch(e => console.error('[Migration] curators phone/welcome/submit_token:', e.message));
 
 // Member identity columns (safe — IF NOT EXISTS)
 db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS member_number INTEGER`)
@@ -231,16 +276,6 @@ app.get('/health', (req, res) => {
   res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may5-v12' });
 });
 
-// ── GET /api/debug-token — temporary token lookup test ───────────────────────
-app.get('/api/debug-token', async (req, res) => {
-  const t = req.query.t || '';
-  try {
-    const { rows } = await db.query('SELECT id, name, member_number, member_tier, taste_token FROM users WHERE taste_token=$1 LIMIT 1', [t]);
-    // Also return all users (masked) so we can see what tokens were assigned
-    const { rows: all } = await db.query('SELECT id, name, LEFT(phone,7) AS phone_prefix, member_number, taste_token, share_slug FROM users ORDER BY id');
-    res.json({ token: t, found: rows.length > 0, user: rows[0] || null, all_users: all });
-  } catch(e) { res.json({ error: e.message }); }
-});
 
 // ── POST /api/admin/backfill-members — run member backfill on Railway DB ─────
 app.post('/api/admin/backfill-members', requireAdmin, async (req, res) => {
@@ -281,9 +316,128 @@ app.post('/api/admin/backfill-members', requireAdmin, async (req, res) => {
 // Share links point here (never includes taste_token). ?ref= is for analytics only.
 app.get('/join', (req, res) => res.redirect('/'));
 
-// ── GET /follow/curator/:slug — curator follow landing page ───────────────────
-// A clean subscribe-to-curator page. People tap the link, enter their phone,
-// and they're subscribed to that curator's weekly picks. No genre step.
+// ── GET /submit/curator/:token — curator weekly pick submission form ──────────
+app.get('/submit/curator/:token', async (req, res) => {
+  try {
+    const { rows } = await db.query(
+      `SELECT id, name, curator_month FROM curators WHERE submit_token=$1 LIMIT 1`,
+      [req.params.token]
+    );
+    if (!rows.length) return res.status(404).send('Invalid link.');
+    const c = rows[0];
+    const firstName = c.name.split(' ')[0];
+    const { rows: wRows } = await db.query(
+      `SELECT COALESCE(MAX(week_number),0)+1 AS next_week FROM curator_submissions WHERE curator_id=$1`,
+      [c.id]
+    );
+    const nextWeek = wRows[0].next_week;
+    res.setHeader('Content-Type', 'text/html');
+    res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Submit Your Pick — UHT</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:#000;color:#f3f1ea;font-family:Georgia,"Times New Roman",serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:40px 20px 60px;}
+.wrap{width:100%;max-width:440px;display:flex;flex-direction:column;gap:20px;}
+.eyebrow{font-size:0.5rem;letter-spacing:0.4em;text-transform:uppercase;opacity:0.3;}
+h1{font-size:1.6rem;font-weight:normal;line-height:1.2;}
+.sub{font-size:0.82rem;opacity:0.4;font-style:italic;}
+.field{display:flex;flex-direction:column;gap:6px;}
+label{font-size:0.62rem;letter-spacing:0.15em;text-transform:uppercase;opacity:0.4;}
+input,textarea{background:#0d0d0d;border:1px solid #222;color:#f3f1ea;font-family:Georgia,"Times New Roman",serif;font-size:1rem;padding:0.9rem 1rem;border-radius:6px;outline:none;width:100%;-webkit-appearance:none;transition:border-color 0.2s;}
+input:focus,textarea:focus{border-color:#E8B84B;}
+textarea{resize:vertical;min-height:90px;line-height:1.6;}
+.btn{width:100%;background:#f3f1ea;color:#000;font-family:Georgia,"Times New Roman",serif;font-size:0.82rem;font-weight:bold;letter-spacing:0.16em;text-transform:uppercase;padding:1rem;border:none;border-radius:6px;cursor:pointer;transition:opacity 0.15s;}
+.btn:disabled{opacity:0.3;cursor:default;}
+.msg{font-size:0.82rem;text-align:center;min-height:1em;}
+.msg.ok{color:#E8B84B;} .msg.err{color:#ff6b6b;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <div class="eyebrow">Undeniable Hits · Week ${nextWeek} Submission</div>
+    <h1 style="margin-top:10px">${firstName}, what's your Week ${nextWeek} pick?</h1>
+    <p class="sub" style="margin-top:6px">${c.curator_month || 'This month'} — drops to your followers Monday morning.</p>
+  </div>
+  <div class="field"><label>Song Title *</label><input type="text" id="title" placeholder="Song name" required></div>
+  <div class="field"><label>Artist *</label><input type="text" id="artist" placeholder="Artist name" required></div>
+  <div class="field"><label>Spotify URL</label><input type="url" id="spotify" placeholder="https://open.spotify.com/track/…"></div>
+  <div class="field"><label>YouTube URL</label><input type="url" id="youtube" placeholder="https://youtube.com/watch?v=…"></div>
+  <div class="field"><label>Your Note <span style="opacity:.4;font-weight:normal;text-transform:none;letter-spacing:0">— why this song?</span></label><textarea id="note" placeholder="Tell them why this one…"></textarea></div>
+  <button class="btn" id="submit-btn" onclick="submitPick()">Submit Your Hit</button>
+  <div class="msg" id="msg"></div>
+</div>
+<script>
+async function submitPick() {
+  const title   = document.getElementById('title').value.trim();
+  const artist  = document.getElementById('artist').value.trim();
+  const spotify = document.getElementById('spotify').value.trim();
+  const youtube = document.getElementById('youtube').value.trim();
+  const note    = document.getElementById('note').value.trim();
+  const btn     = document.getElementById('submit-btn');
+  const msg     = document.getElementById('msg');
+  if (!title || !artist) { msg.className='msg err'; msg.textContent='Song title and artist are required.'; return; }
+  btn.disabled = true; btn.textContent = 'Submitting…';
+  msg.className='msg'; msg.textContent='';
+  try {
+    const r = await fetch('/api/curator-submit/${req.params.token}', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ title, artist, spotify_url: spotify||null, youtube_url: youtube||null, curator_note: note||null })
+    }).then(r=>r.json());
+    if (!r.ok) throw new Error(r.error || 'Submission failed');
+    msg.className='msg ok'; msg.textContent='Pick submitted. It goes out Monday.';
+    btn.textContent = 'Submitted';
+  } catch(e) {
+    msg.className='msg err'; msg.textContent=e.message;
+    btn.disabled=false; btn.textContent='Submit Your Hit';
+  }
+}
+</script>
+</body>
+</html>`);
+  } catch(e) {
+    console.error('[submit/curator]', e.message);
+    res.status(500).send('Server error');
+  }
+});
+
+// ── POST /api/curator-submit/:token — save pending submission ─────────────────
+app.post('/api/curator-submit/:token', async (req, res) => {
+  try {
+    const { rows } = await db.query(
+      `SELECT id FROM curators WHERE submit_token=$1 LIMIT 1`, [req.params.token]
+    );
+    if (!rows.length) return res.status(403).json({ error: 'Invalid token' });
+    const curatorId = rows[0].id;
+    const { title, artist, spotify_url, youtube_url, curator_note } = req.body;
+    if (!title || !artist) return res.status(400).json({ error: 'title and artist required' });
+
+    // Get next week number for this curator
+    const { rows: wRows } = await db.query(
+      `SELECT COALESCE(MAX(week_number),0)+1 AS next_week FROM curator_submissions WHERE curator_id=$1`,
+      [curatorId]
+    );
+    const weekNumber = wRows[0].next_week;
+
+    await db.query(
+      `INSERT INTO curator_submissions (curator_id, title, artist, spotify_url, youtube_url, curator_note, week_number, status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,'pending')`,
+      [curatorId, title, artist, spotify_url||null, youtube_url||null, curator_note||null, weekNumber]
+    );
+    console.log(`[CuratorSubmit] Pending pick from curator #${curatorId}: "${title}" by ${artist}`);
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('[curator-submit]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── GET /follow/curator/:slug — curator invitation landing page ───────────────
+// Cinematic, mobile-first invitation page. Three-state: invite → verify → success+vote.
 app.get('/follow/curator/:slug', async (req, res) => {
   const slug = req.params.slug.toLowerCase().replace(/\s+/g, '');
   try {
@@ -296,10 +450,17 @@ app.get('/follow/curator/:slug', async (req, res) => {
     const base = process.env.BASE_URL || '';
     const headshot = c.image_url?.startsWith('data:') ? `${base}/curator-image/${c.id}` : (c.image_url || '');
     const month = c.curator_month || '';
+    const dropSlug = slug;
 
     const [countRes, pickRes, voteRes] = await Promise.all([
       db.query(`SELECT COUNT(*) AS cnt FROM subscriptions WHERE curator_id=$1 AND is_active=TRUE`, [c.id]),
-      db.query(`SELECT title, artist, curator_note, week_number FROM curator_submissions WHERE curator_id=$1 ORDER BY submitted_at DESC LIMIT 1`, [c.id]),
+      db.query(`
+        SELECT cs.id, cs.title, cs.artist, cs.curator_note, cs.spotify_url, cs.youtube_url
+        FROM curator_submissions cs
+        WHERE cs.curator_id=$1
+          AND COALESCE(cs.status,'approved')='approved'
+          AND cs.delivered_at IS NOT NULL
+        ORDER BY cs.week_number DESC, cs.submitted_at DESC LIMIT 1`, [c.id]),
       db.query(`
         SELECT
           COUNT(*) FILTER (WHERE v.vote='mega_hit') AS mega_hits,
@@ -310,34 +471,15 @@ app.get('/follow/curator/:slug', async (req, res) => {
         WHERE cs.curator_id=$1
       `, [c.id])
     ]);
-    const subCount   = parseInt(countRes.rows[0].cnt) || 0;
-    const latestPick = pickRes.rows[0] || null;
-    const megaHits   = parseInt(voteRes.rows[0]?.mega_hits || 0);
-    const totalHits  = parseInt(voteRes.rows[0]?.hits      || 0);
-    const totalDenies = parseInt(voteRes.rows[0]?.denies   || 0);
 
-    // Build sample score card — read-only teaser, no vote buttons
-    const sampleCard = latestPick ? `
-<div class="sample-wrap">
-  <div class="sample-label">This week's pick</div>
-  <div class="sample-card">
-    <div class="sample-song">
-      <div class="sample-title">${latestPick.title}</div>
-      <div class="sample-artist">${latestPick.artist}</div>
-      ${latestPick.curator_note ? `<div class="sample-note">"${latestPick.curator_note}"</div>` : ''}
-    </div>
-    <div class="sample-tally">
-      <div class="tally-item"><span class="tally-emoji">🔥</span><span class="tally-label">Mega Hit</span><span class="tally-count">${megaHits}</span></div>
-      <div class="tally-item"><span class="tally-emoji">🎯</span><span class="tally-label">Hit</span><span class="tally-count">${totalHits}</span></div>
-      <div class="tally-item"><span class="tally-emoji">💀</span><span class="tally-label">Denied</span><span class="tally-count">${totalDenies}</span></div>
-    </div>
-    <button class="sample-vote-cta" onclick="document.getElementById('phone').focus();document.getElementById('phone').scrollIntoView({behavior:'smooth',block:'center'})">
-      Follow ${firstName} — Curator of the Month
-    </button>
-  </div>
-</div>` : '';
-
-    const dropSlug = c.name.toLowerCase().replace(/\s+/g, '-');
+    const subCount    = parseInt(countRes.rows[0].cnt) || 0;
+    const pick        = pickRes.rows[0] || null;
+    const megaHits    = parseInt(voteRes.rows[0]?.mega_hits || 0);
+    const totalHits   = parseInt(voteRes.rows[0]?.hits      || 0);
+    const totalDenies = parseInt(voteRes.rows[0]?.denies    || 0);
+    const spotifyId   = pick?.spotify_url?.match(/track\/([a-zA-Z0-9]+)/)?.[1] || null;
+    const shareUrl    = `${base}/follow/curator/${slug}`.replace('https://', '');
+    const bio         = c.statement || c.bio || '';
 
     res.setHeader('Content-Type', 'text/html');
     res.send(`<!DOCTYPE html>
@@ -347,255 +489,438 @@ app.get('/follow/curator/:slug', async (req, res) => {
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${c.name} — UHT</title>
 <meta property="og:title" content="${c.name} · Undeniable Hits">
-<meta property="og:description" content="${firstName}'s weekly pick. Vote HIT or DENIED.">
+<meta property="og:description" content="${firstName} invited you to listen to his Undeniable Hits. One song, every Monday, for 4 weeks.">
 ${headshot ? `<meta property="og:image" content="${headshot}">` : ''}
 <style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-body {
-  background: #000;
-  color: #f3f1ea;
-  font-family: Georgia, "Times New Roman", serif;
-  min-height: 100vh;
-  min-height: 100dvh;
-  overscroll-behavior: none;
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{
+  background:#000;color:#f3f1ea;
+  font-family:Georgia,"Times New Roman",serif;
+  min-height:100vh;min-height:100dvh;
+  overscroll-behavior:none;
 }
 
-/* ── Hero — full-bleed, 45vh, image fills it ── */
-.hero {
-  position: relative;
-  width: 100%;
-  height: 45vh;
-  min-height: 240px;
-  max-height: 360px;
-  overflow: hidden;
-  background: #111;
+/* ── TOP BAR (above photo) ── */
+.top-bar{
+  padding:max(18px, env(safe-area-inset-top)) 22px 12px;
+  display:flex;flex-direction:column;gap:5px;
 }
-.hero-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center top;
-  display: block;
+.uht-mark{
+  font-size:0.5rem;letter-spacing:0.35em;
+  text-transform:uppercase;opacity:0.35;
 }
-.hero-placeholder {
-  width: 100%; height: 100%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 4rem; opacity: 0.2;
+.listener-top{display:none;}
+.follower-cta-count{
+  font-size:0.65rem;letter-spacing:0.12em;
+  text-transform:uppercase;color:#E8B84B;opacity:0.7;
+  text-align:center;
 }
-/* gradient overlay — name sits on top */
-.hero-overlay {
-  position: absolute; inset: 0;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.7) 75%, #000 100%);
+/* Founding Curator + month sit below the name on the photo */
+.badge-founding-below{
+  font-size:0.55rem;letter-spacing:0.2em;text-transform:uppercase;
+  color:#E8B84B;opacity:0.85;
+  margin-top:2px;
 }
-.hero-text {
-  position: absolute;
-  bottom: 0; left: 0; right: 0;
-  padding: 0 20px 20px;
-}
-.uht-wordmark {
-  font-size: 0.55rem;
-  letter-spacing: 0.35em;
-  text-transform: uppercase;
-  opacity: 0.4;
-  margin-bottom: 8px;
-}
-.hero-name {
-  font-size: clamp(2rem, 9vw, 3rem);
-  font-weight: normal;
-  line-height: 1;
-  letter-spacing: -0.01em;
-}
-.hero-badges {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 6px;
-  flex-wrap: wrap;
-}
-.badge-founding {
-  font-size: 0.58rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: #E8B84B;
-  border: 1px solid rgba(232,184,75,0.4);
-  padding: 3px 9px;
-  border-radius: 20px;
-}
-.badge-month {
-  font-size: 0.58rem;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  opacity: 0.4;
+.badge-month-below{
+  font-size:0.52rem;letter-spacing:0.18em;text-transform:uppercase;
+  opacity:0.35;margin-top:2px;
 }
 
-/* ── Content below hero ── */
-.content {
-  padding: 20px 20px 48px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  max-width: 480px;
-  margin: 0 auto;
-  width: 100%;
+/* ── HERO photo ── */
+.hero{
+  position:relative;width:100%;
+  height:62vw;min-height:260px;max-height:480px;
+  overflow:hidden;background:#0a0a0a;
+  transition:height 0.5s cubic-bezier(.4,0,.2,1);
+}
+.hero.shrunk{height:38vw;min-height:180px;max-height:300px;}
+.hero-img{
+  width:100%;height:100%;
+  object-fit:cover;object-position:center top;
+  display:block;
+}
+.hero-placeholder{
+  width:100%;height:100%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:6rem;opacity:0.08;
+}
+.hero-overlay{
+  position:absolute;inset:0;
+  background:linear-gradient(to bottom,
+    rgba(0,0,0,0) 50%,
+    rgba(0,0,0,0.75) 100%);
+}
+.hero-name-overlay{
+  position:absolute;bottom:0;left:0;right:0;
+  padding:0 22px 16px;
+}
+.hero-name{
+  font-size:clamp(2rem,9vw,3.2rem);
+  font-weight:normal;line-height:0.9;letter-spacing:-0.01em;
+  margin-bottom:0;
 }
 
-/* bio */
-.bio {
-  font-size: 0.88rem;
-  line-height: 1.75;
-  opacity: 0.55;
-  font-style: italic;
+/* ── BELOW HERO (invite + form) ── */
+.below-hero{
+  padding:24px 22px max(40px, env(safe-area-inset-bottom));
+  display:flex;flex-direction:column;gap:14px;
+  max-width:480px;margin:0 auto;width:100%;
+}
+.hero-invite{
+  font-size:clamp(0.95rem,4vw,1.15rem);
+  font-style:italic;opacity:0.55;line-height:1.55;
+}
+.hero-cadence{
+  font-size:0.62rem;letter-spacing:0.14em;
+  text-transform:uppercase;opacity:0.3;
 }
 
-/* ── Pick card ── */
-.pick-card {
-  background: #0d0d0d;
-  border: 1px solid #1e1e1e;
-  border-top: 2px solid #E8B84B;
-  border-radius: 6px;
-  padding: 18px 16px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+/* ── FORM ── */
+.hero-form{display:flex;flex-direction:column;gap:10px;}
+input[type="tel"],input[type="text"]{
+  width:100%;
+  background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.15);
+  color:#f3f1ea;
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:1rem;padding:0.95rem 1rem;
+  border-radius:6px;outline:none;
+  -webkit-appearance:none;
+  transition:border-color 0.2s,background 0.2s;
 }
-.pick-label {
-  font-size: 0.58rem;
-  letter-spacing: 0.25em;
-  text-transform: uppercase;
-  opacity: 0.3;
+input[type="tel"]:focus,input[type="text"]:focus{
+  border-color:#E8B84B;
+  background:rgba(232,184,75,0.06);
 }
-.pick-title { font-size: 1.25rem; line-height: 1.2; }
-.pick-artist { font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.4; margin-top: 3px; }
-.pick-note { font-size: 0.82rem; font-style: italic; opacity: 0.45; line-height: 1.6; margin-top: 2px; }
-.vote-bar-wrap { height: 2px; background: #1e1e1e; border-radius: 2px; overflow: hidden; }
-.vote-bar-fill { height: 100%; background: #E8B84B; border-radius: 2px; }
-.vote-tally { font-size: 0.68rem; letter-spacing: 0.05em; display: flex; gap: 8px; opacity: 0.6; }
-/* three-tier tally */
-.sample-tally { display: flex; gap: 6px; }
-.tally-item { flex: 1; background: #111; border: 1px solid #1e1e1e; border-radius: 5px; padding: 8px 4px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
-.tally-emoji { font-size: 1rem; }
-.tally-label { font-size: 0.55rem; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.35; }
-.tally-count { font-size: 1rem; color: #f3f1ea; }
+.btn-primary{
+  width:100%;
+  background:#f3f1ea;color:#000;
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:0.82rem;font-weight:bold;
+  letter-spacing:0.16em;text-transform:uppercase;
+  padding:1.05rem;border:none;border-radius:6px;
+  cursor:pointer;
+  transition:background 0.15s,opacity 0.15s;
+  -webkit-tap-highlight-color:transparent;
+}
+.btn-primary:active{background:#ddd;}
+.btn-primary:disabled{opacity:0.3;cursor:default;}
+.fine-print{font-size:0.62rem;opacity:0.2;text-align:center;line-height:1.7;}
 
-/* ── Form section ── */
-.form-section { display: flex; flex-direction: column; gap: 10px; }
-.listener-line {
-  font-size: 0.68rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: #E8B84B;
-  opacity: 0.8;
-  text-align: center;
-}
-input[type="tel"], input[type="text"] {
-  width: 100%;
-  background: #0d0d0d;
-  border: 1px solid #2a2a2a;
-  color: #f3f1ea;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 1rem;
-  padding: 1rem;
-  border-radius: 6px;
-  outline: none;
-  transition: border-color 0.2s;
-  -webkit-appearance: none;
-}
-input[type="tel"]:focus, input[type="text"]:focus { border-color: #E8B84B; }
-.btn-primary {
-  width: 100%;
-  background: #f3f1ea;
-  color: #000;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 0.85rem;
-  font-weight: bold;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  padding: 1.05rem;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.15s, opacity 0.15s;
-  -webkit-tap-highlight-color: transparent;
-}
-.btn-primary:active { background: #ddd; }
-.btn-primary:disabled { opacity: 0.35; cursor: default; }
+/* verify step */
+#verify-step{display:none;flex-direction:column;gap:10px;}
+#verify-step.visible{display:flex;}
+.verify-hint{font-size:0.72rem;opacity:0.4;text-align:center;letter-spacing:0.02em;}
+#code{letter-spacing:0.25em;text-align:center;font-size:1.2rem;}
 
-/* verify step hidden by default */
-#verify-step { display: none; flex-direction: column; gap: 10px; }
-#verify-step.visible { display: flex; }
-.verify-hint { font-size: 0.72rem; opacity: 0.4; text-align: center; letter-spacing: 0.03em; }
-#code { letter-spacing: 0.25em; text-align: center; font-size: 1.2rem; }
+.msg{font-size:0.82rem;min-height:1.1em;text-align:center;}
+.msg.error{color:#ff6b6b;}
+.msg.success{color:#E8B84B;}
 
-.msg { font-size: 0.85rem; min-height: 1.2em; text-align: center; }
-.msg.success { color: #E8B84B; }
-.msg.error   { color: #ff6b6b; }
-.fine-print { font-size: 0.65rem; opacity: 0.2; line-height: 1.6; text-align: center; }
+/* ── SUCCESS PANEL ── */
+#success-panel{
+  display:none;
+  padding:24px 22px max(48px, env(safe-area-inset-bottom));
+  max-width:480px;margin:0 auto;
+  display:none;flex-direction:column;gap:20px;
+}
+#success-panel.visible{display:flex;}
+
+.success-head{
+  display:flex;flex-direction:column;gap:4px;
+}
+.success-label{
+  font-size:0.55rem;letter-spacing:0.3em;
+  text-transform:uppercase;color:#E8B84B;opacity:0.7;
+}
+.success-name{font-size:1.4rem;font-weight:normal;}
+
+/* pick card */
+.pick-card{
+  background:#0c0c0c;
+  border:1px solid #1c1c1c;
+  border-top:2px solid #E8B84B;
+  border-radius:6px;
+  overflow:hidden;
+  position:relative;
+}
+.pick-top{padding:18px 16px 14px;display:flex;flex-direction:column;gap:8px;}
+.pick-eyebrow{font-size:0.55rem;letter-spacing:0.25em;text-transform:uppercase;opacity:0.28;}
+.pick-title{font-size:1.2rem;line-height:1.2;}
+.pick-artist{font-size:0.68rem;letter-spacing:0.12em;text-transform:uppercase;opacity:0.35;margin-top:2px;}
+.pick-note{font-size:0.82rem;font-style:italic;opacity:0.4;line-height:1.65;
+  filter:blur(4px);transition:filter 0.4s ease;user-select:none;}
+.pick-note.revealed{filter:blur(0);}
+.spotify-wrap{
+  width:100%;background:#0a0a0a;
+  border-top:1px solid #1a1a1a;
+  overflow:hidden;
+  max-height:0;transition:max-height 0.5s ease;
+}
+.spotify-wrap.visible{max-height:100px;}
+.spotify-wrap iframe{width:100%;height:80px;border:none;display:block;}
+
+/* lock overlay */
+.lock-overlay{
+  position:absolute;bottom:0;left:0;right:0;
+  padding:14px 16px;
+  background:linear-gradient(to top, rgba(0,0,0,0.92) 60%, rgba(0,0,0,0));
+  display:flex;align-items:center;gap:8px;
+  transition:opacity 0.35s ease;
+}
+.lock-overlay.unlocked{opacity:0;pointer-events:none;}
+.lock-icon{font-size:0.9rem;opacity:0.5;}
+.lock-text{font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;opacity:0.4;}
+
+/* vote grid */
+.vote-grid{display:flex;gap:8px;padding:0 16px 14px;}
+.vote-grid.locked .vote-tile{opacity:0.35;cursor:default;pointer-events:none;}
+.vote-tile{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;
+  background:#0c0c0c;border:1px solid #1c1c1c;border-radius:6px;
+  padding:12px 6px;cursor:pointer;
+  transition:border-color 0.15s,background 0.15s,opacity 0.4s;
+  -webkit-tap-highlight-color:transparent;
+}
+.vote-tile:active{background:#151515;}
+.vote-tile.voted{border-color:#E8B84B;background:#111;}
+.vote-emoji{font-size:1.3rem;}
+.vote-label{font-size:0.52rem;letter-spacing:0.1em;text-transform:uppercase;opacity:0.3;}
+.vote-count{font-size:0.9rem;}
+
+/* share row */
+.share-row{display:flex;justify-content:center;}
+.btn-share{
+  background:transparent;
+  border:1px solid rgba(243,241,234,0.15);
+  color:#f3f1ea;
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:0.72rem;letter-spacing:0.15em;text-transform:uppercase;
+  padding:0.75rem 2rem;border-radius:6px;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+  transition:border-color 0.15s;
+}
+.btn-share:active{border-color:#E8B84B;}
+
+/* listener count */
+.listener-count{
+  font-size:0.62rem;letter-spacing:0.1em;
+  text-transform:uppercase;color:#E8B84B;opacity:0.6;
+  text-align:center;
+}
+
+/* success header */
+.success-label{font-size:0.55rem;letter-spacing:0.3em;text-transform:uppercase;color:#E8B84B;opacity:0.7;}
+.success-name{font-size:1.4rem;font-weight:normal;margin-top:4px;}
+
+/* view all link */
+.view-all-link{
+  display:block;text-align:center;
+  font-size:0.7rem;letter-spacing:0.1em;
+  color:#f3f1ea;opacity:0.3;
+  text-decoration:none;
+  transition:opacity 0.2s;
+}
+.view-all-link:hover{opacity:0.6;}
+
+/* utility */
+.hidden{display:none!important;}
 </style>
 </head>
 <body>
 
-<!-- Hero -->
-<div class="hero">
+<!-- ── TOP BAR (above photo) ── -->
+<div class="top-bar">
+  <div class="uht-mark">Undeniable Hits</div>
+  <div class="listener-top" id="follower-top"></div>
+</div>
+
+<!-- ── PHOTO ── -->
+<div class="hero" id="hero">
   ${headshot
     ? `<img src="${headshot}" alt="${c.name}" class="hero-img">`
     : `<div class="hero-placeholder">♪</div>`}
   <div class="hero-overlay"></div>
-  <div class="hero-text">
-    <div class="uht-wordmark">UHT</div>
+  <div class="hero-name-overlay">
     <div class="hero-name">${c.name}</div>
-    <div class="hero-badges">
-      <span class="badge-founding">Founding Curator</span>
-      ${month ? `<span class="badge-month">${month}</span>` : ''}
-    </div>
+    <div class="badge-founding-below">Founding Curator</div>
+    ${month ? `<div class="badge-month-below">${month}</div>` : ''}
   </div>
 </div>
 
-<!-- Content -->
-<div class="content">
+<!-- ── CONTENT (single panel, all states) ── -->
+<div class="below-hero" id="below-hero">
 
-  ${(c.statement || c.bio) ? `<p class="bio">${(c.statement || c.bio)}</p>` : ''}
+  <!-- invite copy — fades out after unlock -->
+  <div id="invite-copy">
+    <p class="hero-invite">${firstName} invited you to listen to his Undeniable Hits.</p>
+    <p class="hero-cadence">One song, every Monday via text, for 4 weeks</p>
+  </div>
 
-  ${sampleCard}
+  <!-- success header — hidden until unlock -->
+  <div id="success-head" class="hidden">
+    <div class="success-label">You're now following</div>
+    <div class="success-name">${c.name}</div>
+  </div>
 
-  <div class="form-section">
-    ${subCount > 0 ? `<div class="listener-line">${subCount} listener${subCount === 1 ? '' : 's'} following</div>` : ''}
+  ${pick ? `
+  <!-- pick card — locked preview until verify -->
+  <div class="pick-card" id="pick-card">
+    <div class="pick-top">
+      <div class="pick-eyebrow">${firstName}'s current pick</div>
+      <div>
+        <div class="pick-title">${pick.title}</div>
+        <div class="pick-artist">${pick.artist}</div>
+      </div>
+      ${pick.curator_note ? `<div class="pick-note" id="pick-note">"${pick.curator_note}"</div>` : ''}
+    </div>
 
-    <form id="follow-form">
-      <input type="tel" id="phone" placeholder="Your phone number" autocomplete="tel" required style="margin-bottom:2px">
-      <button type="submit" id="submit-btn" class="btn-primary">Listen &amp; Vote</button>
+    <!-- spotify embed — injected after unlock so it doesn't autoplay -->
+    <div class="spotify-wrap hidden" id="spotify-wrap"></div>
+
+    <!-- vote grid — locked until verify -->
+    <div class="vote-grid locked" id="vote-grid">
+      <div class="vote-tile" id="tile-mega" onclick="castVote('mega_hit')">
+        <div class="vote-emoji">🔥</div>
+        <div class="vote-label">Mega Hit</div>
+        <div class="vote-count" id="count-mega">${megaHits}</div>
+      </div>
+      <div class="vote-tile" id="tile-hit" onclick="castVote('hit')">
+        <div class="vote-emoji">🎯</div>
+        <div class="vote-label">Hit</div>
+        <div class="vote-count" id="count-hit">${totalHits}</div>
+      </div>
+      <div class="vote-tile" id="tile-denied" onclick="castVote('denied')">
+        <div class="vote-emoji">💀</div>
+        <div class="vote-label">Denied</div>
+        <div class="vote-count" id="count-denied">${totalDenies}</div>
+      </div>
+    </div>
+
+    <!-- lock overlay -->
+    <div class="lock-overlay" id="lock-overlay">
+      <div class="lock-icon">🔒</div>
+      <div class="lock-text">Enter your number to vote</div>
+    </div>
+  </div>
+  ` : ''}
+
+  <!-- form — hidden after unlock -->
+  <div id="form-wrap">
+    <form id="follow-form" class="hero-form">
+      <input type="text" id="name" placeholder="Your name" autocomplete="name" required>
+      <input type="tel" id="phone" placeholder="Your phone number" autocomplete="tel" required>
+      <div class="follower-cta-count" id="follower-count"></div>
+      <button type="submit" id="submit-btn" class="btn-primary">Join &amp; Vote</button>
       <div id="verify-step">
-        <div class="verify-hint">Enter the 6-digit code we just texted you</div>
+        <div class="verify-hint">We texted you a 6-digit code</div>
         <input type="text" id="code" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
-        <button type="button" id="verify-btn" class="btn-primary" onclick="submitCode()">Confirm</button>
+        <button type="button" id="verify-btn" class="btn-primary" onclick="submitCode()">Unlock &amp; Vote</button>
       </div>
       <div class="msg" id="msg"></div>
     </form>
-
     <p class="fine-print">One text per week. Reply STOP anytime.</p>
+  </div>
+
+  <!-- share + profile link — hidden until unlock -->
+  <div id="post-unlock" class="hidden">
+    <div class="listener-count" id="listener-count"></div>
+    <div class="share-row">
+      <button class="btn-share" onclick="shareIt()">Share ${firstName}'s Page</button>
+    </div>
+    <a class="view-all-link" href="/drop/curator/${dropSlug}" id="view-all-link">View all ${firstName}'s picks →</a>
   </div>
 
 </div>
 
 <script>
-const form       = document.getElementById('follow-form');
-const phoneInput = document.getElementById('phone');
-const submitBtn  = document.getElementById('submit-btn');
-const verifyStep = document.getElementById('verify-step');
-const codeInput  = document.getElementById('code');
-const msgEl      = document.getElementById('msg');
-const CURATOR_ID = ${c.id};
-const DROP_SLUG  = '${dropSlug}';
-const BASE       = '${process.env.BASE_URL || ''}';
+const CURATOR_ID  = ${c.id};
+const PICK_ID     = ${pick ? pick.id : 'null'};
+const DROP_SLUG   = '${dropSlug}';
+const SHARE_URL   = '${shareUrl}';
+const FIRST_NAME  = '${firstName}';
+let tasteToken    = '';
+let hasVoted      = false;
+
+// ── Live follower count ───────────────────────────────────────────────────────
+function updateFollowerCount(n) {
+  const label = n === 1 ? '1 follower' : n + ' followers';
+  const top   = document.getElementById('follower-top');
+  const cta   = document.getElementById('follower-count');
+  const post  = document.getElementById('listener-count');
+  if (top)  top.textContent  = n > 0 ? label : '';
+  if (cta)  cta.textContent  = n > 0 ? label : '';
+  if (post) post.textContent = n > 0 ? label : '';
+}
+fetch('/api/curators/' + CURATOR_ID + '/followers')
+  .then(function(r){ return r.json(); })
+  .then(function(d){ updateFollowerCount(d.count || 0); })
+  .catch(function(){});
+
+const heroEl       = document.getElementById('hero');
+const form         = document.getElementById('follow-form');
+const nameInput    = document.getElementById('name');
+const phoneInput   = document.getElementById('phone');
+const submitBtn    = document.getElementById('submit-btn');
+const verifyStep   = document.getElementById('verify-step');
+const codeInput    = document.getElementById('code');
+const verifyBtn    = document.getElementById('verify-btn');
+const msgEl        = document.getElementById('msg');
+const formWrap     = document.getElementById('form-wrap');
+const inviteCopy   = document.getElementById('invite-copy');
+const successHead  = document.getElementById('success-head');
+const lockOverlay  = document.getElementById('lock-overlay');
+const voteGrid     = document.getElementById('vote-grid');
+const pickNote     = document.getElementById('pick-note');
+const spotifyWrap  = document.getElementById('spotify-wrap');
+const postUnlock   = document.getElementById('post-unlock');
+const viewAllLink  = document.getElementById('view-all-link');
+
+function unlockCard() {
+  heroEl.classList.add('shrunk');
+  if (inviteCopy) inviteCopy.classList.add('hidden');
+  if (successHead) successHead.classList.remove('hidden');
+  if (lockOverlay) lockOverlay.classList.add('unlocked');
+  if (voteGrid)    voteGrid.classList.remove('locked');
+  if (pickNote)    pickNote.classList.add('revealed');
+  ${spotifyId ? `
+  if (spotifyWrap) {
+    spotifyWrap.innerHTML = '<iframe src="https://open.spotify.com/embed/track/${spotifyId}?utm_source=generator&theme=0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>';
+    spotifyWrap.classList.remove('hidden');
+    spotifyWrap.classList.add('visible');
+  }` : ''}
+  if (viewAllLink && tasteToken) viewAllLink.href = '/drop/curator/${dropSlug}?t=' + tasteToken;
+  if (formWrap)   formWrap.classList.add('hidden');
+  if (postUnlock) postUnlock.classList.remove('hidden');
+  setTimeout(() => {
+    const card = document.getElementById('pick-card');
+    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, 300);
+}
 
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const phone = phoneInput.value.trim();
   if (!phone) return;
   submitBtn.disabled = true;
-  submitBtn.textContent = 'Sending code…';
+  submitBtn.textContent = 'Checking…';
   msgEl.className = 'msg'; msgEl.textContent = '';
   try {
+    // Check if already subscribed — skip OTP if so
+    const chk = await fetch('/api/check-subscription?phone=' + encodeURIComponent(phone) + '&curator_id=' + CURATOR_ID)
+      .then(r => r.json());
+
+    if (chk.subscribed) {
+      if (chk.taste_token) tasteToken = chk.taste_token;
+      unlockCard();
+      msgEl.className = 'msg success';
+      msgEl.textContent = 'You already follow ' + FIRST_NAME + '. Welcome back.';
+      return;
+    }
+
+    // Not subscribed — send OTP
+    submitBtn.textContent = 'Sending code…';
     const d = await fetch('/api/send_code', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ phone })
@@ -606,7 +931,7 @@ form.addEventListener('submit', async (e) => {
     setTimeout(() => codeInput.focus(), 80);
   } catch(err) {
     msgEl.className = 'msg error'; msgEl.textContent = err.message;
-    submitBtn.disabled = false; submitBtn.textContent = 'Listen & Vote';
+    submitBtn.disabled = false; submitBtn.textContent = 'Join & Vote';
   }
 });
 
@@ -614,7 +939,6 @@ async function submitCode() {
   const phone = phoneInput.value.trim();
   const code  = codeInput.value.trim();
   if (!code) return;
-  const verifyBtn = document.getElementById('verify-btn');
   verifyBtn.disabled = true; verifyBtn.textContent = 'Verifying…';
   msgEl.className = 'msg'; msgEl.textContent = '';
   try {
@@ -623,27 +947,71 @@ async function submitCode() {
       body: JSON.stringify({ phone, code })
     }).then(r => r.json());
     if (!d2.ok) throw new Error(d2.error || 'Invalid code');
+    tasteToken = d2.taste_token || '';
 
+    const userName = nameInput ? nameInput.value.trim() : '';
     const d3 = await fetch('/api/subscribe', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ phone, curator_id: CURATOR_ID, genre_id: null })
+      body: JSON.stringify({ phone, name: userName || undefined, curator_id: CURATOR_ID, genre_id: null })
     }).then(r => r.json());
-    if (!d3.ok && d3.error !== 'already_subscribed') throw new Error(d3.error || 'Subscribe failed');
+    if (!d3.ok && !d3.success && d3.error !== 'already_subscribed') throw new Error(d3.error || 'Subscribe failed');
+    if (!tasteToken) tasteToken = d3.taste_token || '';
 
-    // Redirect to drop page — they're in, now let them vote
-    const token = d2.taste_token || d3.taste_token || '';
-    const dest = '/drop/curator/' + DROP_SLUG + (token ? '?t=' + token : '');
-    window.location.href = dest;
+    // Persist token + member info so the session is always tokenized
+    if (tasteToken) {
+      try { localStorage.setItem('uht_token', tasteToken); } catch(e) {}
+    }
+    if (d3.member_number) {
+      try { localStorage.setItem('uht_member', d3.member_number); } catch(e) {}
+    }
+
+    // ── Unlock in place ───────────────────────────────────────────────────────
+    unlockCard();
 
   } catch(err) {
     msgEl.className = 'msg error'; msgEl.textContent = err.message;
-    verifyBtn.disabled = false; verifyBtn.textContent = 'Confirm';
+    verifyBtn.disabled = false; verifyBtn.textContent = 'Enter Listening Circle';
   }
 }
 
 codeInput && codeInput.addEventListener('keydown', e => {
   if (e.key === 'Enter') { e.preventDefault(); submitCode(); }
 });
+
+async function castVote(voteType) {
+  if (hasVoted || !PICK_ID) return;
+  hasVoted = true;
+  const tileMap = { mega_hit: 'tile-mega', hit: 'tile-hit', denied: 'tile-denied' };
+  const countMap = { mega_hit: 'count-mega', hit: 'count-hit', denied: 'count-denied' };
+  document.getElementById(tileMap[voteType])?.classList.add('voted');
+
+  // Optimistic update
+  const countEl = document.getElementById(countMap[voteType]);
+  if (countEl) countEl.textContent = parseInt(countEl.textContent || '0') + 1;
+
+  try {
+    await fetch('/api/genre-vote', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ submission_id: PICK_ID, vote: voteType })
+    });
+  } catch(e) { /* silent */ }
+}
+
+async function shareIt() {
+  const text = FIRST_NAME + ' is curating one song every Monday for 4 weeks on Undeniable Hits. Follow and vote.';
+  const url  = 'https://' + SHARE_URL;
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: FIRST_NAME + ' on UHT', text, url });
+    } else {
+      await navigator.clipboard.writeText(url);
+      const btn = document.querySelector('.btn-share');
+      const orig = btn.textContent;
+      btn.textContent = 'Link copied';
+      setTimeout(() => { btn.textContent = orig; }, 2000);
+    }
+  } catch(e) { /* user cancelled */ }
+}
 </script>
 </body>
 </html>`);
@@ -1178,7 +1546,7 @@ ${fd && fdYtId ? `
 <section class="featured-section" id="featured">
   <div class="featured-inner">
     <div class="sec-head reveal" style="margin-bottom:32px">
-      <span class="sec-label">Last Week's Undeniable Rock Hit</span>
+      <span class="sec-label">Last Week's Undeniable ${(fd.genre || 'rock').charAt(0).toUpperCase() + (fd.genre || 'rock').slice(1)} Hit</span>
       <div class="sec-line"></div>
     </div>
     <div class="featured-video reveal">
@@ -1337,12 +1705,16 @@ ${fd && fdYtId ? `
         <button class="cm-follow-btn" id="cmFollowBtn" onclick="handleCuratorFollow()">+ Follow</button>
       </div>
       <div class="cm-phone-wrap" id="cmPhoneWrap">
-        <div class="cm-phone-label">Enter your number to follow</div>
-        <div class="cm-phone-row">
+        <div class="cm-phone-label" id="cmPhoneLabel">Enter your number to follow</div>
+        <div class="cm-phone-row" id="cmPhoneRow">
           <input class="cm-phone-input" id="cmPhone" type="tel" placeholder="+1 (555) 000-0000" onkeydown="if(event.key==='Enter')confirmCuratorFollow()">
-          <button class="cm-phone-confirm" onclick="confirmCuratorFollow()">✓ Follow</button>
+          <button class="cm-phone-confirm" id="cmPhoneBtn" onclick="confirmCuratorFollow()">✓ Follow</button>
         </div>
-        <div class="cm-phone-note">📱 Weekly drops to your phone &nbsp;·&nbsp; 🔥 Vote on every pick</div>
+        <div class="cm-phone-row" id="cmCodeRow" style="display:none;margin-top:8px">
+          <input class="cm-phone-input" id="cmCode" type="tel" placeholder="6-digit code" maxlength="6" style="letter-spacing:.15em" onkeydown="if(event.key==='Enter')verifyCuratorOtp()">
+          <button class="cm-phone-confirm" id="cmCodeBtn" onclick="verifyCuratorOtp()">✓ Verify</button>
+        </div>
+        <div class="cm-phone-note" id="cmPhoneNote">📱 Weekly drops to your phone &nbsp;·&nbsp; 🔥 Vote on every pick</div>
       </div>
       <div class="cm-following-perks" id="cmFollowingPerks">
         ✓ Following &nbsp;·&nbsp; 📱 Weekly drops &nbsp;·&nbsp; 🔔 Drop alerts &nbsp;·&nbsp; 🔥 Vote on picks
@@ -1499,17 +1871,31 @@ function openCuratorModal(id) {
     igEl.innerHTML = '';
   }
   // Reset state
+  _cmPhone = '';
   document.getElementById('cmPhoneWrap').style.display = 'none';
   document.getElementById('cmFollowBtn').style.display = 'inline-block';
   document.getElementById('cmFollowBtn').className = 'cm-follow-btn';
   document.getElementById('cmFollowBtn').textContent = '+ Follow';
   document.getElementById('cmFollowingPerks').style.display = 'none';
+  // Reset OTP sub-state
+  var phoneRow = document.getElementById('cmPhoneRow');
+  var codeRow  = document.getElementById('cmCodeRow');
+  var label    = document.getElementById('cmPhoneLabel');
+  var note     = document.getElementById('cmPhoneNote');
+  var btn      = document.getElementById('cmPhoneBtn');
+  if(phoneRow) phoneRow.style.display = 'flex';
+  if(codeRow)  codeRow.style.display  = 'none';
+  if(label)    label.textContent       = 'Enter your number to follow';
+  if(note)     note.style.display      = '';
+  if(btn)      { btn.disabled = false; btn.textContent = '✓ Follow'; }
+  var codeInput = document.getElementById('cmCode');
+  if(codeInput) codeInput.value = '';
   // Check if already following
   var saved = localStorage.getItem('uht_phone');
   if(saved) {
-    fetch('/api/follows/check?phone='+encodeURIComponent(saved)+'&curator_id='+id)
+    fetch('/api/check-subscription?phone='+encodeURIComponent(saved)+'&curator_id='+id)
       .then(function(r){ return r.json(); })
-      .then(function(d){ if(d.following) showCuratorFollowingState(); })
+      .then(function(d){ if(d.subscribed) showCuratorFollowingState(); })
       .catch(function(){});
   }
   // Load scorecard
@@ -1522,6 +1908,20 @@ function openCuratorModal(id) {
 function closeCuratorModal() {
   document.getElementById('cmBg').classList.remove('open');
   document.body.style.overflow = '';
+  // Reset OTP state for next open
+  _cmPhone = '';
+  var phoneRow = document.getElementById('cmPhoneRow');
+  var codeRow  = document.getElementById('cmCodeRow');
+  var label    = document.getElementById('cmPhoneLabel');
+  var note     = document.getElementById('cmPhoneNote');
+  var btn      = document.getElementById('cmPhoneBtn');
+  if(phoneRow) phoneRow.style.display = 'flex';
+  if(codeRow)  codeRow.style.display  = 'none';
+  if(label)    label.textContent       = 'Enter your number to follow';
+  if(note)     note.style.display      = '';
+  if(btn)      { btn.disabled = false; btn.textContent = '✓ Follow'; }
+  var codeInput = document.getElementById('cmCode');
+  if(codeInput) codeInput.value = '';
 }
 
 function initials(name) {
@@ -1534,36 +1934,94 @@ function handleCuratorFollow() {
   setTimeout(function(){ document.getElementById('cmPhone').focus(); }, 100);
 }
 
+var _cmPhone = '';
 function confirmCuratorFollow() {
   var raw = document.getElementById('cmPhone').value.trim();
   if(!raw) return;
-  var phone = raw.replace(/\D/g,'');
-  if(phone.length===10) phone='+1'+phone;
-  else if(phone.length===11&&phone[0]==='1') phone='+'+phone;
-  else phone='+'+phone;
-  fetch('/api/follows',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({phone:phone,curator_id:_cmCuratorId})
-  }).then(function(r){
-    if(r.ok){
-      localStorage.setItem('uht_phone', phone);
-      showCuratorFollowingState();
-    }
-  }).catch(function(){});
+  var digits = raw.replace(/\D/g,'');
+  _cmPhone = digits.length===10 ? '+1'+digits : digits.length===11&&digits[0]==='1' ? '+'+digits : '+'+digits;
+  var btn = document.getElementById('cmPhoneBtn');
+  if(btn){ btn.disabled=true; btn.textContent='Checking…'; }
+
+  // Check if already subscribed to this curator
+  fetch('/api/check-subscription?phone='+encodeURIComponent(_cmPhone)+'&curator_id='+_cmCuratorId)
+    .then(function(r){ return r.json(); })
+    .then(function(chk){
+      if(chk.subscribed) {
+        localStorage.setItem('uht_phone', _cmPhone);
+        showCuratorFollowingState('already');
+        return;
+      }
+      // Send OTP
+      return fetch('/api/send_code',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({phone:_cmPhone})
+      }).then(function(){
+        // Slide in code row
+        document.getElementById('cmPhoneRow').style.display = 'none';
+        document.getElementById('cmPhoneLabel').textContent = 'Code sent — check your texts';
+        document.getElementById('cmCodeRow').style.display = 'flex';
+        document.getElementById('cmPhoneNote').style.display = 'none';
+        setTimeout(function(){ document.getElementById('cmCode').focus(); }, 80);
+      });
+    })
+    .catch(function(){
+      if(btn){ btn.disabled=false; btn.textContent='✓ Follow'; }
+    });
 }
 
-function showCuratorFollowingState() {
+function verifyCuratorOtp() {
+  var code = document.getElementById('cmCode').value.trim();
+  if(code.length < 4) return;
+  var btn = document.getElementById('cmCodeBtn');
+  if(btn){ btn.disabled=true; btn.textContent='Verifying…'; }
+
+  fetch('/api/verify_code',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({phone:_cmPhone, code:code})
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    if(!d.valid && !d.success) {
+      if(btn){ btn.disabled=false; btn.textContent='✓ Verify'; }
+      document.getElementById('cmPhoneLabel').textContent = 'Wrong code — try again';
+      return;
+    }
+    // Verified — record the follow via subscribe (goes into subscriptions table → Monday drop)
+    return fetch('/api/subscribe',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({phone:_cmPhone, curator_id:_cmCuratorId})
+    }).then(function(r){ return r.json(); }).then(function(d){
+      localStorage.setItem('uht_phone', _cmPhone);
+      if(d.taste_token) try{ localStorage.setItem('uht_token', d.taste_token); }catch(e){}
+      if(d.member_number) try{ localStorage.setItem('uht_member', d.member_number); }catch(e){}
+      showCuratorFollowingState();
+    });
+  })
+  .catch(function(){
+    if(btn){ btn.disabled=false; btn.textContent='✓ Verify'; }
+  });
+}
+
+function showCuratorFollowingState(mode) {
   document.getElementById('cmPhoneWrap').style.display = 'none';
   document.getElementById('cmFollowBtn').style.display = 'none';
-  document.getElementById('cmFollowingPerks').style.display = 'block';
+  var perks = document.getElementById('cmFollowingPerks');
+  if(mode === 'already') {
+    perks.innerHTML = '<span style="color:#E8B84B;font-size:13px">You already follow this curator — drops coming Monday.</span>';
+  }
+  perks.style.display = 'block';
 }
+
 
 function handleCuratorUnfollow() {
   var phone = localStorage.getItem('uht_phone');
   if(!phone) return;
-  fetch('/api/follows',{
-    method:'DELETE',
+  fetch('/api/unfollow-curator',{
+    method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({phone:phone,curator_id:_cmCuratorId})
   }).then(function(){
@@ -1860,6 +2318,38 @@ app.post('/api/subscribe', async (req, res) => {
     }
     console.log(`[Subscribe] ${normalPhone} -> user #${userId} | ${isNew ? 'new subscription' : 'already subscribed'}`);
 
+    // ── Ensure every user is tokenized + numbered ─────────────────────────────
+    const { rows: uData } = await db.query(
+      `SELECT member_number, taste_token, member_tier FROM users WHERE id=$1`, [userId]
+    );
+    let { member_number, taste_token, member_tier } = uData[0] || {};
+
+    if (!member_number || !taste_token) {
+      const updates = {};
+      if (!member_number) {
+        const { rows: mx } = await db.query(
+          `SELECT COALESCE(MAX(member_number),0) AS m FROM users WHERE member_number IS NOT NULL`
+        );
+        updates.member_number = mx[0].m + 1;
+      }
+      if (!taste_token) {
+        updates.taste_token = crypto.randomBytes(8).toString('hex');
+      }
+      const effectiveNum = member_number || updates.member_number;
+      if (!member_tier && effectiveNum <= 100) updates.member_tier = 'FIRST 100';
+
+      const setClauses = Object.keys(updates).map((k, i) => `${k}=$${i + 1}`).join(', ');
+      await db.query(
+        `UPDATE users SET ${setClauses} WHERE id=$${Object.keys(updates).length + 1}`,
+        [...Object.values(updates), userId]
+      );
+      member_number = member_number || updates.member_number;
+      taste_token   = taste_token   || updates.taste_token;
+      member_tier   = member_tier   || updates.member_tier;
+      console.log(`[Subscribe] Tokenized user #${userId}: member #${member_number}${member_tier ? ' (' + member_tier + ')' : ''}`);
+    }
+    // ──────────────────────────────────────────────────────────────────────────
+
     // Send opt-in confirmation text to new subscribers
     if (isNew) {
       try {
@@ -1875,11 +2365,15 @@ app.post('/api/subscribe', async (req, res) => {
     }
 
     res.json({
+      ok: true,
       success: true,
       message: isNew
         ? 'Subscribed! Check your phone for a confirmation text.'
         : "You're already subscribed — Friday drops incoming!",
-      user_id: userId,
+      user_id:       userId,
+      member_number,
+      member_tier:   member_tier || null,
+      taste_token,
     });
   } catch (err) {
     console.error('[API] subscribe error:', err.message);
@@ -2054,6 +2548,14 @@ app.patch('/api/curator-submissions/:id', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── PATCH /api/curator-submissions/:id/approve ───────────────────────────────
+app.patch('/api/curator-submissions/:id/approve', async (req, res) => {
+  try {
+    await db.query(`UPDATE curator_submissions SET status='approved' WHERE id=$1`, [req.params.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── DELETE /api/curator-submissions/:id ──────────────────────
 app.delete('/api/curator-submissions/:id', async (req, res) => {
   try {
@@ -2164,11 +2666,16 @@ app.post('/api/genres/seed', async (req, res) => {
 app.post('/api/send_code', async (req, res) => {
   const { phone, name, email } = req.body;
   if (!phone) return res.status(400).json({ error: 'phone required' });
+  const normalPhone = /^\d{10}$/.test(phone.replace(/\D/g,''))
+    ? '+1' + phone.replace(/\D/g,'')
+    : phone.replace(/\D/g,'').length === 11 && phone.replace(/\D/g,'').startsWith('1')
+      ? '+' + phone.replace(/\D/g,'')
+      : phone;
   try {
     const client = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
     await client.verify.v2
       .services(process.env.TWILIO_VERIFY_SID)
-      .verifications.create({ to: phone, channel: 'sms' });
+      .verifications.create({ to: normalPhone, channel: 'sms' });
     res.json({ ok: true });
   } catch (err) {
     console.error('send_code error:', err.message);
@@ -2180,11 +2687,15 @@ app.post('/api/send_code', async (req, res) => {
 app.post('/api/verify_code', async (req, res) => {
   const { phone, code, genre } = req.body;
   if (!phone || !code) return res.status(400).json({ error: 'phone and code required' });
+  const digits = phone.replace(/\D/g,'');
+  const normalPhone = digits.length === 10 ? '+1' + digits
+    : digits.length === 11 && digits.startsWith('1') ? '+' + digits
+    : phone;
   try {
     const client = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
     const check = await client.verify.v2
       .services(process.env.TWILIO_VERIFY_SID)
-      .verificationChecks.create({ to: phone, code });
+      .verificationChecks.create({ to: normalPhone, code });
 
     if (check.status !== 'approved') {
       return res.status(400).json({ error: 'Invalid or expired code.' });
@@ -2195,7 +2706,7 @@ app.post('/api/verify_code', async (req, res) => {
       `INSERT INTO users (phone) VALUES ($1)
        ON CONFLICT (phone) DO UPDATE SET phone = EXCLUDED.phone
        RETURNING *`,
-      [phone]
+      [normalPhone]
     );
 
     // Subscribe to genre if provided
@@ -2238,56 +2749,63 @@ app.get('/api/check_subscriber', async (req, res) => {
   }
 });
 
+// ── GET /api/check-subscription — check if phone is already subscribed ────────
+app.get('/api/check-subscription', async (req, res) => {
+  const { phone, curator_id, genre_id } = req.query;
+  if (!phone) return res.status(400).json({ error: 'phone required' });
+  const digits = phone.replace(/\D/g,'');
+  const normalPhone = digits.length === 10 ? '+1' + digits
+    : digits.length === 11 && digits.startsWith('1') ? '+' + digits
+    : phone;
+  try {
+    const { rows: users } = await db.query(
+      `SELECT id, taste_token FROM users WHERE phone=$1 LIMIT 1`, [normalPhone]
+    );
+    if (!users.length) return res.json({ subscribed: false });
+    const userId = users[0].id;
+    const tasteToken = users[0].taste_token || null;
+
+    let subscribed = false;
+    if (curator_id) {
+      const { rows } = await db.query(
+        `SELECT id FROM subscriptions WHERE user_id=$1 AND curator_id=$2 AND is_active=TRUE LIMIT 1`,
+        [userId, curator_id]
+      );
+      subscribed = rows.length > 0;
+    } else if (genre_id) {
+      const { rows } = await db.query(
+        `SELECT id FROM subscriptions WHERE user_id=$1 AND genre_id=$2 AND is_active=TRUE LIMIT 1`,
+        [userId, genre_id]
+      );
+      subscribed = rows.length > 0;
+    }
+    res.json({ subscribed, taste_token: tasteToken });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── Playlist links (optional — return empty array by default) ─────────────────
 app.get('/api/playlist_links', (req, res) => {
   res.json({ playlist_links: [] });
 });
 
 
-// ── POST /api/follows ─────────────────────────────────────────────────────────
-app.post('/api/follows', async (req, res) => {
+// ── POST /api/unfollow-curator ────────────────────────────────────────────────
+app.post('/api/unfollow-curator', async (req, res) => {
   const { phone, curator_id } = req.body;
   if (!phone || !curator_id) return res.status(400).json({ error: 'phone and curator_id required.' });
   try {
-    await db.query(
-      `INSERT INTO follows (phone, curator_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-      [phone, curator_id]
-    );
+    const digits = phone.replace(/\D/g,'');
+    const normalPhone = digits.length===10 ? '+1'+digits : digits.length===11&&digits[0]==='1' ? '+'+digits : phone;
+    const { rows: users } = await db.query(`SELECT id FROM users WHERE phone=$1 LIMIT 1`, [normalPhone]);
+    if (users.length) {
+      await db.query(
+        `UPDATE subscriptions SET is_active=FALSE WHERE user_id=$1 AND curator_id=$2`,
+        [users[0].id, curator_id]
+      );
+    }
     res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── DELETE /api/follows ───────────────────────────────────────────────────────
-app.delete('/api/follows', async (req, res) => {
-  const { phone, curator_id } = req.body;
-  if (!phone || !curator_id) return res.status(400).json({ error: 'phone and curator_id required.' });
-  try {
-    await db.query(`DELETE FROM follows WHERE phone=$1 AND curator_id=$2`, [phone, curator_id]);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── GET /api/follows/check ────────────────────────────────────────────────────
-app.get('/api/follows/check', async (req, res) => {
-  const { phone, curator_id } = req.query;
-  if (!phone || !curator_id) return res.status(400).json({ error: 'phone and curator_id required.' });
-  try {
-    const { rows } = await db.query(
-      `SELECT id FROM follows WHERE phone=$1 AND curator_id=$2`,
-      [phone, curator_id]
-    );
-    res.json({ following: rows.length > 0 });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── GET /api/follows/curator/:id ──────────────────────────────────────────────
-app.get('/api/follows/curator/:id', async (req, res) => {
-  try {
-    const { rows } = await db.query(
-      `SELECT phone, created_at FROM follows WHERE curator_id=$1 ORDER BY created_at DESC`,
-      [req.params.id]
-    );
-    res.json({ followers: rows, count: rows.length });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -2801,8 +3319,8 @@ app.get('/drop/curator/:slug', identifyDropUser, async (req, res) => {
       const timeout2 = new Promise((_, rej) => setTimeout(() => rej(new Error('DB timeout')), 4000));
       const [subRes, allSubsRes, hitRes] = await Promise.race([
         Promise.all([
-          db.query(`SELECT * FROM curator_submissions WHERE curator_id=$1 ORDER BY week_number DESC, submitted_at DESC LIMIT 1`, [curator.id]),
-          db.query(`SELECT * FROM curator_submissions WHERE curator_id=$1 ORDER BY week_number ASC`, [curator.id]),
+          db.query(`SELECT * FROM curator_submissions WHERE curator_id=$1 AND COALESCE(status,'approved')='approved' AND delivered_at IS NOT NULL ORDER BY week_number DESC, submitted_at DESC LIMIT 1`, [curator.id]),
+          db.query(`SELECT * FROM curator_submissions WHERE curator_id=$1 AND COALESCE(status,'approved')='approved' AND delivered_at IS NOT NULL ORDER BY week_number ASC`, [curator.id]),
           db.query(`SELECT COUNT(*) AS hits FROM curator_submission_votes WHERE submission_id IN (SELECT id FROM curator_submissions WHERE curator_id=$1) AND vote='hit'`, [curator.id])
         ]),
         timeout2
@@ -3640,26 +4158,6 @@ app.delete('/api/community-submissions/:id', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── POST /api/migrate-community-pick ─────────────────────────────────────────
-app.post('/api/migrate-community-pick', async (req, res) => {
-  try {
-    await db.query(`ALTER TABLE genre_submissions ADD COLUMN IF NOT EXISTS is_community_pick BOOLEAN DEFAULT FALSE`);
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS community_submissions (
-        id           SERIAL PRIMARY KEY,
-        name         TEXT,
-        phone        TEXT,
-        artist       TEXT NOT NULL,
-        song         TEXT NOT NULL,
-        youtube_url  TEXT,
-        why          TEXT,
-        genre        TEXT,
-        submitted_at TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
 
 // ── GET /drop/:genre ─────────────────────────────────────────────────────────
 app.get('/drop/:genre', identifyDropUser, async (req, res) => {
@@ -3992,12 +4490,10 @@ ${archive.length ? `
     <button class="next-drop-btn" id="nxt-${a.id}" onclick="scrollToNext('${nextId}')">Next Drop →</button>
   </div>`;
   }).join('')}
-  <div id="arc-end">${submitModalHTML(genre, communityPick)}</div>
-  <div class="uht-footer">UHT · Your next hit arrives Friday</div>
-</div>` : `
+</div>` : ''}
+
 <div id="arc-end">${submitModalHTML(genre, communityPick)}</div>
 <div class="uht-footer">UHT · Your next hit arrives Friday</div>
-`}
 
 <script>
 function archiveVote(id, type, btn, nextId){
@@ -4201,11 +4697,10 @@ app.get('/api/curators-admin', async (req, res) => {
       SELECT c.*,
         COUNT(DISTINCT s.id)  AS song_count,
         COUNT(DISTINCT sb.id) AS sub_count,
-        COUNT(DISTINCT f.id)  AS follower_count
+        COUNT(DISTINCT sb.id) AS follower_count
       FROM curators c
       LEFT JOIN songs s ON s.curator_id = c.id
-      LEFT JOIN subscriptions sb ON sb.curator_id = c.id
-      LEFT JOIN follows f ON f.curator_id = c.id
+      LEFT JOIN subscriptions sb ON sb.curator_id = c.id AND sb.is_active = TRUE
       GROUP BY c.id ORDER BY c.name
     `);
     res.json({ curators: rows });
@@ -4622,6 +5117,17 @@ app.get('/api/playlists/:id', async (req, res) => {
     res.json({ playlist: playlist.rows[0], songs: songs.rows });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// ── GET /api/curators/:id/followers — live follower count ────────────────────
+app.get('/api/curators/:id/followers', async (req, res) => {
+  try {
+    const { rows } = await db.query(
+      `SELECT COUNT(*) AS cnt FROM subscriptions WHERE curator_id=$1 AND is_active=TRUE`,
+      [req.params.id]
+    );
+    res.json({ count: parseInt(rows[0].cnt) || 0 });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/curators/:id/scorecard', async (req, res) => {
   try {
     const id = req.params.id;
@@ -4681,46 +5187,6 @@ app.get('/api/curators/:id/scorecard', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-app.get('/api/test-new', (req, res) => res.json({ ok: true }));
-
-// ── One-time migration: create genre_submissions table ───────────────────────
-app.post('/api/migrate-genre-submissions', async (req, res) => {
-  try {
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS genre_submissions (
-        id          SERIAL PRIMARY KEY,
-        genre       TEXT NOT NULL,
-        week_title  TEXT,
-        title       TEXT NOT NULL,
-        artist      TEXT NOT NULL,
-        note        TEXT,
-        youtube_url TEXT,
-        spotify_url TEXT,
-        week_number INT DEFAULT 1,
-        drop_date   DATE,
-        created_at  TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── One-time migration: add curator_month + monthly_theme columns ─────────────
-app.post('/api/migrate-curator-fields', async (req, res) => {
-  try {
-    await db.query(`ALTER TABLE curators ADD COLUMN IF NOT EXISTS curator_month TEXT`);
-    await db.query(`ALTER TABLE curators ADD COLUMN IF NOT EXISTS monthly_theme TEXT`);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// ── One-time migration: add statement column to curators ──────────────────────
-app.post('/api/migrate-curator-statement', async (req, res) => {
-  try {
-    await db.query(`ALTER TABLE curators ADD COLUMN IF NOT EXISTS statement TEXT`);
-    res.json({ ok: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
 const { runCuratorDrop: _runCuratorDrop, runCuratorIntroBlast } = require('./curator-scheduler');
 
 // ── POST /api/curator-intro/send — manual Friday intro blast ─────────────────
@@ -4833,6 +5299,7 @@ app.post('/api/curator-drop/test', async (req, res) => {
 db.query(`
   CREATE TABLE IF NOT EXISTS featured_drop (
     id          INTEGER PRIMARY KEY DEFAULT 1,
+    genre       TEXT DEFAULT 'rock',
     youtube_url TEXT,
     spotify_url TEXT,
     artist      TEXT,
@@ -4841,6 +5308,8 @@ db.query(`
     updated_at  TIMESTAMPTZ DEFAULT NOW()
   )
 `).catch(e => console.error('[startup] featured_drop table error:', e.message));
+db.query(`ALTER TABLE featured_drop ADD COLUMN IF NOT EXISTS genre TEXT DEFAULT 'rock'`)
+  .catch(e => console.error('[startup] featured_drop genre column error:', e.message));
 
 // ── GET /api/featured-drop ────────────────────────────────────────────────────
 app.get('/api/featured-drop', async (req, res) => {
@@ -4852,12 +5321,13 @@ app.get('/api/featured-drop', async (req, res) => {
 
 // ── PUT /api/featured-drop ────────────────────────────────────────────────────
 app.put('/api/featured-drop', async (req, res) => {
-  const { youtube_url, spotify_url, artist, title, curator_note } = req.body;
+  const { genre, youtube_url, spotify_url, artist, title, curator_note } = req.body;
   try {
     const { rows } = await db.query(`
-      INSERT INTO featured_drop (id, youtube_url, spotify_url, artist, title, curator_note, updated_at)
-      VALUES (1, $1, $2, $3, $4, $5, NOW())
+      INSERT INTO featured_drop (id, genre, youtube_url, spotify_url, artist, title, curator_note, updated_at)
+      VALUES (1, $1, $2, $3, $4, $5, $6, NOW())
       ON CONFLICT (id) DO UPDATE SET
+        genre        = EXCLUDED.genre,
         youtube_url  = EXCLUDED.youtube_url,
         spotify_url  = EXCLUDED.spotify_url,
         artist       = EXCLUDED.artist,
@@ -4865,7 +5335,7 @@ app.put('/api/featured-drop', async (req, res) => {
         curator_note = EXCLUDED.curator_note,
         updated_at   = NOW()
       RETURNING *
-    `, [youtube_url||null, spotify_url||null, artist||null, title||null, curator_note||null]);
+    `, [genre||'rock', youtube_url||null, spotify_url||null, artist||null, title||null, curator_note||null]);
     res.json(rows[0]);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
