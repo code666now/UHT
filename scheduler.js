@@ -21,12 +21,14 @@ const client = twilio(
 async function runWeeklyDrop() {
   console.log(`\n[Drop] Starting weekly drop at ${new Date().toISOString()}`);
 
-  // Get all active subscriptions with subscriber phone
+  // Get all active GENRE subscriptions only — curator subs are handled by curator-scheduler.js Monday cron
   const { rows: subs } = await db.query(`
     SELECT s.id AS sub_id, s.user_id, s.genre_id, s.curator_id, u.phone, u.taste_token
     FROM subscriptions s
     JOIN users u ON u.id = s.user_id
     WHERE s.is_active = TRUE
+      AND s.genre_id IS NOT NULL
+      AND s.curator_id IS NULL
   `);
 
   if (!subs.length) {
