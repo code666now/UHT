@@ -296,7 +296,7 @@ app.get("/admin", requireAdmin, (req, res) => res.sendFile(require("path").join(
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may12-v36' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may12-v37' });
 });
 
 
@@ -1798,7 +1798,7 @@ function scrollCurators(dir){
 }
 
 // ── Subscribe ──
-var _subPhone='', _agreed=false, _activePill='genre';
+var _subPhone='', _subName='', _subEmail='', _subGenreId='', _subCuratorId='', _agreed=false, _activePill='genre';
 
 function toggleAgree(){
   _agreed=!_agreed;
@@ -1842,28 +1842,39 @@ function handleSubscribe(e){
   if(!_agreed){msg.textContent='Please agree to receive SMS messages.';return}
   if(_activePill==='genre'&&!document.getElementById('subGenre').value){msg.textContent='Choose a genre.';return}
   if(_activePill==='curator'&&!document.getElementById('subCurator').value){msg.textContent='Choose a curator.';return}
-  btn.disabled=true;btn.className='sub-btn';btn.textContent='Sending...';msg.textContent='';
-  _subPhone=phone;
+
+  // Normalize phone
+  var digits=phone.replace(/\D/g,'');
+  var normPhone=digits.length===10?'+1'+digits:digits.length===11&&digits[0]==='1'?'+'+digits:'+'+digits;
+
+  // Check if already subscribed before sending OTP
   var genreEl=document.getElementById('subGenre');
-  var genreId=_activePill==='genre'?(genreEl.options[genreEl.selectedIndex]&&genreEl.options[genreEl.selectedIndex].dataset.id):'';
-  var curatorId=_activePill==='curator'?document.getElementById('subCurator').value:'';
-  var body={phone:phone,name:name||undefined,email:document.getElementById('subEmail').value.trim()||undefined};
-  if(curatorId)body.curator_id=parseInt(curatorId);
-  else if(genreId)body.genre_id=parseInt(genreId);
-  fetch('/api/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
-    .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d}})})
-    .then(function(res){
-      if(res.ok){
-        if(res.data.is_new===false){
-          // Already subscribed — show confirmation inline, no OTP needed
-          var sel=_activePill==='genre'?document.getElementById('subGenre').options[document.getElementById('subGenre').selectedIndex]?.text:'';
-          document.getElementById('subForm').innerHTML='<div style="text-align:center;padding:24px 0"><div style="font-size:22px;color:#E8B84B;margin-bottom:10px">Already in.</div><div style="font-size:15px;opacity:.7">You\\'re subscribed'+(sel?' to '+sel:'')+'. Your next drop arrives Friday.</div></div>';
-          return;
-        }
-        fetch('/api/send_code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone:phone})});
-        document.getElementById('subForm').style.display='none';
-        var vw=document.getElementById('verifyWrap');vw.style.display='flex';
-      } else {msg.textContent=res.data.error||'Something went wrong.';btn.disabled=false;btn.className='sub-btn ready';btn.textContent='Send me the drop';}
+  _subPhone=normPhone;
+  _subName=name;
+  _subEmail=document.getElementById('subEmail').value.trim();
+  _subGenreId=_activePill==='genre'?(genreEl.options[genreEl.selectedIndex]&&parseInt(genreEl.options[genreEl.selectedIndex].dataset.id))||'':'';
+  _subCuratorId=_activePill==='curator'?parseInt(document.getElementById('subCurator').value)||'':'';
+
+  btn.disabled=true;btn.className='sub-btn';btn.textContent='Sending...';msg.textContent='';
+
+  // Check if already subscribed — if so, skip OTP
+  fetch('/api/check-subscription?phone='+encodeURIComponent(normPhone)+(_subGenreId?'&genre_id='+_subGenreId:'')+(_subCuratorId?'&curator_id='+_subCuratorId:''))
+    .then(function(r){return r.json()})
+    .then(function(d){
+      if(d.subscribed){
+        var sel=_activePill==='genre'?(genreEl.options[genreEl.selectedIndex]||{}).text||'':'';
+        document.getElementById('subForm').innerHTML='<div style="text-align:center;padding:24px 0"><div style="font-size:22px;color:#E8B84B;margin-bottom:10px">Already in.</div><div style="font-size:15px;opacity:.7">You\\'re subscribed'+(sel?' to '+sel:'')+'. Your next drop arrives Friday.</div></div>';
+        return;
+      }
+      // New subscriber — send OTP first, subscribe only after verification
+      fetch('/api/send_code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone:normPhone})})
+        .then(function(r){return r.json()})
+        .then(function(sd){
+          if(sd.error){msg.textContent=sd.error;btn.disabled=false;btn.className='sub-btn ready';btn.textContent='Send me the drop';return;}
+          document.getElementById('subForm').style.display='none';
+          var vw=document.getElementById('verifyWrap');vw.style.display='flex';
+        })
+        .catch(function(){msg.textContent='Could not send code. Try again.';btn.disabled=false;btn.className='sub-btn ready';btn.textContent='Send me the drop';});
     })
     .catch(function(){msg.textContent='Network error.';btn.disabled=false;btn.className='sub-btn ready';btn.textContent='Send me the drop';});
 }
@@ -1872,7 +1883,10 @@ function handleVerify(){
   var code=document.getElementById('verifyCode').value.trim();
   var msg=document.getElementById('verifyMsg');
   if(!code){msg.textContent='Enter the code from your text.';return}
-  fetch('/api/verify_code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone:_subPhone,code:code})})
+  var body={phone:_subPhone,code:code,name:_subName||undefined,email:_subEmail||undefined};
+  if(_subGenreId)body.genre_id=_subGenreId;
+  if(_subCuratorId)body.curator_id=_subCuratorId;
+  fetch('/api/verify_code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
     .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d}})})
     .then(function(res){
       if(res.ok){document.getElementById('verifyWrap').innerHTML='<div style="font-size:24px;color:#E8B84B;margin-bottom:10px">HIT.</div><div style="font-size:17px;margin-bottom:6px">You\\'re in.</div><div style="font-size:13px;opacity:.4">First drop arrives Friday.</div>';}
@@ -2759,7 +2773,7 @@ app.post('/api/send_code', async (req, res) => {
 
 // ── Twilio Verify: verify OTP + subscribe ─────────────────────────────────────
 app.post('/api/verify_code', async (req, res) => {
-  const { phone, code, genre } = req.body;
+  const { phone, code, genre, genre_id, curator_id, name, email } = req.body;
   if (!phone || !code) return res.status(400).json({ error: 'phone and code required' });
   const digits = phone.replace(/\D/g,'');
   const normalPhone = digits.length === 10 ? '+1' + digits
@@ -2775,16 +2789,26 @@ app.post('/api/verify_code', async (req, res) => {
       return res.status(400).json({ error: 'Invalid or expired code.' });
     }
 
-    // Upsert user
+    // Upsert user (now the authoritative subscribe step)
     const { rows: [user] } = await db.query(
-      `INSERT INTO users (phone) VALUES ($1)
-       ON CONFLICT (phone) DO UPDATE SET phone = EXCLUDED.phone
+      `INSERT INTO users (phone, name, email)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (phone) DO UPDATE SET
+         name = COALESCE(EXCLUDED.name, users.name),
+         email = COALESCE(EXCLUDED.email, users.email)
        RETURNING *`,
-      [normalPhone]
+      [normalPhone, name || null, email || null]
     );
 
-    // Subscribe to genre if provided
-    if (genre) {
+    // Subscribe to genre by id (preferred) or by name (legacy)
+    if (genre_id) {
+      await db.query(
+        `INSERT INTO subscriptions (user_id, genre_id, is_active)
+         VALUES ($1, $2, true)
+         ON CONFLICT (user_id, genre_id) DO UPDATE SET is_active = true`,
+        [user.id, genre_id]
+      );
+    } else if (genre) {
       const { rows: genres } = await db.query(
         'SELECT id FROM genres WHERE LOWER(name) = LOWER($1) LIMIT 1', [genre]
       );
@@ -2798,7 +2822,17 @@ app.post('/api/verify_code', async (req, res) => {
       }
     }
 
-    res.json({ ok: true, status: 'approved', taste_token: user.taste_token || null });
+    // Subscribe to curator if provided
+    if (curator_id) {
+      await db.query(
+        `INSERT INTO subscriptions (user_id, curator_id, is_active)
+         VALUES ($1, $2, true)
+         ON CONFLICT (user_id, curator_id) DO UPDATE SET is_active = true`,
+        [user.id, curator_id]
+      );
+    }
+
+    res.json({ ok: true, status: 'approved', is_new: !user.name && !genre_id && !curator_id ? undefined : true, taste_token: user.taste_token || null });
   } catch (err) {
     console.error('verify_code error:', err.message);
     res.status(500).json({ error: err.message });
