@@ -306,7 +306,7 @@ app.get("/admin", requireAdmin, (req, res) => res.sendFile(require("path").join(
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may12-v38' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may12-v39' });
 });
 
 
@@ -4696,6 +4696,7 @@ function castVote(type){
   var labels={mega_hit:'🔥 Mega Hit recorded!',hit:'🎯 Hit recorded!',denied:'💀 Denied recorded!'};
   var shareLabels={mega_hit:'🔥 Mega Hit —',hit:'🎯 Hit —',denied:'💀 Denied —'};
   _voteLabel=shareLabels[type]||'I voted on';
+  _voteType=type;
   var msg=document.getElementById('voteConfirm');
   msg.textContent=labels[type]||'Recorded!';
   setTimeout(function(){msg.classList.add('show');},100);
@@ -4749,21 +4750,105 @@ function loadCounts(){
     }).catch(function(){});
 }
 loadCounts();
-var _voteLabel='';
+var _voteLabel='', _voteType='';
 function shareVote(){
-  var url=window.location.href.split('?')[0];
-  var text=_voteLabel+' '+${JSON.stringify(d.title)}+' by '+${JSON.stringify(d.artist)}+' — what do you think?\\n'+url;
-  if(navigator.share){
-    navigator.share({title:${JSON.stringify(weekTitle)},text:text,url:url}).catch(function(){});
-  } else {
-    navigator.clipboard.writeText(text).then(function(){
-      var btn=document.getElementById('shareBtn');
-      btn.textContent='Copied!';
-      setTimeout(function(){btn.textContent='↗ Share this pick';},2000);
-    });
+  var modal=document.getElementById('shareModal');
+  var canvas=document.getElementById('shareCanvas');
+  var ctx=canvas.getContext('2d');
+  var S=1080;
+  canvas.width=S; canvas.height=S;
+
+  // Background
+  ctx.fillStyle='#000';
+  ctx.fillRect(0,0,S,S);
+
+  // Gold accent bar top
+  ctx.fillStyle='#E8B84B';
+  ctx.fillRect(60,60,S-120,3);
+
+  // Gold accent bar bottom
+  ctx.fillRect(60,S-63,S-120,3);
+
+  // Top label — UHT
+  ctx.fillStyle='rgba(243,241,234,0.35)';
+  ctx.font='500 28px Georgia,serif';
+  ctx.letterSpacing='0.3em';
+  ctx.textAlign='center';
+  ctx.fillText('UHT  ·  UNDENIABLE HIT THEORY', S/2, 118);
+
+  // "I VOTED" label
+  ctx.fillStyle='rgba(243,241,234,0.4)';
+  ctx.font='22px Georgia,serif';
+  ctx.letterSpacing='0.35em';
+  ctx.fillText('I  V O T E D', S/2, 340);
+
+  // Vote verdict — big text, color by type
+  var verdictText=_voteType==='mega_hit'?'MEGA HIT':_voteType==='denied'?'DENIED':'HIT';
+  var verdictColor=_voteType==='denied'?'rgba(243,241,234,0.7)':'#E8B84B';
+  ctx.fillStyle=verdictColor;
+  var verdictSize=verdictText.length>4?160:220;
+  ctx.font='bold '+verdictSize+'px Georgia,serif';
+  ctx.letterSpacing='0.02em';
+  ctx.fillText(verdictText, S/2, 570);
+
+  // Song title
+  ctx.fillStyle='#f3f1ea';
+  var title=${JSON.stringify(d.title)};
+  var titleFontSize=title.length>30?52:title.length>20?62:72;
+  ctx.font='bold '+titleFontSize+'px Georgia,serif';
+  ctx.letterSpacing='0.01em';
+  // Word-wrap title if needed
+  wrapText(ctx, title, S/2, 680, S-160, titleFontSize*1.25);
+
+  // Artist
+  ctx.fillStyle='rgba(243,241,234,0.55)';
+  ctx.font='38px Georgia,serif';
+  ctx.letterSpacing='0.05em';
+  ctx.fillText(${JSON.stringify(d.artist)}, S/2, 820);
+
+  // Bottom URL
+  ctx.fillStyle='rgba(243,241,234,0.25)';
+  ctx.font='22px Georgia,serif';
+  ctx.letterSpacing='0.2em';
+  ctx.fillText('undeniablehits.com', S/2, S-84);
+
+  modal.style.display='flex';
+}
+
+function wrapText(ctx,text,x,y,maxW,lineH){
+  var words=text.split(' '), line='', lines=[];
+  for(var i=0;i<words.length;i++){
+    var test=line+(line?' ':'')+words[i];
+    if(ctx.measureText(test).width>maxW&&line){lines.push(line);line=words[i];}
+    else line=test;
   }
+  lines.push(line);
+  var startY=y-(lines.length-1)*lineH/2;
+  lines.forEach(function(l,i){ctx.fillText(l,x,startY+i*lineH);});
+}
+
+function closeShareModal(){
+  document.getElementById('shareModal').style.display='none';
+}
+
+function downloadShareCard(){
+  var canvas=document.getElementById('shareCanvas');
+  var a=document.createElement('a');
+  a.download='uht-hit-${d.title.replace(/[^a-z0-9]/gi,'-').toLowerCase()}.png';
+  a.href=canvas.toDataURL('image/png');
+  a.click();
 }
 </script>
+<!-- SHARE CARD MODAL -->
+<div id="shareModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:999;align-items:center;justify-content:center;flex-direction:column;padding:24px">
+  <button onclick="closeShareModal()" style="position:absolute;top:20px;right:24px;background:none;border:none;color:rgba(243,241,234,0.5);font-size:24px;cursor:pointer;font-family:Georgia,serif">✕</button>
+  <div style="max-width:420px;width:100%">
+    <canvas id="shareCanvas" style="width:100%;height:auto;display:block;border-radius:4px"></canvas>
+    <button onclick="downloadShareCard()" style="margin-top:16px;width:100%;padding:18px;background:#E8B84B;color:#000;border:none;border-radius:6px;font-family:Georgia,serif;font-size:15px;letter-spacing:.1em;cursor:pointer;font-weight:700">↓ Save Image</button>
+    <p style="text-align:center;font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:rgba(243,241,234,0.25);margin-top:12px">Save · open Instagram · post to story or feed</p>
+  </div>
+</div>
+
 <div id="post-vote" style="display:none"></div>
 
 ${archive.length ? `
