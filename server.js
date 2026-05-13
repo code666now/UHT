@@ -306,7 +306,7 @@ app.get("/admin", requireAdmin, (req, res) => res.sendFile(require("path").join(
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may12-v42' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may12-v43' });
 });
 
 
@@ -3736,8 +3736,15 @@ ${allSubs && allSubs.length > 0 ? `
     <button class="modal-close" onclick="closeFollowModal()">✕</button>
     <div class="modal-title">Follow ${firstName}</div>
     <div class="modal-sub">Get his pick every Monday by text</div>
-    <input type="tel" id="followPhone" placeholder="+1 (212) 555-1234" onkeydown="if(event.key==='Enter')submitFollow()">
-    <button class="modal-btn" onclick="submitFollow()">Follow ${firstName} →</button>
+    <div id="followPhasePhone">
+      <input type="tel" id="followPhone" placeholder="+1 (212) 555-1234" onkeydown="if(event.key==='Enter')submitFollow()">
+      <button class="modal-btn" onclick="submitFollow()">Follow ${firstName} →</button>
+    </div>
+    <div id="followPhaseCode" style="display:none">
+      <input type="text" id="followCode" placeholder="6-digit code" maxlength="6" inputmode="numeric" style="letter-spacing:.15em;margin-bottom:10px">
+      <input type="text" id="followName" placeholder="First name (optional)" autocomplete="given-name" style="margin-bottom:10px">
+      <button class="modal-btn" onclick="submitFollowCode()">Confirm →</button>
+    </div>
     <div class="modal-msg" id="followMsg"></div>
   </div>
 </div>
@@ -3841,27 +3848,43 @@ function closeFollowModal(){
   document.getElementById('followModal').classList.remove('open');
 }
 
+var _followPhone='';
 function submitFollow(){
   var raw=document.getElementById('followPhone').value.trim();
   var msg=document.getElementById('followMsg');
   if(!raw){document.getElementById('followPhone').style.borderColor='rgba(237,232,223,0.5)';return;}
   var digits=raw.replace(/\D/g,'');
-  var phone=digits.length===10?'+1'+digits:digits.length===11&&digits[0]==='1'?'+'+digits:'+'+digits;
-  msg.textContent='...';
-  fetch('/api/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({phone:phone,curator_id:${curator.id}})})
-  .then(function(r){return r.json();})
-  .then(function(data){
-    if(data.message||data.ok||data.subscriber||data.success){
-      msg.textContent='You are now following ${firstName} 🌙';
-      document.getElementById('followPhone').disabled=true;
-      document.querySelector('.modal-btn').disabled=true;
-      document.querySelector('.modal-btn').textContent='✓ Following';
-    } else {
-      msg.textContent=data.error||'Something went wrong.';
-    }
-  })
-  .catch(function(){msg.textContent='Network error. Try again.';});
+  _followPhone=digits.length===10?'+1'+digits:digits.length===11&&digits[0]==='1'?'+'+digits:'+'+digits;
+  msg.textContent='Sending code...';
+  fetch('/api/send_code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone:_followPhone})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.error){msg.textContent=d.error;return;}
+      document.getElementById('followPhasePhone').style.display='none';
+      document.getElementById('followPhaseCode').style.display='block';
+      msg.textContent='';
+      setTimeout(function(){document.getElementById('followCode').focus();},100);
+    })
+    .catch(function(){msg.textContent='Network error. Try again.';});
+}
+function submitFollowCode(){
+  var code=document.getElementById('followCode').value.trim();
+  var name=(document.getElementById('followName').value||'').trim()||undefined;
+  var msg=document.getElementById('followMsg');
+  if(!code){msg.textContent='Enter the code from your text.';return;}
+  msg.textContent='Verifying...';
+  fetch('/api/verify_code',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({phone:_followPhone,code:code,curator_id:${curator.id},name:name})})
+    .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d};});})
+    .then(function(res){
+      if(res.ok){
+        document.getElementById('followPhaseCode').innerHTML='';
+        msg.textContent='You are now following ${firstName} 🌙';
+      } else {
+        msg.textContent=res.data.error||'Invalid code.';
+      }
+    })
+    .catch(function(){msg.textContent='Network error. Try again.';});
 }
 </script>
 ${idCard}
@@ -4854,11 +4877,12 @@ function nudgeSubmit(){
 }
 function nudgeVerify(){
   var code=document.getElementById('nudgeCode').value.trim();
+  var name=(document.getElementById('nudgeName').value||'').trim()||undefined;
   var msg=document.getElementById('nudgeVerifyMsg');
   if(!code){msg.textContent='Enter the code from your text.';return;}
   msg.textContent='Verifying...';
   fetch('/api/verify_code',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({phone:_nudgePhone,code:code,genre_id:${nudgeGenreId}})})
+    body:JSON.stringify({phone:_nudgePhone,code:code,genre_id:${nudgeGenreId},name:name})})
     .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d};});})
     .then(function(res){
       if(res.ok){
@@ -4917,6 +4941,7 @@ ${!isSubscriber && nudgeGenreId ? `
   </div>
   <div id="nudgeVerify" style="display:none">
     <input type="text" id="nudgeCode" placeholder="6-digit code" maxlength="6" inputmode="numeric" style="letter-spacing:.2em">
+    <input type="text" id="nudgeName" placeholder="First name (optional)" autocomplete="given-name">
     <button class="post-nudge-btn" onclick="nudgeVerify()">Confirm →</button>
     <div class="post-nudge-msg" id="nudgeVerifyMsg"></div>
   </div>
