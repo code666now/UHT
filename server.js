@@ -237,6 +237,16 @@ app.use(express.urlencoded({ extended: false, limit: "50mb" }));
 app.use(express.json({ limit: "50mb" }));
 app.use(require("express").static(require("path").join(__dirname, "public")));
 
+// ── Share helpers with routers via app.locals ─────────────────────────────────
+app.locals.verifySession = verifySession;
+app.locals.requireAdmin  = requireAdmin;
+
+// ── Route modules ─────────────────────────────────────────────────────────────
+app.use('/api', require('./routes/songs'));
+app.use('/api', require('./routes/votes'));
+app.use('/api/messages', require('./routes/messages'));
+app.use('/api', require('./routes/subscribers'));
+
 // Admin panel
 // ── Admin login ───────────────────────────────────────────────────────────────
 app.get('/admin/login', (req, res) => {
@@ -296,7 +306,7 @@ app.get("/admin", requireAdmin, (req, res) => res.sendFile(require("path").join(
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may12-v37' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may12-v38' });
 });
 
 
