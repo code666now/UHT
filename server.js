@@ -306,7 +306,7 @@ app.get("/admin", requireAdmin, (req, res) => res.sendFile(require("path").join(
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may12-v43' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may12-v44' });
 });
 
 
@@ -3742,7 +3742,7 @@ ${allSubs && allSubs.length > 0 ? `
     </div>
     <div id="followPhaseCode" style="display:none">
       <input type="text" id="followCode" placeholder="6-digit code" maxlength="6" inputmode="numeric" style="letter-spacing:.15em;margin-bottom:10px">
-      <input type="text" id="followName" placeholder="First name (optional)" autocomplete="given-name" style="margin-bottom:10px">
+      <input type="text" id="followName" placeholder="First name" autocomplete="given-name" style="margin-bottom:10px">
       <button class="modal-btn" onclick="submitFollowCode()">Confirm →</button>
     </div>
     <div class="modal-msg" id="followMsg"></div>
@@ -3869,9 +3869,10 @@ function submitFollow(){
 }
 function submitFollowCode(){
   var code=document.getElementById('followCode').value.trim();
-  var name=(document.getElementById('followName').value||'').trim()||undefined;
+  var name=(document.getElementById('followName').value||'').trim();
   var msg=document.getElementById('followMsg');
   if(!code){msg.textContent='Enter the code from your text.';return;}
+  if(!name){msg.textContent='First name is required.';return;}
   msg.textContent='Verifying...';
   fetch('/api/verify_code',{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({phone:_followPhone,code:code,curator_id:${curator.id},name:name})})
@@ -4877,9 +4878,10 @@ function nudgeSubmit(){
 }
 function nudgeVerify(){
   var code=document.getElementById('nudgeCode').value.trim();
-  var name=(document.getElementById('nudgeName').value||'').trim()||undefined;
+  var name=(document.getElementById('nudgeName').value||'').trim();
   var msg=document.getElementById('nudgeVerifyMsg');
   if(!code){msg.textContent='Enter the code from your text.';return;}
+  if(!name){msg.textContent='First name is required.';return;}
   msg.textContent='Verifying...';
   fetch('/api/verify_code',{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({phone:_nudgePhone,code:code,genre_id:${nudgeGenreId},name:name})})
@@ -4941,7 +4943,7 @@ ${!isSubscriber && nudgeGenreId ? `
   </div>
   <div id="nudgeVerify" style="display:none">
     <input type="text" id="nudgeCode" placeholder="6-digit code" maxlength="6" inputmode="numeric" style="letter-spacing:.2em">
-    <input type="text" id="nudgeName" placeholder="First name (optional)" autocomplete="given-name">
+    <input type="text" id="nudgeName" placeholder="First name" autocomplete="given-name">
     <button class="post-nudge-btn" onclick="nudgeVerify()">Confirm →</button>
     <div class="post-nudge-msg" id="nudgeVerifyMsg"></div>
   </div>
