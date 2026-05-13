@@ -28,13 +28,14 @@ router.get('/votes', async (req, res) => {
 
       SELECT
         'web'            AS source,
-        NULL             AS phone,
-        NULL             AS name,
+        u.phone,
+        u.name,
         cs.title, cs.artist,
         csv.vote,
-        cs.submitted_at  AS voted_at
+        csv.voted_at     AS voted_at
       FROM curator_submission_votes csv
       JOIN curator_submissions cs ON cs.id = csv.submission_id
+      LEFT JOIN users u ON u.id = csv.user_id
 
       UNION ALL
 

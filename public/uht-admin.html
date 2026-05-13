@@ -951,7 +951,7 @@ async function loadVotes() {
           <td>${esc(v.title)}</td>
           <td>${esc(v.artist)}</td>
           <td><span class="tag tag-${v.vote}">${v.vote.toUpperCase()}</span></td>
-          <td>${fmtDate(v.updated_at)}</td>
+          <td>${fmtDate(v.voted_at||v.updated_at)}</td>
         </tr>`).join('')
       : '<tr class="empty-row"><td colspan="7">No votes yet.</td></tr>';
   } catch(e) { tbody.innerHTML=`<tr class="empty-row"><td colspan="5">${esc(e.message)}</td></tr>`; }

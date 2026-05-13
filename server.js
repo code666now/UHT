@@ -306,7 +306,7 @@ app.get("/admin", requireAdmin, (req, res) => res.sendFile(require("path").join(
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may12-v41' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may12-v42' });
 });
 
 
@@ -5448,13 +5448,14 @@ app.get('/api/votes', async (req, res) => {
       -- Web votes on curator drop page
       SELECT
         'web'            AS source,
-        NULL             AS phone,
-        NULL             AS name,
+        u.phone,
+        u.name,
         cs.title, cs.artist,
         csv.vote,
-        cs.submitted_at  AS voted_at
+        csv.voted_at     AS voted_at
       FROM curator_submission_votes csv
       JOIN curator_submissions cs ON cs.id = csv.submission_id
+      LEFT JOIN users u ON u.id = csv.user_id
 
       UNION ALL
 
