@@ -306,7 +306,7 @@ app.get("/admin", requireAdmin, (req, res) => res.sendFile(require("path").join(
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may12-v40' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may12-v41' });
 });
 
 
@@ -4460,6 +4460,15 @@ app.get('/drop/:genre', identifyDropUser, async (req, res) => {
     const archive = rows.slice(1);
     const ytId = d.youtube_url ? (d.youtube_url.match(/(?:v=|youtu\.be\/)([^&?/]+)/) || [])[1] : null;
     const weekTitle = d.week_title || ('Undeniable ' + genre.charAt(0).toUpperCase() + genre.slice(1) + ' Hit of the Week');
+    const genreLabel = genre.charAt(0).toUpperCase() + genre.slice(1);
+    const isSubscriber = !!req.dropUser;
+
+    // Fetch genre_id for subscribe nudge
+    let nudgeGenreId = null;
+    try {
+      const { rows: gRows } = await db.query('SELECT id FROM genres WHERE LOWER(name)=LOWER($1) LIMIT 1', [genre]);
+      if (gRows.length) nudgeGenreId = gRows[0].id;
+    } catch(_) {}
 
     const { headerHTML: idHeader, cardHTML: idCard, cardCSS: idCSS, cardJS: idCardJS } = memberIdentityBlocks(req.dropUser);
 
@@ -4511,6 +4520,16 @@ html,body{background:#000;margin:0;padding:0;overflow-x:hidden;font-family:Georg
 .sp-whisper{font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:rgba(243,241,234,0.2);cursor:pointer;background:none;border:none;font-family:Georgia,serif;padding:0;text-align:center;width:100%}
 @media(min-width:768px){.vote-row{flex-direction:row;justify-content:center}.vote-btn{width:auto;flex:1}}
 .uht-footer{text-align:center;padding:32px 20px 32px;font-size:9px;letter-spacing:.3em;text-transform:uppercase;opacity:.2;color:#f3f1ea}
+.post-nudge{max-width:400px;margin:0 auto;padding:32px 24px;text-align:center}
+.post-nudge-title{font-size:15px;line-height:1.5;color:rgba(243,241,234,0.85);margin-bottom:20px}
+.post-nudge-title em{font-style:italic;color:#E8B84B}
+.post-nudge input{width:100%;padding:16px;background:rgba(243,241,234,0.06);border:1px solid rgba(243,241,234,0.15);border-radius:8px;color:#f3f1ea;font-family:Georgia,serif;font-size:16px;text-align:center;margin-bottom:10px;outline:none;box-sizing:border-box}
+.post-nudge input::placeholder{color:rgba(243,241,234,0.3)}
+.post-nudge input:focus{border-color:rgba(243,241,234,0.4)}
+.post-nudge-btn{width:100%;padding:16px;background:#f3f1ea;color:#000;border:none;border-radius:8px;font-family:Georgia,serif;font-size:15px;letter-spacing:.05em;cursor:pointer;transition:background .2s}
+.post-nudge-btn:hover{background:#fff}
+.post-nudge-msg{font-size:12px;letter-spacing:.08em;color:rgba(243,241,234,0.4);margin-top:10px;min-height:18px}
+.post-nudge-legal{font-size:10px;letter-spacing:.08em;color:rgba(243,241,234,0.2);margin-top:8px}
 .archive-section{padding:48px 24px 0;max-width:640px;margin:0 auto;width:100%}
 .archive-heading{font-size:9px;letter-spacing:.35em;text-transform:uppercase;color:rgba(243,241,234,0.3);text-align:center;margin-bottom:36px}
 .archive-card{border-top:1px solid rgba(243,241,234,0.08);padding:32px 0 0;margin-bottom:40px}
@@ -4815,6 +4834,42 @@ function shareVote(){
   modal.style.display='flex';
 }
 
+// ── Post-vote subscribe nudge ─────────────────────────────────────────────────
+var _nudgePhone='';
+function nudgeSubmit(){
+  var raw=document.getElementById('nudgePhoneInput').value.trim();
+  var msg=document.getElementById('nudgeMsg');
+  if(!raw){msg.textContent='Enter your phone number.';return;}
+  var digits=raw.replace(/\\D/g,'');
+  _nudgePhone=digits.length===10?'+1'+digits:digits.length===11&&digits[0]==='1'?'+'+digits:'+'+digits;
+  msg.textContent='Sending code...';
+  fetch('/api/send_code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone:_nudgePhone})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.error){msg.textContent=d.error;return;}
+      document.getElementById('nudgePhone').style.display='none';
+      document.getElementById('nudgeVerify').style.display='block';
+    })
+    .catch(function(){msg.textContent='Network error. Try again.';});
+}
+function nudgeVerify(){
+  var code=document.getElementById('nudgeCode').value.trim();
+  var msg=document.getElementById('nudgeVerifyMsg');
+  if(!code){msg.textContent='Enter the code from your text.';return;}
+  msg.textContent='Verifying...';
+  fetch('/api/verify_code',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({phone:_nudgePhone,code:code,genre_id:${nudgeGenreId}})})
+    .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d};});})
+    .then(function(res){
+      if(res.ok){
+        document.getElementById('nudgeWrap').innerHTML='<div style="padding:8px 0;font-size:15px;color:#E8B84B;letter-spacing:.05em">You\\'re in. Next ${genreLabel} pick drops Friday.</div>';
+      } else {
+        msg.textContent=res.data.error||'Invalid code.';
+      }
+    })
+    .catch(function(){msg.textContent='Network error.';});
+}
+
 function wrapText(ctx,text,x,y,maxW,lineH){
   var words=text.split(' '), line='', lines=[];
   for(var i=0;i<words.length;i++){
@@ -4849,7 +4904,24 @@ function downloadShareCard(){
   </div>
 </div>
 
-<div id="post-vote" style="display:none"></div>
+<!-- POST-VOTE SUBSCRIBE NUDGE -->
+<div id="post-vote" style="display:none">
+${!isSubscriber && nudgeGenreId ? `
+<div class="post-nudge" id="nudgeWrap">
+  <p class="post-nudge-title">Enjoyed <em>${d.title}</em>?<br>Get next week's ${genreLabel} pick sent to your phone.</p>
+  <div id="nudgePhone">
+    <input type="tel" id="nudgePhoneInput" placeholder="(555) 867-5309" inputmode="tel" autocomplete="tel">
+    <button class="post-nudge-btn" onclick="nudgeSubmit()">Get the drop →</button>
+    <div class="post-nudge-msg" id="nudgeMsg"></div>
+    <p class="post-nudge-legal">Weekly SMS · Reply STOP anytime</p>
+  </div>
+  <div id="nudgeVerify" style="display:none">
+    <input type="text" id="nudgeCode" placeholder="6-digit code" maxlength="6" inputmode="numeric" style="letter-spacing:.2em">
+    <button class="post-nudge-btn" onclick="nudgeVerify()">Confirm →</button>
+    <div class="post-nudge-msg" id="nudgeVerifyMsg"></div>
+  </div>
+</div>` : ''}
+</div>
 
 ${archive.length ? `
 <div class="archive-section" id="archive-section" style="display:none">
