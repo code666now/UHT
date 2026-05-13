@@ -104,6 +104,29 @@ db.query(`ALTER TABLE curator_submission_votes ADD COLUMN IF NOT EXISTS user_id 
   .then(() => console.log('[Migration] curator_submission_votes.user_id ready'))
   .catch(e => console.error('[Migration] curator_submission_votes.user_id:', e.message));
 
+// Drop submission_id FK so genre_submissions votes work alongside curator_submissions votes
+db.query(`ALTER TABLE curator_submission_votes DROP CONSTRAINT IF EXISTS curator_submission_votes_submission_id_fkey`)
+  .then(() => console.log('[Migration] curator_submission_votes FK dropped — genre votes enabled'))
+  .catch(e => console.error('[Migration] votes FK drop:', e.message));
+
+// Expand vote check constraint to include mega_hit
+db.query(`ALTER TABLE curator_submission_votes DROP CONSTRAINT IF EXISTS curator_submission_votes_vote_check`)
+  .then(() => db.query(`ALTER TABLE curator_submission_votes ADD CONSTRAINT curator_submission_votes_vote_check CHECK (vote IN ('hit','denied','mega_hit'))`))
+  .then(() => console.log('[Migration] vote check constraint updated to include mega_hit'))
+  .catch(e => console.error('[Migration] vote check constraint:', e.message));
+
+// Standalone: ensure submit_token column exists and backfill
+db.query(`ALTER TABLE curators ADD COLUMN IF NOT EXISTS submit_token TEXT`)
+  .then(async () => {
+    const { rows } = await db.query(`SELECT id FROM curators WHERE submit_token IS NULL`);
+    for (const c of rows) {
+      const token = crypto.randomBytes(12).toString('hex');
+      await db.query(`UPDATE curators SET submit_token=$1 WHERE id=$2`, [token, c.id]);
+    }
+    if (rows.length) console.log(`[Migration] Generated submit_token for ${rows.length} curator(s)`);
+  })
+  .catch(e => console.error('[Migration] submit_token:', e.message));
+
 // Curator phone + welcome tracking columns
 db.query(`ALTER TABLE curators ADD COLUMN IF NOT EXISTS phone TEXT`)
   .then(() => db.query(`ALTER TABLE curators ADD COLUMN IF NOT EXISTS welcome_sent_at TIMESTAMP`))
@@ -273,7 +296,7 @@ app.get("/admin", requireAdmin, (req, res) => res.sendFile(require("path").join(
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may5-v12' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may12-v36' });
 });
 
 
@@ -340,9 +363,10 @@ app.get('/submit/curator/:token', async (req, res) => {
 <title>Submit Your Pick — UHT</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{background:#000;color:#f3f1ea;font-family:Georgia,"Times New Roman",serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:40px 20px 60px;}
-.wrap{width:100%;max-width:440px;display:flex;flex-direction:column;gap:20px;}
-.eyebrow{font-size:0.5rem;letter-spacing:0.4em;text-transform:uppercase;opacity:0.3;}
+body{background:#000 url('/record-store.png') center center/cover no-repeat fixed;color:#f3f1ea;font-family:Georgia,"Times New Roman",serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:40px 20px 60px;}
+body::before{content:'';position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:0;}
+.wrap{width:100%;max-width:440px;display:flex;flex-direction:column;gap:20px;position:relative;z-index:1;}
+.eyebrow{font-size:0.62rem;letter-spacing:0.35em;text-transform:uppercase;opacity:1;color:#E8B84B;font-weight:bold;text-shadow:0 1px 6px rgba(0,0,0,0.8);}
 h1{font-size:1.6rem;font-weight:normal;line-height:1.2;}
 .sub{font-size:0.82rem;opacity:0.4;font-style:italic;}
 .field{display:flex;flex-direction:column;gap:6px;}
@@ -448,7 +472,9 @@ app.get('/follow/curator/:slug', async (req, res) => {
     const c = curators[0];
     const firstName = c.name.split(' ')[0];
     const base = process.env.BASE_URL || '';
-    const headshot = c.image_url?.startsWith('data:') ? `${base}/curator-image/${c.id}` : (c.image_url || '');
+    // Always route through our own /curator-image/:id endpoint — handles data: blobs
+    // and external URLs via redirect, so we never depend directly on WordPress.
+    const headshot = c.image_url ? `${base}/curator-image/${c.id}` : '';
     const month = c.curator_month || '';
     const dropSlug = slug;
 
@@ -1100,6 +1126,15 @@ app.get('/', async (req, res) => {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>UHT — Undeniable Hits</title>
 <meta name="description" content="A weekly music drop. Vote HIT or DENIED. Subscribe by text.">
+<meta property="og:title" content="UHT — Undeniable Hit Theory">
+<meta property="og:description" content="One song. Every week. Vote HIT or DENIED.">
+<meta property="og:image" content="https://undeniablehits.com/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://undeniablehits.com">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://undeniablehits.com/og-image.png">
 <style>
 /* ── Design tokens ────────────────────────────────────────── */
 :root{
@@ -1186,6 +1221,8 @@ a{color:inherit;text-decoration:none}
 .curator-bio{font-size:13px;opacity:.4;line-height:1.6;margin-bottom:10px}
 .curator-insta{font-size:10px;letter-spacing:.2em;text-transform:uppercase;opacity:.28}
 .curator-see{font-size:11px;letter-spacing:.2em;text-transform:uppercase;opacity:.28;margin-top:14px;transition:opacity .2s}
+.curator-follow-btn{margin-top:16px;padding:11px 24px;background:#f3f1ea;color:#000;border:none;border-radius:6px;font-family:Georgia,serif;font-size:13px;letter-spacing:.08em;cursor:pointer;transition:all .2s;display:inline-block;width:100%}
+.curator-follow-btn:hover,.curator-follow-btn:active{background:#fff}
 .curator-placeholder{flex-shrink:0;width:280px;border:1px solid rgba(243,241,234,0.07);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;opacity:.12;min-height:360px}
 .curator-placeholder-icon{font-size:32px}
 .curator-placeholder-label{font-size:10px;letter-spacing:.3em;text-transform:uppercase}
@@ -1506,7 +1543,7 @@ select.sub-input option{background:#111;color:#f3f1ea}
       <div class="curator-card" onclick="openCuratorModal(${c.id})" style="cursor:pointer;width:340px;border-color:rgba(232,184,75,0.18);box-shadow:0 0 80px rgba(232,184,75,0.05)">
         <div style="position:relative">
           ${c.image_url
-            ? `<img class="curator-img" src="${c.image_url}" alt="${c.name}" loading="lazy" style="aspect-ratio:4/5">`
+            ? `<img class="curator-img" src="/curator-image/${c.id}" alt="${c.name}" loading="lazy" style="aspect-ratio:4/5">`
             : `<div class="curator-img-placeholder" style="aspect-ratio:4/5">🎧</div>`}
           <div style="position:absolute;bottom:0;left:0;right:0;padding:10px 16px 12px;background:linear-gradient(transparent,rgba(0,0,0,0.78));display:flex;align-items:center;gap:8px">
             <span style="font-size:8px;letter-spacing:.42em;text-transform:uppercase;color:rgba(232,228,217,0.72);font-family:Georgia,serif;line-height:1">${c.curator_month || 'May 2026'}</span>
@@ -1521,7 +1558,7 @@ select.sub-input option{background:#111;color:#f3f1ea}
           <div class="curator-name" style="font-size:20px">${c.name}</div>
           ${c.bio ? `<div class="curator-bio">${c.bio}</div>` : ''}
           ${c.instagram ? `<div class="curator-insta">@${c.instagram}</div>` : ''}
-          <div class="curator-see">+ Follow</div>
+          <button class="curator-follow-btn" onclick="event.stopPropagation();openCuratorModal(${c.id},true)">+ Follow</button>
         </div>
       </div>
       <div class="curator-helper">Follow ${c.name.split(' ')[0]} to get his weekly pick every Monday.</div>
@@ -1532,7 +1569,7 @@ select.sub-input option{background:#111;color:#f3f1ea}
       ${curators.map(c => `
       <div class="curator-card" onclick="openCuratorModal(${c.id})" style="cursor:pointer">
         ${c.image_url
-          ? `<img class="curator-img" src="${c.image_url}" alt="${c.name}" loading="lazy">`
+          ? `<img class="curator-img" src="/curator-image/${c.id}" alt="${c.name}" loading="lazy">`
           : `<div class="curator-img-placeholder">🎧</div>`}
         <div class="curator-body">
           <div class="curator-month-tag">${c.curator_month || 'May 2026'} · Founding Curator</div>
@@ -1817,6 +1854,12 @@ function handleSubscribe(e){
     .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d}})})
     .then(function(res){
       if(res.ok){
+        if(res.data.is_new===false){
+          // Already subscribed — show confirmation inline, no OTP needed
+          var sel=_activePill==='genre'?document.getElementById('subGenre').options[document.getElementById('subGenre').selectedIndex]?.text:'';
+          document.getElementById('subForm').innerHTML='<div style="text-align:center;padding:24px 0"><div style="font-size:22px;color:#E8B84B;margin-bottom:10px">Already in.</div><div style="font-size:15px;opacity:.7">You\\'re subscribed'+(sel?' to '+sel:'')+'. Your next drop arrives Friday.</div></div>';
+          return;
+        }
         fetch('/api/send_code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone:phone})});
         document.getElementById('subForm').style.display='none';
         var vw=document.getElementById('verifyWrap');vw.style.display='flex';
@@ -1839,10 +1882,11 @@ function handleVerify(){
 
 
 // ── Curator data (server-rendered) ──
-var _curators = ${JSON.stringify(curators.map(c => ({id:c.id,name:c.name,bio:c.bio||'',statement:c.statement||'',instagram:c.instagram||'',image_url:c.image_url||'',playlist_image_url:c.playlist_image_url||'',curator_month:c.curator_month||''})))};
+var _curators = ${JSON.stringify(curators.map(c => ({id:c.id,name:c.name,bio:c.bio||'',statement:c.statement||'',instagram:c.instagram||'',image_url:c.image_url ? '/curator-image/'+c.id : '',playlist_image_url:c.playlist_image_url ? '/curator-playlist-image/'+c.id : '',curator_month:c.curator_month||''})))};
+// image_url / playlist_image_url are now always proxy URLs, never base64 blobs
 var _cmCuratorId = null;
 
-function openCuratorModal(id) {
+function openCuratorModal(id, autoFollow) {
   var c = _curators.find(function(x){ return x.id === id; });
   if(!c) return;
   _cmCuratorId = id;
@@ -1897,9 +1941,9 @@ function openCuratorModal(id) {
   if(btn)      { btn.disabled = false; btn.textContent = '✓ Follow'; }
   var codeInput = document.getElementById('cmCode');
   if(codeInput) codeInput.value = '';
-  // Check if already following
+  // Check if already following (skip when autoFollow — user explicitly wants to follow)
   var saved = localStorage.getItem('uht_phone');
-  if(saved) {
+  if(saved && !autoFollow) {
     fetch('/api/check-subscription?phone='+encodeURIComponent(saved)+'&curator_id='+id)
       .then(function(r){ return r.json(); })
       .then(function(d){ if(d.subscribed) showCuratorFollowingState(); })
@@ -1910,6 +1954,8 @@ function openCuratorModal(id) {
   // Open
   document.getElementById('cmBg').classList.add('open');
   document.body.style.overflow = 'hidden';
+  // If triggered from the Follow button on the card, jump straight to phone input immediately
+  if(autoFollow) handleCuratorFollow();
 }
 
 function closeCuratorModal() {
@@ -2374,9 +2420,10 @@ app.post('/api/subscribe', async (req, res) => {
     res.json({
       ok: true,
       success: true,
+      is_new: isNew,
       message: isNew
         ? 'Subscribed! Check your phone for a confirmation text.'
-        : "You're already subscribed — Friday drops incoming!",
+        : "You're already subscribed — Friday drops incoming.",
       user_id:       userId,
       member_number,
       member_tier:   member_tier || null,
@@ -2670,19 +2717,39 @@ app.post('/api/genres/seed', async (req, res) => {
 
 
 // ── Twilio Verify: send OTP ───────────────────────────────────────────────────
+// In-memory rate limit: one OTP request per phone per 60 seconds.
+// Prevents double-sends from multiple tabs or rapid re-submits hitting Twilio.
+const _otpRateLimit = new Map(); // phone → timestamp of last send
+
 app.post('/api/send_code', async (req, res) => {
   const { phone, name, email } = req.body;
   if (!phone) return res.status(400).json({ error: 'phone required' });
-  const normalPhone = /^\d{10}$/.test(phone.replace(/\D/g,''))
-    ? '+1' + phone.replace(/\D/g,'')
-    : phone.replace(/\D/g,'').length === 11 && phone.replace(/\D/g,'').startsWith('1')
-      ? '+' + phone.replace(/\D/g,'')
+
+  const digits = phone.replace(/\D/g,'');
+  const normalPhone = digits.length === 10
+    ? '+1' + digits
+    : digits.length === 11 && digits.startsWith('1')
+      ? '+' + digits
       : phone;
+
+  // Rate limit: reject if a code was already sent for this number in the last 60s
+  const lastSent = _otpRateLimit.get(normalPhone) || 0;
+  if (Date.now() - lastSent < 60_000) {
+    console.log(`[send_code] Rate limited ${normalPhone} — code already sent ${Math.round((Date.now()-lastSent)/1000)}s ago`);
+    return res.json({ ok: true }); // return ok so UI shows the verify step (code already on its way)
+  }
+
   try {
     const client = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
     await client.verify.v2
       .services(process.env.TWILIO_VERIFY_SID)
       .verifications.create({ to: normalPhone, channel: 'sms' });
+    _otpRateLimit.set(normalPhone, Date.now());
+    // Clean up old entries every 500 sends to avoid memory leak
+    if (_otpRateLimit.size > 500) {
+      const cutoff = Date.now() - 120_000;
+      for (const [k, v] of _otpRateLimit) { if (v < cutoff) _otpRateLimit.delete(k); }
+    }
     res.json({ ok: true });
   } catch (err) {
     console.error('send_code error:', err.message);
@@ -2940,8 +3007,7 @@ app.get('/curator/:slug/card', async (req, res) => {
 
     const cardNum = String(c.id).padStart(3, '0');
     const base    = process.env.BASE_URL || '';
-    const headshotUrl = c.image_url?.startsWith('data:')
-      ? `${base}/curator-image/${c.id}` : (c.image_url || '');
+    const headshotUrl = c.image_url ? `${base}/curator-image/${c.id}` : '';
     const month   = c.curator_month || 'this month';
     const theme   = c.monthly_theme || '';
     const firstName = c.name.split(' ')[0];
@@ -3173,10 +3239,9 @@ app.get('/curator/:slug', async (req, res) => {
   const firstName = c.name.split(' ')[0];
   const month = c.curator_month || 'this month';
   const base = process.env.BASE_URL || '';
-  // Use the proxy route only for base64-stored images; plain URLs go direct.
-  // Add Cache-Control on image proxy routes (already set there).
-  const headshotUrl = c.image_url?.startsWith('data:') ? `${base}/curator-image/${c.id}` : (c.image_url || '');
-  const playlistUrl = c.playlist_image_url?.startsWith('data:') ? `${base}/curator-playlist-image/${c.id}` : (c.playlist_image_url || '');
+  // Always route through our own proxy endpoints — handles data: blobs and external URLs.
+  const headshotUrl = c.image_url ? `${base}/curator-image/${c.id}` : '';
+  const playlistUrl = c.playlist_image_url ? `${base}/curator-playlist-image/${c.id}` : '';
 
   // Cache this page for 5 minutes; stale-while-revalidate lets CDN/browser
   // serve the cached copy instantly while fetching a fresh one in the background.
@@ -3313,6 +3378,7 @@ function submitFollow(){
   });
 }
 </script>
+<div class="uht-footer" style="text-align:center;padding:32px 20px;font-size:9px;letter-spacing:.3em;text-transform:uppercase;opacity:.2;color:#f3f1ea">UHT · Curator drops every Monday</div>
 </body>
 </html>`);
   } catch(e) {
@@ -3353,7 +3419,14 @@ app.get('/drop/curator/:slug', identifyDropUser, async (req, res) => {
       const [subRes, allSubsRes, hitRes] = await Promise.race([
         Promise.all([
           db.query(`SELECT * FROM curator_submissions WHERE curator_id=$1 AND COALESCE(status,'approved')='approved' AND delivered_at IS NOT NULL ORDER BY week_number DESC, submitted_at DESC LIMIT 1`, [curator.id]),
-          db.query(`SELECT * FROM curator_submissions WHERE curator_id=$1 AND COALESCE(status,'approved')='approved' AND delivered_at IS NOT NULL ORDER BY week_number ASC`, [curator.id]),
+          db.query(`SELECT cs.*,
+            COALESCE(SUM(CASE WHEN v.vote='mega_hit' THEN 1 ELSE 0 END),0) AS mega_hits,
+            COALESCE(SUM(CASE WHEN v.vote='hit'      THEN 1 ELSE 0 END),0) AS hits,
+            COALESCE(SUM(CASE WHEN v.vote='denied'   THEN 1 ELSE 0 END),0) AS denies
+            FROM curator_submissions cs
+            LEFT JOIN curator_submission_votes v ON v.submission_id = cs.id
+            WHERE cs.curator_id=$1 AND COALESCE(cs.status,'approved')='approved' AND cs.delivered_at IS NOT NULL
+            GROUP BY cs.id ORDER BY cs.week_number ASC`, [curator.id]),
           db.query(`SELECT COUNT(*) AS hits FROM curator_submission_votes WHERE submission_id IN (SELECT id FROM curator_submissions WHERE curator_id=$1) AND vote='hit'`, [curator.id])
         ]),
         timeout2
@@ -3520,7 +3593,7 @@ ${idHeader}
 </div>
 
 <div class="hero">
-  ${curator.image_url ? `<img src="${curator.image_url}" alt="${curator.name}">` : ''}
+  ${curator.image_url ? `<img src="/curator-image/${curator.id}" alt="${curator.name}">` : ''}
   <div class="hero-grad"></div>
   <div class="hero-name">
     <div class="hero-name-left">
@@ -3539,7 +3612,7 @@ ${curator.bio ? `<div class="bio"><p>${curator.bio}</p></div>` : ''}
 <div class="pick">
   <div class="pick-meta">${d.theme ? d.theme.toUpperCase() + ' · ' : ''}Week ${d.week_number}</div>
   <div class="pick-header">
-    ${curator.playlist_image_url ? `<img class="pick-art" src="${curator.playlist_image_url}" alt="Playlist art">` : ''}
+    ${curator.playlist_image_url ? `<img class="pick-art" src="/curator-playlist-image/${curator.id}" alt="Playlist art">` : ''}
     <div class="pick-text">
       <div class="song-title">${d.title}</div>
       <div class="song-artist">${d.artist}</div>
@@ -3574,6 +3647,20 @@ ${!ytId && d.spotify_url ? `<div class="player-outer" style="height:152px"><ifra
       <button class="vote-btn" id="vDenied" onclick="vote('deny')">💀 Denied</button>
     </div>
     <div class="vote-msg" id="voteMsg"></div>
+  </div>
+</div>
+
+<div id="voteCounts" style="padding:20px 32px 28px;width:100%;max-width:560px;margin:0 auto">
+  <div style="display:flex;align-items:stretch;border-radius:3px;overflow:hidden;height:5px;width:100%;margin-bottom:12px;background:rgba(237,232,223,0.08)">
+    <div id="barMega"   style="background:#E8B84B;height:100%;width:0%;transition:width .8s ease"></div>
+    <div id="barHit"    style="background:rgba(232,184,75,0.4);height:100%;width:0%;transition:width .8s ease"></div>
+    <div id="barDenied" style="background:rgba(237,232,223,0.22);height:100%;width:0%;transition:width .8s ease"></div>
+  </div>
+  <div style="display:flex;justify-content:space-between;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(237,232,223,.4)">
+    <span>🔥 <span id="cntMega">—</span> MEGA</span>
+    <span>🎯 <span id="cntHit">—</span> HIT</span>
+    <span id="cntTotal" style="opacity:.5">— votes</span>
+    <span>💀 <span id="cntDenied">—</span> DENIED</span>
   </div>
 </div>
 
@@ -3649,16 +3736,46 @@ function unlockVote(){
 }
 // Fallback: if no YT player, start on page load
 ${ytId ? '' : 'startListenTimer();'}
+function updateCounts(data){
+  var mega=data.mega_hits||0,hits=data.hits||0,denied=data.denied||0,total=data.total||0;
+  var megaPct=total?Math.round(mega/total*100):0,hitPct=total?Math.round(hits/total*100):0,denPct=total?(100-megaPct-hitPct):0;
+  document.getElementById('barMega').style.width=megaPct+'%';
+  document.getElementById('barHit').style.width=hitPct+'%';
+  document.getElementById('barDenied').style.width=denPct+'%';
+  document.getElementById('cntMega').textContent=mega;
+  document.getElementById('cntHit').textContent=hits;
+  document.getElementById('cntDenied').textContent=denied;
+  document.getElementById('cntTotal').textContent=total+' vote'+(total===1?'':'s');
+}
+function loadCounts(){
+  fetch('/api/genre-vote/${d.id}/counts').then(function(r){return r.json();}).then(updateCounts).catch(function(){});
+}
+loadCounts();
+// Restore vote state on reload
+(function(){
+  var prev=localStorage.getItem('uht_vote_${d.id}');
+  if(prev){
+    ['vMega','vHit','vDenied'].forEach(function(id){var b=document.getElementById(id);if(b)b.disabled=true;});
+    var msg=document.getElementById('voteMsg');
+    var labels={mega_hit:'🔥 Mega Hit recorded!',hit:'🎯 Hit recorded!',denied:'💀 Denied recorded.'};
+    if(msg) msg.textContent=labels[prev]||'Vote recorded.';
+  }
+})();
 function vote(v){
   ['vMega','vHit','vDenied'].forEach(function(id){var b=document.getElementById(id);if(b)b.disabled=true;});
   var msg=document.getElementById('voteMsg');
+  var _tt=(new URLSearchParams(location.search)).get('t')||undefined;
   fetch('/api/genre-vote',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({submission_id:${d.id},vote:v})})
-  .then(function(r){return r.json();})
+    body:JSON.stringify({submission_id:${d.id},vote:v,taste_token:_tt})})
+  .then(function(r){if(!r.ok) throw new Error('vote failed'); return r.json();})
   .then(function(){
     var labels={mega_hit:'🔥 Mega Hit recorded!',hit:'🎯 Hit recorded!',deny:'💀 Denied recorded!'};
+    localStorage.setItem('uht_vote_${d.id}', v);
     if(msg) msg.textContent=labels[v]||'Recorded!';
+    return fetch('/api/genre-vote/${d.id}/counts');
   })
+  .then(function(r){return r.json();})
+  .then(updateCounts)
   .catch(function(){
     if(msg)msg.textContent='Try again.';
     ['vMega','vHit','vDenied'].forEach(function(id){var b=document.getElementById(id);if(b)b.disabled=false;});
@@ -3681,15 +3798,17 @@ function closeFollowModal(){
 }
 
 function submitFollow(){
-  var phone=document.getElementById('followPhone').value.trim();
+  var raw=document.getElementById('followPhone').value.trim();
   var msg=document.getElementById('followMsg');
-  if(!phone){document.getElementById('followPhone').style.borderColor='rgba(237,232,223,0.5)';return;}
+  if(!raw){document.getElementById('followPhone').style.borderColor='rgba(237,232,223,0.5)';return;}
+  var digits=raw.replace(/\D/g,'');
+  var phone=digits.length===10?'+1'+digits:digits.length===11&&digits[0]==='1'?'+'+digits:'+'+digits;
   msg.textContent='...';
   fetch('/api/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({phone:phone,curator_id:${curator.id}})})
   .then(function(r){return r.json();})
   .then(function(data){
-    if(data.message||data.ok||data.subscriber){
+    if(data.message||data.ok||data.subscriber||data.success){
       msg.textContent='You are now following ${firstName} 🌙';
       document.getElementById('followPhone').disabled=true;
       document.querySelector('.modal-btn').disabled=true;
@@ -3703,6 +3822,7 @@ function submitFollow(){
 </script>
 ${idCard}
 ${idCardJS}
+<div class="uht-footer">UHT · Curator drops every Monday</div>
 </body>
 </html>`);
   } catch(e) {
@@ -3817,10 +3937,9 @@ function submitModalHTML(genre, communityPick, featuredDrop, featuredLabel, feat
   </a>`;
   } else if (featuredDrop) {
     leftCard = `<a href="/drop/${featuredGenre}" class="bottom-card bottom-card-wildcard">
-    <div class="bc-eyebrow">This Week's Undeniable</div>
-    <div class="bc-title">${featuredLabel} Hit</div>
-    <div class="bc-artist">${featuredDrop.title}</div>
-    <div class="bc-sub">${featuredDrop.artist}</div>
+    <div class="bc-eyebrow">This Week's ${featuredLabel} Hit</div>
+    <div class="bc-title">${featuredDrop.title}</div>
+    <div class="bc-artist">${featuredDrop.artist}</div>
     <div class="bc-cta">Listen &amp; Vote →</div>
   </a>`;
   }
@@ -4033,6 +4152,20 @@ ${idHeader}
   </div>
 </div>
 
+<div id="voteCounts" style="padding:24px 32px 32px;width:100%;max-width:560px;margin:0 auto">
+  <div style="display:flex;align-items:stretch;border-radius:3px;overflow:hidden;height:5px;width:100%;margin-bottom:14px;background:rgba(243,241,234,0.08)">
+    <div id="barMega"   style="background:#E8B84B;height:100%;width:0%;transition:width .8s ease"></div>
+    <div id="barHit"    style="background:rgba(232,184,75,0.4);height:100%;width:0%;transition:width .8s ease"></div>
+    <div id="barDenied" style="background:rgba(243,241,234,0.22);height:100%;width:0%;transition:width .8s ease"></div>
+  </div>
+  <div style="display:flex;justify-content:space-between;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(243,241,234,.4)">
+    <span>🔥 <span id="cntMega">—</span> MEGA</span>
+    <span>🎯 <span id="cntHit">—</span> HIT</span>
+    <span id="cntTotal" style="opacity:.5">— votes</span>
+    <span>💀 <span id="cntDenied">—</span> DENIED</span>
+  </div>
+</div>
+
 ${submitModalHTML('community', null, featuredDrop, featuredLabel, featuredGenre)}
 ${ytId ? `
 <script src="https://www.youtube.com/iframe_api"></script>
@@ -4075,24 +4208,70 @@ function unlockVote(){
   if(btns) btns.classList.remove('locked');
 }
 ${ytId ? '' : 'startListenTimer();'}
+// Restore vote state on reload
+(function(){
+  var prev=localStorage.getItem('uht_vote_${d.id}');
+  if(prev){
+    ['vMega','vHit','vDenied'].forEach(function(id){var b=document.getElementById(id);if(b)b.disabled=true;});
+    var msg=document.getElementById('voteMsg');
+    var labels={mega_hit:'🔥 Mega Hit recorded!',hit:'🎯 Hit recorded!',denied:'💀 Denied recorded.'};
+    if(msg) msg.textContent=labels[prev]||'Vote recorded.';
+  }
+})();
 function vote(v){
   ['vMega','vHit','vDenied'].forEach(function(id){var b=document.getElementById(id);if(b)b.disabled=true;});
   var msg=document.getElementById('voteMsg');
+  var labels={mega_hit:'🔥 Mega Hit recorded!',hit:'🎯 Hit recorded!',deny:'💀 Denied recorded!'};
+  var _tt=(new URLSearchParams(location.search)).get('t')||undefined;
   fetch('/api/genre-vote',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({submission_id:${d.id},vote:v})})
-  .then(function(r){return r.json();})
-  .then(function(){
-    var labels={mega_hit:'🔥 Mega Hit recorded!',hit:'🎯 Hit recorded!',deny:'💀 Denied recorded!'};
+    body:JSON.stringify({submission_id:${d.id},vote:v,taste_token:_tt})})
+  .then(function(r){
+    if(!r.ok) throw new Error('vote failed');
+    localStorage.setItem('uht_vote_${d.id}', v);
     if(msg) msg.textContent=labels[v]||'Recorded!';
+    return fetch('/api/genre-vote/${d.id}/counts');
+  })
+  .then(function(r){ return r && r.json(); })
+  .then(function(data){
+    if(!data) return;
+    var mega=data.mega_hits||0, hits=data.hits||0, denied=data.denied||0, total=data.total||0;
+    var megaPct=total ? Math.round(mega/total*100) : 0;
+    var hitPct =total ? Math.round(hits/total*100) : 0;
+    var denPct =total ? (100-megaPct-hitPct) : 0;
+    document.getElementById('barMega').style.width=megaPct+'%';
+    document.getElementById('barHit').style.width=hitPct+'%';
+    document.getElementById('barDenied').style.width=denPct+'%';
+    document.getElementById('cntMega').textContent=mega;
+    document.getElementById('cntHit').textContent=hits;
+    document.getElementById('cntDenied').textContent=denied;
+    document.getElementById('cntTotal').textContent=total+' vote'+(total===1?'':'s');
   })
   .catch(function(){
     if(msg)msg.textContent='Try again.';
     ['vMega','vHit','vDenied'].forEach(function(id){var b=document.getElementById(id);if(b)b.disabled=false;});
   });
 }
+function loadCounts(){
+  fetch('/api/genre-vote/${d.id}/counts')
+    .then(function(r){return r.json();})
+    .then(function(data){
+      if(!data) return;
+      var mega=data.mega_hits||0,hits=data.hits||0,denied=data.denied||0,total=data.total||0;
+      var megaPct=total?Math.round(mega/total*100):0,hitPct=total?Math.round(hits/total*100):0,denPct=total?(100-megaPct-hitPct):0;
+      document.getElementById('barMega').style.width=megaPct+'%';
+      document.getElementById('barHit').style.width=hitPct+'%';
+      document.getElementById('barDenied').style.width=denPct+'%';
+      document.getElementById('cntMega').textContent=total?mega:'—';
+      document.getElementById('cntHit').textContent=total?hits:'—';
+      document.getElementById('cntDenied').textContent=total?denied:'—';
+      document.getElementById('cntTotal').textContent=total?total+' vote'+(total===1?'':'s'):'— votes';
+    }).catch(function(){});
+}
+loadCounts();
 </script>
 ${idCard}
 ${idCardJS}
+<div class="uht-footer">UHT · Your next hit arrives Friday</div>
 </body>
 </html>`);
   } catch(e) {
@@ -4375,6 +4554,20 @@ ${idHeader}
   </div>
 </section>
 
+<div id="voteCounts" style="padding:24px 32px 32px;width:100%;max-width:560px;margin:0 auto">
+  <div style="display:flex;align-items:stretch;border-radius:3px;overflow:hidden;height:5px;width:100%;margin-bottom:14px;background:rgba(243,241,234,0.08)">
+    <div id="barMega"   style="background:#E8B84B;height:100%;width:0%;transition:width .8s ease"></div>
+    <div id="barHit"    style="background:rgba(232,184,75,0.4);height:100%;width:0%;transition:width .8s ease"></div>
+    <div id="barDenied" style="background:rgba(243,241,234,0.22);height:100%;width:0%;transition:width .8s ease"></div>
+  </div>
+  <div style="display:flex;justify-content:space-between;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(243,241,234,.4)">
+    <span>🔥 <span id="cntMega">—</span> MEGA</span>
+    <span>🎯 <span id="cntHit">—</span> HIT</span>
+    <span id="cntTotal" style="opacity:.5">— votes</span>
+    <span>💀 <span id="cntDenied">—</span> DENIED</span>
+  </div>
+</div>
+
 ${ytId ? `
 <script src="https://www.youtube.com/iframe_api"></script>
 <script>
@@ -4474,10 +4667,44 @@ function castVote(type){
   fetch('/api/genre-vote', {
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({submission_id:${d.id}, vote:type, voter_id:getVoterId()})
-  }).then(function(r){if(!r.ok)r.json().then(function(e){console.error('[vote error]',e);});})
+    body:JSON.stringify({submission_id:${d.id}, vote:type, voter_id:getVoterId(), taste_token:(new URLSearchParams(location.search)).get('t')||undefined})
+  }).then(function(r){
+    if(!r.ok) r.json().then(function(e){console.error('[vote error]',e);});
+    // Fetch live counts and reveal the tally bar
+    return fetch('/api/genre-vote/${d.id}/counts');
+  }).then(function(r){ return r && r.json(); })
+    .then(function(data){
+      if(!data) return;
+      var hits = data.hits || 0, denied = data.denied || 0, total = data.total || 0;
+      var mega=data.mega_hits||0, megaPct=total?Math.round(mega/total*100):0;
+      var hitPct=total?Math.round(hits/total*100):0, denPct=total?(100-megaPct-hitPct):100;
+      document.getElementById('barMega').style.width   = megaPct+'%';
+      document.getElementById('barHit').style.width    = hitPct+'%';
+      document.getElementById('barDenied').style.width = denPct+'%';
+      document.getElementById('cntMega').textContent   = mega;
+      document.getElementById('cntHit').textContent    = hits;
+      document.getElementById('cntDenied').textContent = denied;
+      document.getElementById('cntTotal').textContent  = total+' vote'+(total===1?'':'s');
+    })
     .catch(function(e){console.error('[vote network error]',e);});
 }
+function loadCounts(){
+  fetch('/api/genre-vote/${d.id}/counts')
+    .then(function(r){return r.json();})
+    .then(function(data){
+      if(!data) return;
+      var mega=data.mega_hits||0,hits=data.hits||0,denied=data.denied||0,total=data.total||0;
+      var megaPct=total?Math.round(mega/total*100):0,hitPct=total?Math.round(hits/total*100):0,denPct=total?(100-megaPct-hitPct):0;
+      document.getElementById('barMega').style.width=megaPct+'%';
+      document.getElementById('barHit').style.width=hitPct+'%';
+      document.getElementById('barDenied').style.width=denPct+'%';
+      document.getElementById('cntMega').textContent=total?mega:'—';
+      document.getElementById('cntHit').textContent=total?hits:'—';
+      document.getElementById('cntDenied').textContent=total?denied:'—';
+      document.getElementById('cntTotal').textContent=total?total+' vote'+(total===1?'':'s'):'— votes';
+    }).catch(function(){});
+}
+loadCounts();
 var _voteLabel='';
 function shareVote(){
   var url=window.location.href.split('?')[0];
@@ -4500,8 +4727,11 @@ ${archive.length ? `
   <div class="archive-heading">Previous Drops</div>
   ${archive.map((a, i) => {
     const aYtId = a.youtube_url ? (a.youtube_url.match(/(?:v=|youtu\.be\/)([^&?/]+)/) || [])[1] : null;
-    const total = parseInt(a.hits||0) + parseInt(a.denies||0);
-    const hitPct = total ? Math.round(parseInt(a.hits||0)/total*100) : null;
+    const mega = parseInt(a.mega_hits||0), hits = parseInt(a.hits||0), denies = parseInt(a.denies||0);
+    const total = mega + hits + denies;
+    const megaPct = total ? Math.round(mega/total*100) : 0;
+    const hitPct  = total ? Math.round(hits/total*100) : 0;
+    const denPct  = total ? (100 - megaPct - hitPct) : 0;
     const nextId = i + 1 < archive.length ? `arc-${archive[i+1].id}` : 'arc-end';
     return `
   <div class="archive-card" id="arc-${a.id}">
@@ -4519,36 +4749,78 @@ ${archive.length ? `
       <button class="archive-vote-btn" onclick="archiveVote(${a.id},'denied',this,'${nextId}')">💀 Denied</button>
     </div>
     <div class="archive-vote-msg" id="avm-${a.id}"></div>
-    ${hitPct !== null ? `<div class="archive-tally">${hitPct}% said Hit · ${total} vote${total===1?'':'s'}</div>` : ''}
-    <button class="next-drop-btn" id="nxt-${a.id}" onclick="scrollToNext('${nextId}')">Next Drop →</button>
+    <div id="arc-bar-${a.id}" style="padding:16px 0 4px">
+      <div style="display:flex;align-items:stretch;border-radius:3px;overflow:hidden;height:5px;width:100%;margin-bottom:12px;background:rgba(243,241,234,0.08)">
+        <div id="arc-bm-${a.id}" style="background:#E8B84B;height:100%;width:${megaPct}%;transition:width .8s ease"></div>
+        <div id="arc-bh-${a.id}" style="background:rgba(232,184,75,0.4);height:100%;width:${hitPct}%;transition:width .8s ease"></div>
+        <div id="arc-bd-${a.id}" style="background:rgba(243,241,234,0.22);height:100%;width:${denPct}%;transition:width .8s ease"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(243,241,234,.4)">
+        <span>🔥 <span id="arc-cm-${a.id}">${mega}</span> MEGA</span>
+        <span>🎯 <span id="arc-ch-${a.id}">${hits}</span> HIT</span>
+        <span id="arc-ct-${a.id}" style="opacity:.5">${total ? total+' vote'+(total===1?'':'s') : '— votes'}</span>
+        <span>💀 <span id="arc-cd-${a.id}">${denies}</span> DENIED</span>
+      </div>
+    </div>
+    <button class="next-drop-btn" id="nxt-${a.id}" onclick="scrollToNext('${nextId}')">${i + 1 < archive.length ? 'Next Drop →' : '↑ Back to Top'}</button>
   </div>`;
   }).join('')}
+  <div id="arc-end"></div>
 </div>` : ''}
 
 <div id="arc-end">${submitModalHTML(genre, communityPick)}</div>
 <div class="uht-footer">UHT · Your next hit arrives Friday</div>
 
 <script>
-function archiveVote(id, type, btn, nextId){
+function applyArchiveVoted(id, type){
   var row = document.getElementById('avr-'+id);
   var msg = document.getElementById('avm-'+id);
   var nxt = document.getElementById('nxt-'+id);
-  row.querySelectorAll('button').forEach(function(b){b.disabled=true;});
-  btn.classList.add('voted');
+  if(!row) return;
+  row.querySelectorAll('button').forEach(function(b){
+    b.disabled=true;
+    if(b.textContent.toLowerCase().indexOf(type.replace('_',' '))>-1) b.classList.add('voted');
+  });
   var labels={mega_hit:'🔥 Mega Hit recorded!',hit:'🎯 Hit recorded!',denied:'💀 Denied recorded!'};
-  msg.textContent = labels[type]||'Recorded!';
-  setTimeout(function(){msg.classList.add('show');},100);
-  setTimeout(function(){if(nxt)nxt.classList.add('show');},400);
+  if(msg){ msg.textContent=labels[type]||'Recorded!'; msg.classList.add('show'); }
+  if(nxt){ nxt.classList.add('show'); }
+}
+function updateArcBar(id, data){
+  var mega=data.mega_hits||0, hits=data.hits||0, denied=data.denied||0, total=data.total||0;
+  var megaPct=total?Math.round(mega/total*100):0, hitPct=total?Math.round(hits/total*100):0, denPct=total?(100-megaPct-hitPct):0;
+  var bm=document.getElementById('arc-bm-'+id); if(bm) bm.style.width=megaPct+'%';
+  var bh=document.getElementById('arc-bh-'+id); if(bh) bh.style.width=hitPct+'%';
+  var bd=document.getElementById('arc-bd-'+id); if(bd) bd.style.width=denPct+'%';
+  var cm=document.getElementById('arc-cm-'+id); if(cm) cm.textContent=mega;
+  var ch=document.getElementById('arc-ch-'+id); if(ch) ch.textContent=hits;
+  var cd=document.getElementById('arc-cd-'+id); if(cd) cd.textContent=denied;
+  var ct=document.getElementById('arc-ct-'+id); if(ct) ct.textContent=total+' vote'+(total===1?'':'s');
+}
+function archiveVote(id, type, btn, nextId){
+  localStorage.setItem('uht_arc_vote_'+id, type);
+  applyArchiveVoted(id, type);
   fetch('/api/genre-vote',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({submission_id:id,vote:type})
-  }).catch(function(e){console.error(e);});
+  }).then(function(){ return fetch('/api/genre-vote/'+id+'/counts'); })
+    .then(function(r){ return r.json(); })
+    .then(function(data){ updateArcBar(id, data); })
+    .catch(function(e){console.error(e);});
 }
 function scrollToNext(targetId){
+  if(targetId==='arc-end'){window.scrollTo({top:0,behavior:'smooth'});return;}
   var el=document.getElementById(targetId);
   if(el){el.scrollIntoView({behavior:'smooth',block:'start'});}
 }
+// Restore any previously cast archive votes on page load
+(function restoreArchiveVotes(){
+  var ids = ${JSON.stringify(archive.map(a => a.id))};
+  ids.forEach(function(id){
+    var v = localStorage.getItem('uht_arc_vote_'+id);
+    if(v) applyArchiveVoted(id, v);
+  });
+})();
 </script>
 ${idCard}
 ${idCardJS}
@@ -4568,16 +4840,24 @@ app.post('/api/genre-vote', async (req, res) => {
   if (!submission_id || !vote) {
     return res.status(400).json({ error: 'submission_id and vote are required.' });
   }
-  const dbVote = vote === 'mega_hit' ? 'hit' : vote === 'deny' ? 'denied' : vote;
-  if (!['hit', 'denied'].includes(dbVote)) {
+  const dbVote = vote === 'deny' ? 'denied' : vote;
+  if (!['hit', 'denied', 'mega_hit'].includes(dbVote)) {
     return res.status(400).json({ error: 'vote must be hit, denied, mega_hit, or deny.' });
   }
 
-  // Resolve user identity: session cookie > anonymous fingerprint
+  // Resolve user identity: session cookie > taste_token > anonymous fingerprint
   const cookieHeader = req.headers.cookie || '';
   const sessionPart  = cookieHeader.split(';').map(c => c.trim()).find(c => c.startsWith('uht_session='));
   const sessionVal   = sessionPart ? decodeURIComponent(sessionPart.split('=').slice(1).join('=')) : null;
-  const userId       = sessionVal ? verifySession(sessionVal) : null;
+  let userId         = sessionVal ? verifySession(sessionVal) : null;
+
+  // If no session, try to resolve user via taste_token from SMS link
+  if (!userId && req.body.taste_token) {
+    const { rows: tRows } = await db.query(
+      `SELECT id FROM users WHERE taste_token=$1 LIMIT 1`, [req.body.taste_token]
+    );
+    if (tRows.length) userId = tRows[0].id;
+  }
 
   // Fallback fingerprint for anonymous voters
   const clientId    = req.body.voter_id || '';
@@ -4608,15 +4888,14 @@ app.post('/api/genre-vote', async (req, res) => {
       return res.json({ ok: true });
     }
 
-    // Anonymous path — dedup by voter_hash
+    // Anonymous path — upsert by voter_hash so vote type can be updated
     const { rows } = await db.query(
       `INSERT INTO curator_submission_votes (submission_id, vote, voter_hash)
        VALUES ($1, $2, $3)
        ON CONFLICT (submission_id, voter_hash) WHERE voter_hash IS NOT NULL
-       DO NOTHING RETURNING *`,
+       DO UPDATE SET vote=$2, voted_at=NOW() RETURNING *`,
       [submission_id, dbVote, voterHash]
     );
-    if (rows.length === 0) return res.json({ ok: true, duplicate: true });
     res.json({ ok: true, vote: rows[0] });
   } catch (e) {
     console.error('[genre-vote error]', e.message);
@@ -4625,6 +4904,28 @@ app.post('/api/genre-vote', async (req, res) => {
 });
 
 
+
+// ── GET /api/genre-vote/:id/counts — live vote tally for a submission ─────────
+app.get('/api/genre-vote/:id/counts', async (req, res) => {
+  try {
+    const { rows } = await db.query(`
+      SELECT
+        COUNT(*) FILTER (WHERE vote = 'mega_hit') AS mega_hits,
+        COUNT(*) FILTER (WHERE vote = 'hit')      AS hits,
+        COUNT(*) FILTER (WHERE vote = 'denied')   AS denied,
+        COUNT(*)                                  AS total
+      FROM curator_submission_votes
+      WHERE submission_id = $1
+    `, [req.params.id]);
+    const r = rows[0];
+    res.json({
+      mega_hits: parseInt(r.mega_hits) || 0,
+      hits:      parseInt(r.hits)      || 0,
+      denied:    parseInt(r.denied)    || 0,
+      total:     parseInt(r.total)     || 0,
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
 
 // =============================================================================
 // ADMIN API ROUTES  (used by admin.html)
@@ -4671,6 +4972,30 @@ app.patch('/api/songs/:id', async (req, res) => {
     );
     if (!rows.length) return res.status(404).json({ error: 'Song not found.' });
     res.json({ song: rows[0] });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── POST /api/admin/migrate/songs-unique — one-time constraint migration ──────
+// ── POST /api/admin/migrate/votes-drop-fk — drop FK so genre votes work ──────
+app.post('/api/admin/migrate/votes-drop-fk', requireAdmin, async (req, res) => {
+  try {
+    // Drop the FK constraint that ties submission_id to curator_submissions only.
+    // Genre submission IDs (from genre_submissions) are also stored here.
+    await db.query(`
+      ALTER TABLE curator_submission_votes
+        DROP CONSTRAINT IF EXISTS curator_submission_votes_submission_id_fkey
+    `);
+    res.json({ ok: true, message: 'FK constraint dropped — genre votes will now work.' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/admin/migrate/songs-unique', requireAdmin, async (req, res) => {
+  try {
+    await db.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS songs_unique_title_artist_target
+      ON songs (LOWER(title), LOWER(artist), COALESCE(curator_id, 0), COALESCE(genre_id, 0))
+    `);
+    res.json({ ok: true, message: 'Unique index created on songs table' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -5043,7 +5368,7 @@ app.get('/leaderboard', async (req, res) => {
       <a class="card" href="/drop/curator/${slug}">
         <div class="rank">${medal}</div>
         <div class="avatar">${c.image_url
-          ? `<img src="${c.image_url}" alt="${c.curator_name}">`
+          ? `<img src="/curator-image/${c.id}" alt="${c.curator_name}">`
           : `<span>🎧</span>`}</div>
         <div class="info">
           <div class="name">${c.curator_name}</div>
@@ -5232,6 +5557,66 @@ app.post('/api/curator-intro/send', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── GET /api/curator-drop/status — did the Monday drop fire today? ───────────
+app.get('/api/curator-drop/status', async (req, res) => {
+  try {
+    // Count curator deliveries sent in the last 24 h (covers timezone drift)
+    const { rows } = await db.query(`
+      SELECT COUNT(*)::int AS sent_today,
+             COALESCE(MAX(d.sent_at), NULL) AS last_sent
+      FROM deliveries d
+      JOIN songs s ON s.id = d.song_id
+      WHERE s.curator_id IS NOT NULL
+        AND d.sent_at >= NOW() - INTERVAL '24 hours'
+    `);
+    const { sent_today, last_sent } = rows[0];
+    // Also pull the latest curator submission week for context
+    const { rows: wRows } = await db.query(`
+      SELECT MAX(week_number) AS current_week FROM curator_submissions
+    `);
+    const current_week = wRows[0]?.current_week ?? null;
+    res.json({ ok: true, sent_today: sent_today || 0, last_sent, current_week });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── POST /api/curator-drop/resend — clear delivery records for specific phones and re-drop ──
+// Body: { phones: ["+1...", ...], curator_id: 1 }
+// Use to recover from a test run that stamped deliveries before the official Monday send.
+app.post('/api/curator-drop/resend', async (req, res) => {
+  const { phones, curator_id } = req.body;
+  if (!phones?.length || !curator_id) return res.status(400).json({ error: 'phones[] and curator_id required' });
+  try {
+    // Resolve user_ids from phones
+    const { rows: users } = await db.query(
+      `SELECT id, phone FROM users WHERE phone = ANY($1)`,
+      [phones]
+    );
+    if (!users.length) return res.status(404).json({ error: 'No users found for those phones' });
+    const userIds = users.map(u => u.id);
+
+    // Find all song_ids belonging to this curator
+    const { rows: songs } = await db.query(
+      `SELECT id FROM songs WHERE curator_id = $1`, [curator_id]
+    );
+    const songIds = songs.map(s => s.id);
+
+    let cleared = 0;
+    if (songIds.length) {
+      const { rowCount } = await db.query(
+        `DELETE FROM deliveries WHERE user_id = ANY($1) AND song_id = ANY($2)`,
+        [userIds, songIds]
+      );
+      cleared = rowCount;
+    }
+
+    console.log(`[Resend] Cleared ${cleared} delivery records for ${users.length} users. Re-running drop...`);
+
+    const { runCuratorDrop } = require('./curator-scheduler');
+    const result = await runCuratorDrop();
+    res.json({ ok: true, cleared, users_resolved: users.length, drop: result });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── POST /api/curator-drop/send — manual Monday curator drop ─────────────────
 app.post('/api/curator-drop/send', async (req, res) => {
   try {
@@ -5290,7 +5675,7 @@ app.post('/api/curator-intro/test', async (req, res) => {
     const month = c.curator_month || 'this month';
     let body = `Meet ${c.name}! Our founding 1st Curator of the Month - ${month}. His first pick drops Monday.\n${link || ''}`;
     const msgParams = { from: process.env.TWILIO_FROM || process.env.TWILIO_PHONE_NUMBER, to: phone, body };
-    const introImg = c.image_url?.startsWith('data:') ? `${base}/curator-image/${c.id}` : c.image_url;
+    const introImg = c.image_url ? `${base}/curator-image/${c.id}` : null;
     if (introImg) msgParams.mediaUrl = [introImg];
     await twilioClient.messages.create(msgParams);
     res.json({ ok: true, body });
@@ -5318,8 +5703,8 @@ app.post('/api/curator-drop/test', async (req, res) => {
       : { title: '(no song yet)', artist: '—', week_number: week || 1, theme: null, curator_note: null };
 
     const base2 = process.env.BASE_URL || '';
-    const headshot = c.image_url?.startsWith('data:') ? `${base2}/curator-image/${c.id}` : c.image_url;
-    const playlistArt = c.playlist_image_url?.startsWith('data:') ? `${base2}/curator-playlist-image/${c.id}` : c.playlist_image_url;
+    const headshot = c.image_url ? `${base2}/curator-image/${c.id}` : null;
+    const playlistArt = c.playlist_image_url ? `${base2}/curator-playlist-image/${c.id}` : null;
     const { body, mediaUrl } = buildCuratorMessage(song, c.name, headshot, c.curator_month, playlistArt);
     const msgParams = { from: process.env.TWILIO_FROM || process.env.TWILIO_PHONE_NUMBER, to: phone, body };
     if (mediaUrl) msgParams.mediaUrl = [mediaUrl];

@@ -253,6 +253,8 @@ tr:hover td{background:rgba(255,255,255,.025)}
         <input type="text" id="api-url-input" value="http://localhost:3000">
         <button class="btn btn-primary" onclick="saveApiUrl()">Connect</button>
       </div>
+      <!-- Monday drop status banner -->
+      <div id="monday-banner" style="display:none;align-items:center;justify-content:space-between;gap:12px;padding:13px 18px;border-radius:var(--radius);margin-bottom:20px;font-size:12px;border:1px solid"></div>
       <div class="stats">
         <div class="stat-card"><div class="stat-value" id="stat-songs">—</div><div class="stat-label">Total Songs</div></div>
         <div class="stat-card"><div class="stat-value" id="stat-subs">—</div><div class="stat-label">Subscribers</div></div>
@@ -792,7 +794,40 @@ async function loadAll() {
   await Promise.allSettled([loadDashboard(),loadSongs(),loadGenres(),loadCurators(),loadSubscribers(),loadVotes()]);
 }
 
+async function loadMondayBanner() {
+  const banner = document.getElementById('monday-banner');
+  if (!banner) return;
+  try {
+    const { sent_today, last_sent, current_week } = await api('GET', '/api/curator-drop/status');
+    const now = new Date();
+    const isMonday = now.getDay() === 1;
+    const weekLabel = current_week ? ` · Week ${current_week}` : '';
+    if (sent_today > 0) {
+      const sentTime = last_sent ? new Date(last_sent).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '';
+      banner.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 18px;border-radius:var(--radius);margin-bottom:20px;font-size:12px;border:1px solid rgba(39,174,96,.35);background:rgba(39,174,96,.07);color:#27ae60';
+      banner.innerHTML = `<span>✓ Monday drop sent${weekLabel} — ${sent_today} subscriber${sent_today!==1?'s':''} reached${sentTime?' at '+sentTime:''}</span>`;
+    } else if (isMonday) {
+      banner.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 18px;border-radius:var(--radius);margin-bottom:20px;font-size:12px;border:1px solid rgba(192,57,43,.4);background:rgba(192,57,43,.08);color:#e74c3c';
+      banner.innerHTML = `
+        <span>⚠ Monday drop not sent yet${weekLabel}</span>
+        <button class="btn btn-primary" style="font-size:11px;padding:5px 12px" onclick="triggerCuratorDrop()">Trigger Now</button>`;
+    } else {
+      banner.style.display = 'none';
+    }
+  } catch(e) { banner.style.display = 'none'; }
+}
+
+async function triggerCuratorDrop() {
+  if (!confirm('Send the curator drop to all subscribers now?')) return;
+  try {
+    const r = await api('POST', '/api/curator-drop/send');
+    toast(`Drop sent — ${r.sent ?? 0} delivered, ${r.skipped ?? 0} skipped`, 'ok');
+    loadMondayBanner();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
 async function loadDashboard() {
+  loadMondayBanner();
   try {
     const [songs,subs,deliveries,votes] = await Promise.all([
       api('GET','/api/songs'), api('GET','/api/subscribers'),
@@ -1127,7 +1162,7 @@ function curatorSlug(name) {
 }
 
 function followBase() {
-  return (API === 'http://localhost:3000') ? 'https://undeniablehits.com' : API;
+  return 'https://undeniablehits.com';
 }
 
 async function copyFollowLink(name) {
@@ -1607,7 +1642,10 @@ async function loadCommunitySubmissions() {
         <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)">${esc(s.why||'—')}</td>
         <td>${s.youtube_url ? `<a href="${esc(s.youtube_url)}" target="_blank" style="color:var(--accent);font-size:11px">▶ Watch</a>` : '—'}</td>
         <td style="color:var(--muted);font-size:11px">${s.submitted_at ? s.submitted_at.slice(0,10) : '—'}</td>
-        <td><button class="btn btn-danger" onclick="deleteCommunitySubmission(${s.id},'${esc(s.song)} by ${esc(s.artist)}')">Delete</button></td>
+        <td style="display:flex;gap:6px">
+          <button class="btn btn-primary" onclick="promoteCommunitySubmission(${s.id},'${esc(s.song)}','${esc(s.artist)}')">★ Make Pick</button>
+          <button class="btn btn-danger" onclick="deleteCommunitySubmission(${s.id},'${esc(s.song)} by ${esc(s.artist)}')">Delete</button>
+        </td>
       </tr>
     `).join('');
   } catch(e) {
@@ -1621,6 +1659,15 @@ async function deleteCommunitySubmission(id, label) {
   try {
     await api('DELETE', `/api/community-submissions/${id}`);
     toast('Deleted.', 'ok');
+    loadCommunitySubmissions();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+async function promoteCommunitySubmission(id, song, artist) {
+  if (!confirm(`Make "${song}" by ${artist} the active Community Pick?\n\nThis will replace whatever is currently live on /drop/community.`)) return;
+  try {
+    await api('PATCH', `/api/community-submissions/${id}/promote`);
+    toast(`★ "${song}" is now live at /drop/community`, 'ok');
     loadCommunitySubmissions();
   } catch(e) { toast(e.message, 'err'); }
 }

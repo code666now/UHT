@@ -15,121 +15,125 @@ const client = twilio(
   process.env.TWILIO_AUTH_TOKEN
 );
 
+// ── Concurrent execution guard ────────────────────────────────────────────────
+// Prevents the cron and the manual admin button from running simultaneously,
+// which would cause duplicate Twilio sends to every subscriber.
+let _dropRunning = false;
+
 // ── Core drop function ────────────────────────────────────────────────────────
-// Picks the oldest unplayed song for each genre/curator and sends it
-// to every active subscriber of that genre/curator.
+// Picks the newest unplayed song for each genre and sends it
+// to every active genre subscriber. Curator drops are handled by curator-scheduler.js.
 async function runWeeklyDrop() {
+  if (_dropRunning) {
+    console.log('[Drop] Already running — skipping duplicate invocation.');
+    return { sent: 0, skipped: 0, errors: 0, alreadyRunning: true };
+  }
+  _dropRunning = true;
+
   console.log(`\n[Drop] Starting weekly drop at ${new Date().toISOString()}`);
 
-  // Get all active GENRE subscriptions only — curator subs are handled by curator-scheduler.js Monday cron
-  const { rows: subs } = await db.query(`
-    SELECT s.id AS sub_id, s.user_id, s.genre_id, s.curator_id, u.phone, u.taste_token
-    FROM subscriptions s
-    JOIN users u ON u.id = s.user_id
-    WHERE s.is_active = TRUE
-      AND s.genre_id IS NOT NULL
-      AND s.curator_id IS NULL
-  `);
+  try {
+    // Get all active GENRE subscriptions only — curator subs are handled by curator-scheduler.js Monday cron
+    const { rows: subs } = await db.query(`
+      SELECT s.id AS sub_id, s.user_id, s.genre_id, u.phone, u.taste_token
+      FROM subscriptions s
+      JOIN users u ON u.id = s.user_id
+      WHERE s.is_active = TRUE
+        AND s.genre_id IS NOT NULL
+        AND s.curator_id IS NULL
+    `);
 
-  if (!subs.length) {
-    console.log('[Drop] No active subscribers. Skipping.');
-    return { sent: 0, skipped: 0, errors: 0 };
-  }
-
-  let sent = 0, skipped = 0, errors = 0;
-
-  for (const sub of subs) {
-    try {
-      // Find the NEWEST song for this sub's genre that hasn't been delivered yet.
-      // Newest-first ensures subscribers always get the current week — never
-      // catches up on old weeks and causes double texts for new subscribers.
-      const { rows: songs } = await db.query(`
-        SELECT s.*, g.name AS genre_name, c.name AS curator_name
-        FROM songs s
-        LEFT JOIN genres   g ON g.id = s.genre_id
-        LEFT JOIN curators c ON c.id = s.curator_id
-        WHERE
-          (($1::int IS NOT NULL AND s.genre_id   = $1)
-        OR ($2::int IS NOT NULL AND s.curator_id = $2))
-        AND s.id NOT IN (
-          SELECT song_id FROM deliveries WHERE user_id = $3
-        )
-        ORDER BY s.created_at DESC
-        LIMIT 1
-      `, [sub.genre_id, sub.curator_id, sub.user_id]);
-
-      if (!songs.length) {
-        console.log(`[Drop] No new songs for sub #${sub.sub_id} (user ${sub.phone}). Skipping.`);
-        skipped++;
-        continue;
-      }
-
-      const song = songs[0];
-
-      // Build the SMS message (personalized with taste_token if available)
-      const msg = buildDropMessage(song, sub.taste_token);
-
-      // Send via Twilio
-      await client.messages.create({
-        from: process.env.TWILIO_FROM || process.env.TWILIO_PHONE_NUMBER,
-        to:   sub.phone,
-        body: msg,
-      });
-
-      // Record the delivery
-      await db.query(
-        `INSERT INTO deliveries (user_id, song_id) VALUES ($1, $2)`,
-        [sub.user_id, song.id]
-      );
-
-      console.log(`[Drop] ✓ Sent "${song.title}" → ${sub.phone}`);
-      sent++;
-
-    } catch (err) {
-      console.error(`[Drop] ✗ Error for sub #${sub.sub_id}: ${err.message}`);
-      errors++;
+    if (!subs.length) {
+      console.log('[Drop] No active subscribers. Skipping.');
+      return { sent: 0, skipped: 0, errors: 0 };
     }
-  }
 
-  console.log(`[Drop] Done. Sent: ${sent} | Skipped: ${skipped} | Errors: ${errors}\n`);
-  return { sent, skipped, errors };
+    let sent = 0, skipped = 0, errors = 0;
+
+    for (const sub of subs) {
+      try {
+        // Find the NEWEST song for this sub's genre that hasn't been delivered yet.
+        // Newest-first ensures subscribers always get the current week — never
+        // catches up on old weeks and causes double texts for new subscribers.
+        const { rows: songs } = await db.query(`
+          SELECT s.*, g.name AS genre_name
+          FROM songs s
+          LEFT JOIN genres g ON g.id = s.genre_id
+          WHERE s.genre_id = $1
+            AND s.id NOT IN (
+              SELECT song_id FROM deliveries WHERE user_id = $2
+            )
+          ORDER BY s.created_at DESC
+          LIMIT 1
+        `, [sub.genre_id, sub.user_id]);
+
+        if (!songs.length) {
+          console.log(`[Drop] No new songs for sub #${sub.sub_id} (user ${sub.phone}). Skipping.`);
+          skipped++;
+          continue;
+        }
+
+        const song = songs[0];
+
+        // Build the SMS message (personalized with taste_token if available)
+        const msg = buildDropMessage(song, sub.taste_token);
+
+        // Send via Twilio
+        await client.messages.create({
+          from: process.env.TWILIO_FROM || process.env.TWILIO_PHONE_NUMBER,
+          to:   sub.phone,
+          body: msg,
+        });
+
+        // Record the delivery — ON CONFLICT DO NOTHING ensures a double-run
+        // never causes a DB error even if Twilio already sent.
+        await db.query(
+          `INSERT INTO deliveries (user_id, song_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+          [sub.user_id, song.id]
+        );
+
+        console.log(`[Drop] ✓ Sent "${song.title}" → ${sub.phone}`);
+        sent++;
+
+      } catch (err) {
+        console.error(`[Drop] ✗ Error for sub #${sub.sub_id}: ${err.message}`);
+        errors++;
+      }
+    }
+
+    console.log(`[Drop] Done. Sent: ${sent} | Skipped: ${skipped} | Errors: ${errors}\n`);
+    return { sent, skipped, errors };
+
+  } finally {
+    _dropRunning = false;
+  }
 }
 
 // ── Message builder ───────────────────────────────────────────────────────────
 function buildDropMessage(song, tasteToken) {
   const base = process.env.BASE_URL || '';
-  const target = song.curator_name
-    ? `/drop/curator/${song.curator_name.toLowerCase().replace(/\s+/g, '-')}`
-    : `/drop/${(song.genre_name || '').toLowerCase().replace(/\s+/g, '-')}`;
+  const target = `/drop/${(song.genre_name || '').toLowerCase().replace(/\s+/g, '-')}`;
   const tokenParam = tasteToken ? `?t=${tasteToken}` : '';
   const link = base ? `${base}${target}${tokenParam}` : (song.url || '');
 
-  const genre = song.genre_name || song.curator_name || '';
+  const genre = song.genre_name || '';
   let msg = `Undeniable ${genre} Hit of the Week\n\n`;
   msg += `Vote HIT or DENIED: ${link}`;
   return msg;
 }
 
-// ── Schedule: every Friday at 10:00am ─────────────────────────────────────────
+// ── Schedule: every Friday at 8:00am PT ──────────────────────────────────────
 let cron;
 try {
   cron = require('node-cron');
-  // Cron: minute hour day month weekday
-  // 0 8 * * 5  =  8:00am PT every Friday
   cron.schedule('0 8 * * 5', async () => {
-    console.log('[Scheduler] Friday 8am PT — firing weekly drop + curator intro blast!');
+    console.log('[Scheduler] Friday 8am PT — firing weekly genre drop.');
     runWeeklyDrop().catch(err => console.error('[Scheduler] Drop failed:', err.message));
-    // Fire curator intro blast for all active curators this month
-    try {
-      const { runCuratorIntroBlast } = require('./curator-scheduler');
-      const { rows } = await db.query(`SELECT id FROM curators WHERE curator_month IS NOT NULL ORDER BY id ASC LIMIT 1`);
-      if (rows.length) {
-        runCuratorIntroBlast(rows[0].id).catch(err => console.error('[Scheduler] Curator intro blast failed:', err.message));
-        console.log(`[Scheduler] Curator intro blast fired for curator #${rows[0].id}`);
-      }
-    } catch(e) { console.error('[Scheduler] Curator intro blast error:', e.message); }
+    // NOTE: curator intro blast is triggered MANUALLY via POST /api/curator-intro/send
+    // from the admin dashboard on week-1 Friday only. It is NOT auto-fired here
+    // to prevent blasting genre subscribers every single Friday.
   }, { scheduled: true, timezone: 'America/Los_Angeles' });
-  console.log('[Scheduler] Friday drop + curator intro scheduled for 8:00am PT every week.');
+  console.log('[Scheduler] Friday genre drop scheduled for 8:00am PT every week.');
 } catch (e) {
   console.log('[Scheduler] node-cron not installed — manual drops only via POST /api/drop/send');
 }

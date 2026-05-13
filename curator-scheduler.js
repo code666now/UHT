@@ -11,129 +11,145 @@ const client = twilio(
   process.env.TWILIO_AUTH_TOKEN
 );
 
+// ── Concurrent execution guard ────────────────────────────────────────────────
+let _curatorDropRunning = false;
+
 // ── Core curator drop function ────────────────────────────────────────────────
 async function runCuratorDrop() {
-  console.log(`\n[CuratorDrop] Starting Monday curator drop at ${new Date().toISOString()}`);
-
-  // Get all active curator subscriptions (include curator photo + month for MMS)
-  const { rows: subs } = await db.query(`
-    SELECT
-      s.id           AS sub_id,
-      s.user_id,
-      s.curator_id,
-      u.phone,
-      u.taste_token,
-      c.name              AS curator_name,
-      c.image_url         AS curator_image,
-      c.playlist_image_url AS curator_playlist_image,
-      c.curator_month
-    FROM subscriptions s
-    JOIN users    u ON u.id = s.user_id
-    JOIN curators c ON c.id = s.curator_id
-    WHERE s.is_active = TRUE
-      AND s.curator_id IS NOT NULL
-  `);
-
-  if (!subs.length) {
-    console.log('[CuratorDrop] No active curator subscribers. Skipping.');
-    return { sent: 0, skipped: 0, errors: 0 };
+  if (_curatorDropRunning) {
+    console.log('[CuratorDrop] Already running — skipping duplicate invocation.');
+    return { sent: 0, skipped: 0, errors: 0, alreadyRunning: true };
   }
+  _curatorDropRunning = true;
 
-  let sent = 0, skipped = 0, errors = 0;
+  try {
+    console.log(`\n[CuratorDrop] Starting Monday curator drop at ${new Date().toISOString()}`);
 
-  for (const sub of subs) {
-    try {
-      // Find oldest unplayed curator_submission not yet delivered to this user.
-      // Skip check joins songs by title+artist so it works even when cs.id ≠ songs.id.
-      const { rows: songs } = await db.query(`
-        SELECT cs.id, cs.title, cs.artist, cs.theme, cs.curator_note,
-               cs.week_number, cs.spotify_url, cs.youtube_url, cs.submitted_at
-        FROM curator_submissions cs
-        WHERE cs.curator_id = $1
-          AND COALESCE(cs.status, 'approved') = 'approved'
-          AND NOT EXISTS (
-            SELECT 1
-            FROM songs s
-            JOIN deliveries d ON d.song_id = s.id AND d.user_id = $2
-            WHERE s.curator_id = $1
-              AND LOWER(s.title)  = LOWER(cs.title)
-              AND LOWER(s.artist) = LOWER(cs.artist)
-          )
-        ORDER BY cs.submitted_at ASC
-        LIMIT 1
-      `, [sub.curator_id, sub.user_id]);
+    // Get all active curator subscriptions (include curator photo + month for MMS)
+    const { rows: subs } = await db.query(`
+      SELECT
+        s.id           AS sub_id,
+        s.user_id,
+        s.curator_id,
+        u.phone,
+        u.taste_token,
+        c.name              AS curator_name,
+        c.image_url         AS curator_image,
+        c.playlist_image_url AS curator_playlist_image,
+        c.curator_month
+      FROM subscriptions s
+      JOIN users    u ON u.id = s.user_id
+      JOIN curators c ON c.id = s.curator_id
+      WHERE s.is_active = TRUE
+        AND s.curator_id IS NOT NULL
+    `);
 
-      if (!songs.length) {
-        console.log(`[CuratorDrop] No new songs for sub #${sub.sub_id} (${sub.phone}). Skipping.`);
-        skipped++;
-        continue;
-      }
-
-      const cs = songs[0];
-
-      // Ensure curator submission exists as a songs row (deliveries FK requires songs.id)
-      const { rows: songRows } = await db.query(`
-        INSERT INTO songs (title, artist, curator_id, url)
-        VALUES ($1, $2, $3, $4)
-        ON CONFLICT DO NOTHING
-        RETURNING id
-      `, [cs.title, cs.artist, sub.curator_id, cs.spotify_url || cs.youtube_url || null]);
-
-      // If already existed, look it up
-      let songId;
-      if (songRows.length) {
-        songId = songRows[0].id;
-      } else {
-        const { rows: existing } = await db.query(
-          `SELECT id FROM songs WHERE LOWER(title)=LOWER($1) AND LOWER(artist)=LOWER($2) AND curator_id=$3 LIMIT 1`,
-          [cs.title, cs.artist, sub.curator_id]
-        );
-        songId = existing[0]?.id;
-      }
-
-      if (!songId) {
-        console.error(`[CuratorDrop] Could not resolve song_id for "${cs.title}"`);
-        errors++;
-        continue;
-      }
-
-      const song = { ...cs, id: songId };
-      const base = process.env.BASE_URL || '';
-      const headshot = sub.curator_image?.startsWith('data:') ? `${base}/curator-image/${sub.curator_id}` : sub.curator_image;
-      const playlistArt = sub.curator_playlist_image?.startsWith('data:') ? `${base}/curator-playlist-image/${sub.curator_id}` : sub.curator_playlist_image;
-      const { body, mediaUrl } = buildCuratorMessage(song, sub.curator_name, headshot, sub.curator_month, playlistArt, sub.taste_token);
-
-      // Send via Twilio — MMS if curator has a photo, SMS otherwise
-      const msgParams = {
-        from: process.env.TWILIO_FROM || process.env.TWILIO_PHONE_NUMBER,
-        to:   sub.phone,
-        body,
-      };
-      if (mediaUrl) msgParams.mediaUrl = [mediaUrl];
-
-      await client.messages.create(msgParams);
-
-      // Record delivery + stamp delivered_at on the submission
-      await db.query(
-        `INSERT INTO deliveries (user_id, song_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-        [sub.user_id, songId]
-      );
-      await db.query(
-        `UPDATE curator_submissions SET delivered_at=NOW() WHERE id=$1 AND delivered_at IS NULL`,
-        [cs.id]
-      );
-
-      console.log(`[CuratorDrop] ✓ Sent "${song.title}" by ${sub.curator_name} → ${sub.phone}`);
-      sent++;
-
-    } catch (err) {
-      console.error(`[CuratorDrop] ✗ Error for sub #${sub.sub_id}:`, err.message);
-      errors++;
+    if (!subs.length) {
+      console.log('[CuratorDrop] No active curator subscribers. Skipping.');
+      return { sent: 0, skipped: 0, errors: 0 };
     }
-  }
 
-  console.log(`[CuratorDrop] Done. Sent: ${sent} | Skipped: ${skipped} | Errors: ${errors}\n`);
-  return { sent, skipped, errors };
+    let sent = 0, skipped = 0, errors = 0;
+
+    for (const sub of subs) {
+      try {
+        // Find NEWEST unplayed curator_submission not yet delivered to this user.
+        // Newest-first ensures new subscribers always get the current week's drop,
+        // never playing catch-up from week 1.
+        const { rows: songs } = await db.query(`
+          SELECT cs.id, cs.title, cs.artist, cs.theme, cs.curator_note,
+                 cs.week_number, cs.spotify_url, cs.youtube_url, cs.submitted_at
+          FROM curator_submissions cs
+          WHERE cs.curator_id = $1
+            AND COALESCE(cs.status, 'approved') = 'approved'
+            AND NOT EXISTS (
+              SELECT 1
+              FROM songs s
+              JOIN deliveries d ON d.song_id = s.id AND d.user_id = $2
+              WHERE s.curator_id = $1
+                AND LOWER(s.title)  = LOWER(cs.title)
+                AND LOWER(s.artist) = LOWER(cs.artist)
+            )
+          ORDER BY cs.submitted_at DESC
+          LIMIT 1
+        `, [sub.curator_id, sub.user_id]);
+
+        if (!songs.length) {
+          console.log(`[CuratorDrop] No new songs for sub #${sub.sub_id} (${sub.phone}). Skipping.`);
+          skipped++;
+          continue;
+        }
+
+        const cs = songs[0];
+
+        // Ensure curator submission exists as a songs row (deliveries FK requires songs.id)
+        const { rows: songRows } = await db.query(`
+          INSERT INTO songs (title, artist, curator_id, url)
+          VALUES ($1, $2, $3, $4)
+          ON CONFLICT DO NOTHING
+          RETURNING id
+        `, [cs.title, cs.artist, sub.curator_id, cs.spotify_url || cs.youtube_url || null]);
+
+        // If already existed, look it up
+        let songId;
+        if (songRows.length) {
+          songId = songRows[0].id;
+        } else {
+          const { rows: existing } = await db.query(
+            `SELECT id FROM songs WHERE LOWER(title)=LOWER($1) AND LOWER(artist)=LOWER($2) AND curator_id=$3 LIMIT 1`,
+            [cs.title, cs.artist, sub.curator_id]
+          );
+          songId = existing[0]?.id;
+        }
+
+        if (!songId) {
+          console.error(`[CuratorDrop] Could not resolve song_id for "${cs.title}"`);
+          errors++;
+          continue;
+        }
+
+        const song = { ...cs, id: songId };
+        const base = process.env.BASE_URL || '';
+        const headshot = sub.curator_image?.startsWith('data:') ? `${base}/curator-image/${sub.curator_id}` : sub.curator_image;
+        const playlistArt = sub.curator_playlist_image?.startsWith('data:') ? `${base}/curator-playlist-image/${sub.curator_id}` : sub.curator_playlist_image;
+        const { body, mediaUrl } = buildCuratorMessage(song, sub.curator_name, headshot, sub.curator_month, playlistArt, sub.taste_token);
+
+        // Send via Twilio — MMS if curator has a photo, SMS otherwise
+        const msgParams = {
+          from: process.env.TWILIO_FROM || process.env.TWILIO_PHONE_NUMBER,
+          to:   sub.phone,
+          body,
+        };
+        if (mediaUrl) msgParams.mediaUrl = [mediaUrl];
+
+        await client.messages.create(msgParams);
+
+        // Record delivery + stamp delivered_at on the submission.
+        // ON CONFLICT DO NOTHING ensures a double-run never errors even if already recorded.
+        await db.query(
+          `INSERT INTO deliveries (user_id, song_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+          [sub.user_id, songId]
+        );
+        await db.query(
+          `UPDATE curator_submissions SET delivered_at=NOW() WHERE id=$1 AND delivered_at IS NULL`,
+          [cs.id]
+        );
+
+        console.log(`[CuratorDrop] ✓ Sent "${song.title}" by ${sub.curator_name} → ${sub.phone}`);
+        sent++;
+
+      } catch (err) {
+        console.error(`[CuratorDrop] ✗ Error for sub #${sub.sub_id}:`, err.message);
+        errors++;
+      }
+    }
+
+    console.log(`[CuratorDrop] Done. Sent: ${sent} | Skipped: ${skipped} | Errors: ${errors}\n`);
+    return { sent, skipped, errors };
+
+  } finally {
+    _curatorDropRunning = false;
+  }
 }
 
 // ── Curator message builder ───────────────────────────────────────────────────
@@ -182,8 +198,27 @@ try {
   }, { scheduled: true, timezone: 'America/Los_Angeles' });
   console.log('[CuratorScheduler] Wednesday curator welcome scheduled for 9:00am PT every week.');
 
-  // One-time: May 8 2026 at 10:30am PT — Lucas Moon curator invite to 6 new genre subscribers
-  cron.schedule('30 10 8 5 *', () => {
+  // One-time: May 8 2026 at 10:30am PT — Lucas Moon curator invite to 6 new genre subscribers.
+  // Self-disabling: checks DB for prior sends before firing so it never repeats across years.
+  cron.schedule('30 10 8 5 *', async () => {
+    // Only fire in 2026 and only if we haven't already sent
+    const now = new Date();
+    if (now.getFullYear() !== 2026) {
+      console.log('[LucasInvite] Skipping — not 2026.');
+      return;
+    }
+    try {
+      const { rows } = await db.query(
+        `SELECT COUNT(*) AS cnt FROM curator_invite_log WHERE campaign = 'lucas-may-2026'`
+      );
+      if (parseInt(rows[0]?.cnt) > 0) {
+        console.log('[LucasInvite] Already sent — skipping.');
+        return;
+      }
+    } catch(e) {
+      // Table may not exist yet — proceed cautiously and let the function itself guard
+      console.log('[LucasInvite] Could not check invite log, proceeding:', e.message);
+    }
     console.log('[LucasInvite] Firing one-time Lucas Moon invite blast at 10:30am PT!');
     runTargetedLucasInvite().catch(err => console.error('[LucasInvite] Failed:', err.message));
   }, { scheduled: true, timezone: 'America/Los_Angeles' });
@@ -362,6 +397,22 @@ async function runTargetedLucasInvite() {
       console.error(`[LucasInvite] ✗ Error for ${phone}:`, err.message);
       errors++;
     }
+  }
+
+  // Stamp in DB so the cron self-check knows it already ran (table created if missing)
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS curator_invite_log (
+        id SERIAL PRIMARY KEY,
+        campaign TEXT UNIQUE NOT NULL,
+        sent_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+    await db.query(
+      `INSERT INTO curator_invite_log (campaign) VALUES ('lucas-may-2026') ON CONFLICT DO NOTHING`
+    );
+  } catch(e) {
+    console.error('[LucasInvite] Could not stamp invite log:', e.message);
   }
 
   console.log(`[LucasInvite] Done. Sent: ${sent} | Errors: ${errors}`);
