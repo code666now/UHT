@@ -306,7 +306,7 @@ app.get("/admin", requireAdmin, (req, res) => res.sendFile(require("path").join(
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may12-v39' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may12-v40' });
 });
 
 
@@ -4774,7 +4774,7 @@ function shareVote(){
   ctx.font='500 28px Georgia,serif';
   ctx.letterSpacing='0.3em';
   ctx.textAlign='center';
-  ctx.fillText('UHT  ·  UNDENIABLE HIT THEORY', S/2, 118);
+  ctx.fillText('UHT  ·  UNDENIABLE HITS', S/2, 118);
 
   // "I VOTED" label
   ctx.fillStyle='rgba(243,241,234,0.4)';
