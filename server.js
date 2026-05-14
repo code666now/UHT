@@ -4753,6 +4753,21 @@ app.patch('/api/community-submissions/:id/promote', async (req, res) => {
         [s.song, s.artist, s.youtube_url||null, dropDate]
       );
     }
+    // Sync to songs table so the Friday scheduler sends it to Community subscribers
+    const { rows: communityGenre } = await db.query(
+      `SELECT id FROM genres WHERE LOWER(name) = 'community' LIMIT 1`
+    );
+    if (communityGenre.length) {
+      const genreId = communityGenre[0].id;
+      // Remove old community song so this one becomes the newest (scheduler picks newest undelivered)
+      await db.query(`DELETE FROM songs WHERE genre_id = $1`, [genreId]);
+      await db.query(
+        `INSERT INTO songs (title, artist, genre_id, youtube_url)
+         VALUES ($1, $2, $3, $4)`,
+        [s.song, s.artist, genreId, s.youtube_url || null]
+      );
+    }
+
     res.json({ ok: true, drop_date: dropDate });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
