@@ -138,6 +138,22 @@ db.query(`ALTER TABLE curator_submission_votes DROP CONSTRAINT IF EXISTS curator
   .then(() => console.log('[Migration] curator_submission_votes FK dropped — genre votes enabled'))
   .catch(e => console.error('[Migration] votes FK drop:', e.message));
 
+// Confirmation tokens for web stranger subscribe flow
+db.query(`
+  CREATE TABLE IF NOT EXISTS confirmation_tokens (
+    id         SERIAL PRIMARY KEY,
+    token      TEXT UNIQUE NOT NULL,
+    phone      TEXT NOT NULL,
+    name       TEXT NOT NULL,
+    genre_id   INTEGER,
+    curator_id INTEGER,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL,
+    used       BOOLEAN DEFAULT FALSE
+  )
+`).then(() => console.log('[Migration] confirmation_tokens ready'))
+  .catch(e => console.error('[Migration] confirmation_tokens:', e.message));
+
 // Expand vote check constraint to include mega_hit
 db.query(`ALTER TABLE curator_submission_votes DROP CONSTRAINT IF EXISTS curator_submission_votes_vote_check`)
   .then(() => db.query(`ALTER TABLE curator_submission_votes ADD CONSTRAINT curator_submission_votes_vote_check CHECK (vote IN ('hit','denied','mega_hit'))`))
@@ -2922,6 +2938,150 @@ app.post('/api/verify_code', async (req, res) => {
   }
 });
 
+// ── POST /api/confirm/request — web stranger subscribe (no code on web) ───────
+app.post('/api/confirm/request', async (req, res) => {
+  const { phone, name, genre_id, curator_id } = req.body;
+  if (!phone || !name) return res.status(400).json({ error: 'phone and name required' });
+  const digits = phone.replace(/\D/g,'');
+  const normalPhone = digits.length === 10 ? '+1' + digits
+    : digits.length === 11 && digits.startsWith('1') ? '+' + digits
+    : phone;
+  try {
+    // Check if already subscribed
+    const { rows: existing } = await db.query('SELECT id FROM users WHERE phone=$1 LIMIT 1', [normalPhone]);
+    if (existing.length) {
+      // Already a user — send a gentle nudge but don't error
+      const client = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+      await client.messages.create({
+        to: normalPhone,
+        from: process.env.TWILIO_FROM,
+        body: `You're already part of UHT. Your weekly drop arrives via your personal link. Reply STOP to opt out.`
+      });
+      return res.json({ ok: true, already_subscribed: true });
+    }
+
+    // Build context label for SMS
+    let contextLabel = 'weekly music drop';
+    if (genre_id) {
+      const { rows: g } = await db.query('SELECT name FROM genres WHERE id=$1 LIMIT 1', [genre_id]);
+      if (g.length) contextLabel = `weekly ${g[0].name} drop`;
+    } else if (curator_id) {
+      const { rows: c } = await db.query('SELECT name FROM curators WHERE id=$1 LIMIT 1', [curator_id]);
+      if (c.length) contextLabel = `weekly picks from ${c[0].name}`;
+    }
+
+    // Create token
+    const token = require('crypto').randomBytes(20).toString('hex');
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await db.query(
+      `INSERT INTO confirmation_tokens (token, phone, name, genre_id, curator_id, expires_at)
+       VALUES ($1,$2,$3,$4,$5,$6)`,
+      [token, normalPhone, name.trim(), genre_id || null, curator_id || null, expiresAt]
+    );
+
+    // Send confirmation SMS
+    const confirmUrl = `${process.env.APP_URL || 'https://uht-app-production.up.railway.app'}/confirm?token=${token}`;
+    const client = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+    await client.messages.create({
+      to: normalPhone,
+      from: process.env.TWILIO_FROM,
+      body: `Hey ${name.trim()} — tap to confirm your ${contextLabel}: ${confirmUrl}\n\nLink expires in 24hrs.`
+    });
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[confirm/request]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── GET /confirm — tap link from SMS, complete enrollment ─────────────────────
+app.get('/confirm', async (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.status(400).send('Missing token.');
+  try {
+    const { rows } = await db.query(
+      `SELECT * FROM confirmation_tokens WHERE token=$1 LIMIT 1`, [token]
+    );
+    if (!rows.length) return res.status(404).send(confirmPage('Invalid Link', 'This confirmation link is not valid.'));
+    const ct = rows[0];
+    if (ct.used) return res.send(confirmPage('Already Confirmed', "You're already subscribed. Your drop arrives weekly."));
+    if (new Date() > new Date(ct.expires_at)) return res.status(410).send(confirmPage('Link Expired', 'This link expired. Visit the drop page to subscribe again.'));
+
+    // Create user
+    const { rows: [user] } = await db.query(
+      `INSERT INTO users (phone, name)
+       VALUES ($1, $2)
+       ON CONFLICT (phone) DO UPDATE SET name = COALESCE(EXCLUDED.name, users.name)
+       RETURNING *`,
+      [ct.phone, ct.name]
+    );
+
+    // Create subscription
+    let subLabel = 'weekly drop';
+    if (ct.genre_id) {
+      await db.query(
+        `INSERT INTO subscriptions (user_id, genre_id, is_active)
+         VALUES ($1,$2,true)
+         ON CONFLICT (user_id, genre_id) DO UPDATE SET is_active=true`,
+        [user.id, ct.genre_id]
+      );
+      const { rows: g } = await db.query('SELECT name FROM genres WHERE id=$1 LIMIT 1', [ct.genre_id]);
+      if (g.length) subLabel = `weekly ${g[0].name} drop`;
+    } else if (ct.curator_id) {
+      await db.query(
+        `INSERT INTO subscriptions (user_id, curator_id, is_active)
+         VALUES ($1,$2,true)
+         ON CONFLICT (user_id, curator_id) DO UPDATE SET is_active=true`,
+        [user.id, ct.curator_id]
+      );
+      await db.query(
+        `INSERT INTO follows (user_id, curator_id) VALUES ($1,$2)
+         ON CONFLICT DO NOTHING`,
+        [user.id, ct.curator_id]
+      );
+      const { rows: c } = await db.query('SELECT name FROM curators WHERE id=$1 LIMIT 1', [ct.curator_id]);
+      if (c.length) subLabel = `weekly picks from ${c[0].name}`;
+    }
+
+    // Mark token used
+    await db.query('UPDATE confirmation_tokens SET used=true WHERE id=$1', [ct.id]);
+
+    // Send welcome SMS
+    const dropDay = ct.curator_id ? 'Monday' : 'Friday';
+    const client = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+    await client.messages.create({
+      to: ct.phone,
+      from: process.env.TWILIO_FROM,
+      body: `You're in, ${ct.name}. Every ${dropDay} you'll get your ${subLabel} from UHT — Undeniable Hit Theory. Reply STOP anytime to opt out.`
+    });
+
+    res.send(confirmPage('You\'re in.', `Every ${dropDay} your ${subLabel} arrives. Check your texts.`));
+  } catch (e) {
+    console.error('[confirm]', e.message);
+    res.status(500).send(confirmPage('Something went wrong', 'Please try subscribing again.'));
+  }
+});
+
+function confirmPage(title, message) {
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${title} · UHT</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#000;color:#f3f1ea;font-family:Georgia,"Times New Roman",serif;min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:32px}
+  h1{font-size:clamp(28px,8vw,56px);letter-spacing:.04em;margin-bottom:16px}
+  p{font-size:16px;color:rgba(243,241,234,0.6);line-height:1.6;max-width:320px;margin:0 auto}
+  .accent{color:#E8B84B}
+</style>
+</head><body>
+<div>
+  <div style="font-size:11px;letter-spacing:.2em;color:rgba(243,241,234,0.3);margin-bottom:24px">UHT · UNDENIABLE HIT THEORY</div>
+  <h1 class="accent">${title}</h1>
+  <p>${message}</p>
+</div>
+</body></html>`;
+}
+
 // ── Check if subscriber exists ────────────────────────────────────────────────
 app.get('/api/check_subscriber', async (req, res) => {
   const { phone } = req.query;
@@ -3819,7 +3979,7 @@ ${!ytId && d.spotify_url && !spotifyTrackId ? `<div style="text-align:center;pad
   </div>
 </div>
 
-<div id="voteCounts" style="padding:20px 32px 28px;width:100%;max-width:560px;margin:0 auto">
+<div id="voteCounts" style="padding:20px 32px 28px;width:100%;max-width:560px;margin:0 auto;${!isFollowing ? 'display:none' : ''}">
   <div style="display:flex;align-items:stretch;border-radius:3px;overflow:hidden;height:5px;width:100%;margin-bottom:12px;background:rgba(237,232,223,0.08)">
     <div id="barMega"   style="background:#E8B84B;height:100%;width:0%;transition:width .8s ease"></div>
     <div id="barHit"    style="background:rgba(232,184,75,0.4);height:100%;width:0%;transition:width .8s ease"></div>
@@ -3834,23 +3994,17 @@ ${!ytId && d.spotify_url && !spotifyTrackId ? `<div style="text-align:center;pad
 </div>
 
 
+<div id="post-vote" style="display:none">
 ${!isFollowing ? `
 <div class="post-nudge" id="nudgeWrap">
-  <p class="post-nudge-title">Enjoyed <em>${d.title}</em>?<br>Get ${firstName}'s next pick sent to your phone every Monday.</p>
-  <div id="nudgePhone">
-    <input type="tel" id="nudgePhoneInput" placeholder="(555) 867-5309" inputmode="tel" autocomplete="tel">
-    <button class="post-nudge-btn" onclick="nudgeSubmit()">Follow ${firstName} →</button>
-    <div class="post-nudge-msg" id="nudgeMsg"></div>
-    <p class="post-nudge-legal">Weekly SMS · Reply STOP anytime</p>
-  </div>
-  <div id="nudgeVerify" style="display:none">
-    <input type="text" id="nudgeCode" placeholder="6-digit code" maxlength="6" inputmode="numeric" style="letter-spacing:.2em">
-    <input type="text" id="nudgeName" placeholder="First name" autocomplete="given-name">
-    <button class="post-nudge-btn" onclick="nudgeVerify()">Confirm →</button>
-    <div class="post-nudge-msg" id="nudgeVerifyMsg"></div>
-  </div>
+  <p class="post-nudge-title">Get ${firstName}'s next pick<br>sent to your phone every Monday.</p>
+  <input type="text" id="nudgeNameInput" placeholder="First name" autocomplete="given-name" style="margin-bottom:8px">
+  <input type="tel" id="nudgePhoneInput" placeholder="(555) 867-5309" inputmode="tel" autocomplete="tel">
+  <button class="post-nudge-btn" id="nudgeBtn" onclick="nudgeSubmit()">Follow ${firstName} →</button>
+  <div class="post-nudge-msg" id="nudgeMsg"></div>
+  <p class="post-nudge-legal">Weekly SMS · Reply STOP anytime</p>
+</div>` : ''}
 </div>
-` : ''}
 
 ${allSubs && allSubs.length > 0 ? `
 <div class="archive">
@@ -3967,6 +4121,10 @@ function vote(v){
     var labels={mega_hit:'🔥 Mega Hit recorded!',hit:'🎯 Hit recorded!',deny:'💀 Denied recorded!'};
     localStorage.setItem('uht_vote_${d.id}', v);
     if(msg) msg.textContent=labels[v]||'Recorded!';
+    var vc=document.getElementById('voteCounts');
+    if(vc){vc.style.display='block';}
+    var pv=document.getElementById('post-vote');
+    if(pv){setTimeout(function(){pv.style.display='block';pv.classList.add('slide-up');},600);}
     return fetch('/api/genre-vote/${d.id}/counts');
   })
   .then(function(r){return r.json();})
@@ -4043,42 +4201,29 @@ function getVoterId(){
 }
 
 // Post-vote nudge
-var _nudgePhone='';
 function nudgeSubmit(){
+  var name=(document.getElementById('nudgeNameInput').value||'').trim();
   var raw=document.getElementById('nudgePhoneInput').value.trim();
   var msg=document.getElementById('nudgeMsg');
+  if(!name){msg.textContent='Enter your first name.';return;}
   if(!raw){msg.textContent='Enter your phone number.';return;}
   var digits=raw.replace(/\D/g,'');
-  _nudgePhone=digits.length===10?'+1'+digits:digits.length===11&&digits[0]==='1'?'+'+digits:'+'+digits;
-  msg.textContent='Sending code...';
-  fetch('/api/send_code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone:_nudgePhone})})
+  var phone=digits.length===10?'+1'+digits:digits.length===11&&digits[0]==='1'?'+'+digits:'+'+digits;
+  var btn=document.getElementById('nudgeBtn');
+  btn.disabled=true;
+  msg.textContent='Sending confirmation...';
+  fetch('/api/confirm/request',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({phone:phone,name:name,curator_id:${curator.id}})})
     .then(function(r){return r.json();})
     .then(function(d){
-      if(d.error){msg.textContent=d.error;return;}
-      document.getElementById('nudgePhone').style.display='none';
-      document.getElementById('nudgeVerify').style.display='block';
-      setTimeout(function(){document.getElementById('nudgeCode').focus();},100);
-    })
-    .catch(function(){msg.textContent='Network error. Try again.';});
-}
-function nudgeVerify(){
-  var code=document.getElementById('nudgeCode').value.trim();
-  var name=(document.getElementById('nudgeName').value||'').trim();
-  var msg=document.getElementById('nudgeVerifyMsg');
-  if(!code){msg.textContent='Enter the code from your text.';return;}
-  if(!name){msg.textContent='First name is required.';return;}
-  msg.textContent='Verifying...';
-  fetch('/api/verify_code',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({phone:_nudgePhone,code:code,curator_id:${curator.id},name:name,voter_id:getVoterId()})})
-    .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d};});})
-    .then(function(res){
-      if(res.ok){
-        document.getElementById('nudgeWrap').innerHTML='<div style="padding:16px 0;font-size:15px;color:#E8B84B;letter-spacing:.05em;text-align:center">You\\'re following ${firstName}. Next pick drops Monday. 🌙</div>';
-      } else {
-        msg.textContent=res.data.error||'Invalid code.';
+      if(d.error){msg.textContent=d.error;btn.disabled=false;return;}
+      if(d.already_subscribed){
+        document.getElementById('nudgeWrap').innerHTML='<div style="padding:8px 0;font-size:15px;color:#E8B84B;letter-spacing:.05em;text-align:center">You\\'re already in. Check your texts Monday.</div>';
+        return;
       }
+      document.getElementById('nudgeWrap').innerHTML='<div style="padding:16px 0;text-align:center"><div style="font-size:22px;margin-bottom:8px">📱</div><div style="font-size:15px;color:#E8B84B;letter-spacing:.05em;margin-bottom:6px">Check your texts.</div><div style="font-size:12px;color:rgba(237,232,223,0.4);letter-spacing:.08em">Tap the link we just sent you to confirm.</div></div>';
     })
-    .catch(function(){msg.textContent='Network error. Try again.';});
+    .catch(function(){msg.textContent='Network error. Try again.';btn.disabled=false;});
 }
 </script>
 ${idCard}
@@ -4850,7 +4995,7 @@ ${idHeader}
   </div>
 </section>
 
-<div id="voteCounts" style="padding:24px 32px 32px;width:100%;max-width:560px;margin:0 auto">
+<div id="voteCounts" style="padding:24px 32px 32px;width:100%;max-width:560px;margin:0 auto;${!isSubscriber ? 'display:none' : ''}">
   <div style="display:flex;align-items:stretch;border-radius:3px;overflow:hidden;height:5px;width:100%;margin-bottom:14px;background:rgba(243,241,234,0.08)">
     <div id="barMega"   style="background:#E8B84B;height:100%;width:0%;transition:width .8s ease"></div>
     <div id="barHit"    style="background:rgba(232,184,75,0.4);height:100%;width:0%;transition:width .8s ease"></div>
@@ -4954,6 +5099,8 @@ function castVote(type){
   setTimeout(function(){msg.classList.add('show');},100);
   setTimeout(function(){document.getElementById('shareBtn').classList.add('show');},400);
   setTimeout(function(){
+    var vc=document.getElementById('voteCounts');
+    if(vc){vc.style.display='block';}
     var pv=document.getElementById('post-vote');
     pv.style.display='block';
     pv.classList.add('slide-up');
@@ -5068,41 +5215,29 @@ function shareVote(){
 }
 
 // ── Post-vote subscribe nudge ─────────────────────────────────────────────────
-var _nudgePhone='';
 function nudgeSubmit(){
+  var name=(document.getElementById('nudgeNameInput').value||'').trim();
   var raw=document.getElementById('nudgePhoneInput').value.trim();
   var msg=document.getElementById('nudgeMsg');
+  if(!name){msg.textContent='Enter your first name.';return;}
   if(!raw){msg.textContent='Enter your phone number.';return;}
   var digits=raw.replace(/\\D/g,'');
-  _nudgePhone=digits.length===10?'+1'+digits:digits.length===11&&digits[0]==='1'?'+'+digits:'+'+digits;
-  msg.textContent='Sending code...';
-  fetch('/api/send_code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone:_nudgePhone})})
+  var phone=digits.length===10?'+1'+digits:digits.length===11&&digits[0]==='1'?'+'+digits:'+'+digits;
+  var btn=document.getElementById('nudgeBtn');
+  btn.disabled=true;
+  msg.textContent='Sending confirmation...';
+  fetch('/api/confirm/request',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({phone:phone,name:name,genre_id:${nudgeGenreId||'null'}})})
     .then(function(r){return r.json();})
     .then(function(d){
-      if(d.error){msg.textContent=d.error;return;}
-      document.getElementById('nudgePhone').style.display='none';
-      document.getElementById('nudgeVerify').style.display='block';
-    })
-    .catch(function(){msg.textContent='Network error. Try again.';});
-}
-function nudgeVerify(){
-  var code=document.getElementById('nudgeCode').value.trim();
-  var name=(document.getElementById('nudgeName').value||'').trim();
-  var msg=document.getElementById('nudgeVerifyMsg');
-  if(!code){msg.textContent='Enter the code from your text.';return;}
-  if(!name){msg.textContent='First name is required.';return;}
-  msg.textContent='Verifying...';
-  fetch('/api/verify_code',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({phone:_nudgePhone,code:code,genre_id:${nudgeGenreId},name:name,voter_id:getVoterId()})})
-    .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d};});})
-    .then(function(res){
-      if(res.ok){
-        document.getElementById('nudgeWrap').innerHTML='<div style="padding:8px 0;font-size:15px;color:#E8B84B;letter-spacing:.05em">You\\'re in. Next ${genreLabel} pick drops Friday.</div>';
-      } else {
-        msg.textContent=res.data.error||'Invalid code.';
+      if(d.error){msg.textContent=d.error;btn.disabled=false;return;}
+      if(d.already_subscribed){
+        document.getElementById('nudgeWrap').innerHTML='<div style="padding:8px 0;font-size:15px;color:#E8B84B;letter-spacing:.05em;text-align:center">You\\'re already in. Check your texts Friday.</div>';
+        return;
       }
+      document.getElementById('nudgeWrap').innerHTML='<div style="padding:16px 0;text-align:center"><div style="font-size:22px;margin-bottom:8px">📱</div><div style="font-size:15px;color:#E8B84B;letter-spacing:.05em;margin-bottom:6px">Check your texts.</div><div style="font-size:12px;color:rgba(243,241,234,0.4);letter-spacing:.08em">Tap the link we just sent you to confirm.</div></div>';
     })
-    .catch(function(){msg.textContent='Network error.';});
+    .catch(function(){msg.textContent='Network error. Try again.';btn.disabled=false;});
 }
 
 function wrapText(ctx,text,x,y,maxW,lineH){
@@ -5143,19 +5278,12 @@ function downloadShareCard(){
 <div id="post-vote" style="display:none">
 ${!isSubscriber && nudgeGenreId ? `
 <div class="post-nudge" id="nudgeWrap">
-  <p class="post-nudge-title">Enjoyed <em>${d.title}</em>?<br>Get next week's ${genreLabel} pick sent to your phone.</p>
-  <div id="nudgePhone">
-    <input type="tel" id="nudgePhoneInput" placeholder="(555) 867-5309" inputmode="tel" autocomplete="tel">
-    <button class="post-nudge-btn" onclick="nudgeSubmit()">Get the drop →</button>
-    <div class="post-nudge-msg" id="nudgeMsg"></div>
-    <p class="post-nudge-legal">Weekly SMS · Reply STOP anytime</p>
-  </div>
-  <div id="nudgeVerify" style="display:none">
-    <input type="text" id="nudgeCode" placeholder="6-digit code" maxlength="6" inputmode="numeric" style="letter-spacing:.2em">
-    <input type="text" id="nudgeName" placeholder="First name" autocomplete="given-name">
-    <button class="post-nudge-btn" onclick="nudgeVerify()">Confirm →</button>
-    <div class="post-nudge-msg" id="nudgeVerifyMsg"></div>
-  </div>
+  <p class="post-nudge-title">Get next week's ${genreLabel} verdict<br>sent straight to your phone.</p>
+  <input type="text" id="nudgeNameInput" placeholder="First name" autocomplete="given-name" style="margin-bottom:8px">
+  <input type="tel" id="nudgePhoneInput" placeholder="(555) 867-5309" inputmode="tel" autocomplete="tel">
+  <button class="post-nudge-btn" id="nudgeBtn" onclick="nudgeSubmit()">Get the drop →</button>
+  <div class="post-nudge-msg" id="nudgeMsg"></div>
+  <p class="post-nudge-legal">Weekly SMS · Reply STOP anytime</p>
 </div>` : ''}
 </div>
 
