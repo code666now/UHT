@@ -4601,6 +4601,20 @@ app.post('/api/community-submissions', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── PATCH /api/community-submissions/:id ────────────────────────────────────
+app.patch('/api/community-submissions/:id', async (req, res) => {
+  const { name, artist, song, youtube_url, why, genre } = req.body;
+  try {
+    const { rows } = await db.query(
+      `UPDATE community_submissions SET name=$1, artist=$2, song=$3, youtube_url=$4, why=$5, genre=$6
+       WHERE id=$7 RETURNING *`,
+      [name||'', artist||'', song||'', youtube_url||'', why||'', genre||'', req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Not found.' });
+    res.json({ submission: rows[0] });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── GET /api/community-submissions ───────────────────────────────────────────
 app.get('/api/community-submissions', async (req, res) => {
   try {

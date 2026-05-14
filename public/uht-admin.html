@@ -1760,11 +1760,15 @@ async function loadSubmissionsPanel() {
   populateGenreDropdown();
 }
 
+window._communitySubsMap = {};
+
 async function loadCommunitySubmissions() {
   const tbody = document.getElementById('community-submissions-tbody');
   try {
     const data = await api('GET', '/api/community-submissions');
     const rows = data.submissions || [];
+    window._communitySubsMap = {};
+    rows.forEach(s => { window._communitySubsMap[s.id] = s; });
     if (!rows.length) {
       tbody.innerHTML = '<tr class="empty-row"><td colspan="10">No submissions yet.</td></tr>';
       return;
@@ -1780,8 +1784,9 @@ async function loadCommunitySubmissions() {
         <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)">${esc(s.why||'—')}</td>
         <td>${s.youtube_url ? `<a href="${esc(s.youtube_url)}" target="_blank" style="color:var(--accent);font-size:11px">▶ Watch</a>` : '—'}</td>
         <td style="color:var(--muted);font-size:11px">${s.submitted_at ? s.submitted_at.slice(0,10) : '—'}</td>
-        <td style="display:flex;gap:6px">
+        <td style="display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn btn-primary" onclick="promoteCommunitySubmission(${s.id},'${esc(s.song)}','${esc(s.artist)}')">★ Make Pick</button>
+          <button class="btn" onclick="openEditCommunity(${s.id})">Edit</button>
           <button class="btn btn-danger" onclick="deleteCommunitySubmission(${s.id},'${esc(s.song)} by ${esc(s.artist)}')">Delete</button>
         </td>
       </tr>
@@ -1797,6 +1802,49 @@ async function deleteCommunitySubmission(id, label) {
   try {
     await api('DELETE', `/api/community-submissions/${id}`);
     toast('Deleted.', 'ok');
+    loadCommunitySubmissions();
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+function openEditCommunity(id) {
+  const s = window._communitySubsMap[id];
+  if (!s) return toast('Submission not found', 'err');
+  const html = `
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:999;display:flex;align-items:center;justify-content:center" id="community-edit-overlay">
+      <div style="background:var(--surface);border:1px solid var(--border-hi);border-radius:8px;padding:28px;width:440px;max-width:95vw">
+        <div style="font-family:var(--serif);font-size:16px;margin-bottom:20px">Edit Community Submission</div>
+        <label style="font-size:11px;color:var(--muted);letter-spacing:.08em">ARTIST</label>
+        <input id="ce-artist" class="input" value="${esc(s.artist||'')}" style="width:100%;margin:4px 0 12px">
+        <label style="font-size:11px;color:var(--muted);letter-spacing:.08em">SONG</label>
+        <input id="ce-song" class="input" value="${esc(s.song||'')}" style="width:100%;margin:4px 0 12px">
+        <label style="font-size:11px;color:var(--muted);letter-spacing:.08em">YOUTUBE URL</label>
+        <input id="ce-youtube" class="input" value="${esc(s.youtube_url||'')}" placeholder="https://youtube.com/watch?v=..." style="width:100%;margin:4px 0 12px">
+        <label style="font-size:11px;color:var(--muted);letter-spacing:.08em">GENRE</label>
+        <input id="ce-genre" class="input" value="${esc(s.genre||'')}" style="width:100%;margin:4px 0 12px">
+        <label style="font-size:11px;color:var(--muted);letter-spacing:.08em">WHY</label>
+        <input id="ce-why" class="input" value="${esc(s.why||'')}" style="width:100%;margin:4px 0 20px">
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn" onclick="document.getElementById('community-edit-overlay').remove()">Cancel</button>
+          <button class="btn" style="background:var(--accent);color:#fff;border-color:var(--accent)" onclick="saveCommunityEdit(${id})">Save</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function saveCommunityEdit(id) {
+  const s = window._communitySubsMap[id];
+  try {
+    await api('PATCH', `/api/community-submissions/${id}`, {
+      name: s.name, phone: s.phone,
+      artist: document.getElementById('ce-artist').value.trim(),
+      song:   document.getElementById('ce-song').value.trim(),
+      youtube_url: document.getElementById('ce-youtube').value.trim(),
+      genre:  document.getElementById('ce-genre').value.trim(),
+      why:    document.getElementById('ce-why').value.trim()
+    });
+    document.getElementById('community-edit-overlay').remove();
+    toast('Updated.', 'ok');
     loadCommunitySubmissions();
   } catch(e) { toast(e.message, 'err'); }
 }
