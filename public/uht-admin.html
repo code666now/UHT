@@ -606,6 +606,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
     </div>
     <div class="field"><label>Spotify URL</label><input type="text" id="sub-spotify" placeholder="https://open.spotify.com/track/..."></div>
     <div class="field"><label>YouTube URL</label><input type="text" id="sub-youtube" placeholder="https://youtube.com/watch?v=..."></div>
+    <div class="field"><label>Bandcamp URL</label><input type="text" id="sub-bandcamp" placeholder="https://artist.bandcamp.com/track/..."></div>
     <div class="field-row">
       <div class="field"><label>Theme</label><input type="text" id="sub-theme" placeholder="Late Night Drives"></div>
       <div class="field"><label>Week</label><input type="number" id="sub-week" value="1" min="1" max="4"></div>
@@ -633,6 +634,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <div class="field"><label>Week Title</label><input type="text" id="gs-week-title" placeholder="e.g. Summer Vibes"></div>
     <div class="field"><label>Spotify URL</label><input type="text" id="gs-spotify" placeholder="https://open.spotify.com/track/..."></div>
     <div class="field"><label>YouTube URL</label><input type="text" id="gs-youtube" placeholder="https://youtube.com/watch?v=..."></div>
+    <div class="field"><label>Bandcamp URL</label><input type="text" id="gs-bandcamp" placeholder="https://artist.bandcamp.com/track/..."></div>
     <div class="field-row">
       <div class="field"><label>Week #</label><input type="number" id="gs-week" value="1" min="1" max="4"></div>
       <div class="field"><label>Drop Date</label><input type="date" id="gs-drop-date"></div>
@@ -661,6 +663,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <div class="field"><label>Week Title</label><input type="text" id="gse-week-title" placeholder="e.g. Summer Vibes"></div>
     <div class="field"><label>Spotify URL</label><input type="text" id="gse-spotify" placeholder="https://open.spotify.com/track/..."></div>
     <div class="field"><label>YouTube URL</label><input type="text" id="gse-youtube" placeholder="https://youtube.com/watch?v=..."></div>
+    <div class="field"><label>Bandcamp URL</label><input type="text" id="gse-bandcamp" placeholder="https://artist.bandcamp.com/track/..."></div>
     <div class="field-row">
       <div class="field"><label>Week #</label><input type="number" id="gse-week" value="1" min="1" max="4"></div>
       <div class="field"><label>Drop Date</label><input type="date" id="gse-drop-date"></div>
@@ -1682,7 +1685,8 @@ async function loadSubmissions() {
         <td style="display:flex;gap:8px">
           ${s.spotify_url ? `<a href="${esc(s.spotify_url)}" target="_blank" style="color:var(--green);font-size:11px">♫ Spotify</a>` : ''}
           ${s.youtube_url ? `<a href="${esc(s.youtube_url)}" target="_blank" style="color:var(--accent);font-size:11px">▶ YT</a>` : ''}
-          ${!s.spotify_url && !s.youtube_url ? '<span style="color:var(--muted)">—</span>' : ''}
+          ${s.bandcamp_url ? `<a href="${esc(s.bandcamp_url)}" target="_blank" style="color:#1da0c3;font-size:11px">⛺ BC</a>` : ''}
+          ${!s.spotify_url && !s.youtube_url && !s.bandcamp_url ? '<span style="color:var(--muted)">—</span>' : ''}
         </td>
         <td style="display:flex;gap:6px">
           ${s.status === 'pending' ? `<button class="btn" style="color:#E8B84B;border-color:rgba(232,184,75,0.4)" onclick="approveSubmission(${s.id})">✓ Approve</button>` : '<span style="color:var(--muted);font-size:11px">Approved</span>'}
@@ -1703,22 +1707,23 @@ async function submitSubmission() {
   const curator_id  = document.getElementById('sub-curator-id').value;
   const title       = document.getElementById('sub-title').value.trim();
   const artist      = document.getElementById('sub-artist').value.trim();
-  const spotify_url = document.getElementById('sub-spotify').value.trim();
-  const youtube_url = document.getElementById('sub-youtube').value.trim();
-  const theme       = document.getElementById('sub-theme').value.trim();
-  const week_number = document.getElementById('sub-week').value;
-  const curator_note= document.getElementById('sub-note').value.trim();
+  const spotify_url  = document.getElementById('sub-spotify').value.trim();
+  const youtube_url  = document.getElementById('sub-youtube').value.trim();
+  const bandcamp_url = document.getElementById('sub-bandcamp').value.trim();
+  const theme        = document.getElementById('sub-theme').value.trim();
+  const week_number  = document.getElementById('sub-week').value;
+  const curator_note = document.getElementById('sub-note').value.trim();
   if (!curator_id || !title || !artist) return toast('Curator, title and artist required.', 'err');
   try {
     await api('POST', '/api/curator-submissions', {
       curator_id: parseInt(curator_id), title, artist,
-      spotify_url, youtube_url, theme,
+      spotify_url, youtube_url, bandcamp_url, theme,
       week_number: parseInt(week_number), curator_note
     });
     toast('Submission added!', 'ok');
     closeModal('submission-add');
     // clear form
-    ['sub-title','sub-artist','sub-spotify','sub-youtube','sub-theme','sub-note'].forEach(id => {
+    ['sub-title','sub-artist','sub-spotify','sub-youtube','sub-bandcamp','sub-theme','sub-note'].forEach(id => {
       const el = document.getElementById(id); if(el) el.value = '';
     });
     document.getElementById('sub-week').value = '1';
@@ -1883,7 +1888,8 @@ async function loadGenreSubmissions() {
         <td style="display:flex;gap:8px">
           ${s.spotify_url ? `<a href="${esc(s.spotify_url)}" target="_blank" style="color:var(--green);font-size:11px">♫ Spotify</a>` : ''}
           ${s.youtube_url ? `<a href="${esc(s.youtube_url)}" target="_blank" style="color:var(--accent);font-size:11px">▶ YT</a>` : ''}
-          ${!s.spotify_url && !s.youtube_url ? '<span style="color:var(--muted)">—</span>' : ''}
+          ${s.bandcamp_url ? `<a href="${esc(s.bandcamp_url)}" target="_blank" style="color:#1da0c3;font-size:11px">⛺ BC</a>` : ''}
+          ${!s.spotify_url && !s.youtube_url && !s.bandcamp_url ? '<span style="color:var(--muted)">—</span>' : ''}
         </td>
         <td style="display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn ${s.is_community_pick ? 'btn-primary' : ''}" onclick="setCommunityPick(${s.id})" title="Feature on Community page">${s.is_community_pick ? '★ Community Pick' : 'Set Community Pick'}</button>
@@ -1895,6 +1901,7 @@ async function loadGenreSubmissions() {
             data-week-title="${esc(s.week_title||'')}"
             data-spotify="${esc(s.spotify_url||'')}"
             data-youtube="${esc(s.youtube_url||'')}"
+            data-bandcamp="${esc(s.bandcamp_url||'')}"
             data-week="${s.week_number||1}"
             data-drop-date="${s.drop_date ? s.drop_date.slice(0,10) : ''}"
             data-note="${esc(s.note||'')}"
@@ -1924,19 +1931,20 @@ async function submitGenreSubmission() {
   const title      = document.getElementById('gs-title').value.trim();
   const artist     = document.getElementById('gs-artist').value.trim();
   const week_title = document.getElementById('gs-week-title').value.trim();
-  const spotify_url= document.getElementById('gs-spotify').value.trim();
-  const youtube_url= document.getElementById('gs-youtube').value.trim();
-  const week_number= parseInt(document.getElementById('gs-week').value) || 1;
-  const drop_date  = document.getElementById('gs-drop-date').value || null;
-  const note       = document.getElementById('gs-note').value.trim();
+  const spotify_url  = document.getElementById('gs-spotify').value.trim();
+  const youtube_url  = document.getElementById('gs-youtube').value.trim();
+  const bandcamp_url = document.getElementById('gs-bandcamp').value.trim();
+  const week_number  = parseInt(document.getElementById('gs-week').value) || 1;
+  const drop_date    = document.getElementById('gs-drop-date').value || null;
+  const note         = document.getElementById('gs-note').value.trim();
   if (!genre || !title || !artist) return toast('Genre, title and artist required.', 'err');
   try {
     await api('POST', '/api/genre-submissions', {
-      genre, title, artist, week_title, spotify_url, youtube_url, week_number, drop_date, note
+      genre, title, artist, week_title, spotify_url, youtube_url, bandcamp_url, week_number, drop_date, note
     });
     toast('Genre submission added!', 'ok');
     closeModal('genre-submission-add');
-    ['gs-title','gs-artist','gs-week-title','gs-spotify','gs-youtube','gs-note'].forEach(id => {
+    ['gs-title','gs-artist','gs-week-title','gs-spotify','gs-youtube','gs-bandcamp','gs-note'].forEach(id => {
       const el = document.getElementById(id); if(el) el.value = '';
     });
     document.getElementById('gs-week').value = '1';
@@ -1994,6 +2002,7 @@ async function openEditGenreSubmission(btn) {
   document.getElementById('gse-week-title').value = d.weekTitle || autoTitle || '';
   document.getElementById('gse-spotify').value   = d.spotify;
   document.getElementById('gse-youtube').value   = d.youtube;
+  document.getElementById('gse-bandcamp').value  = d.bandcamp || '';
   document.getElementById('gse-week').value      = d.week || 1;
   document.getElementById('gse-drop-date').value = d.dropDate || '';
   document.getElementById('gse-note').value      = d.note;
@@ -2006,15 +2015,16 @@ async function saveEditGenreSubmission() {
   const title      = document.getElementById('gse-title').value.trim();
   const artist     = document.getElementById('gse-artist').value.trim();
   const week_title = document.getElementById('gse-week-title').value.trim();
-  const spotify_url= document.getElementById('gse-spotify').value.trim();
-  const youtube_url= document.getElementById('gse-youtube').value.trim();
-  const week_number= parseInt(document.getElementById('gse-week').value) || 1;
-  const drop_date  = document.getElementById('gse-drop-date').value || null;
-  const note       = document.getElementById('gse-note').value.trim();
+  const spotify_url  = document.getElementById('gse-spotify').value.trim();
+  const youtube_url  = document.getElementById('gse-youtube').value.trim();
+  const bandcamp_url = document.getElementById('gse-bandcamp').value.trim();
+  const week_number  = parseInt(document.getElementById('gse-week').value) || 1;
+  const drop_date    = document.getElementById('gse-drop-date').value || null;
+  const note         = document.getElementById('gse-note').value.trim();
   if (!genre || !title || !artist) return toast('Genre, title and artist required.', 'err');
   try {
     await api('PATCH', `/api/genre-submissions/${id}`, {
-      genre, title, artist, week_title, spotify_url, youtube_url, week_number, drop_date, note
+      genre, title, artist, week_title, spotify_url, youtube_url, bandcamp_url, week_number, drop_date, note
     });
     toast('Submission updated.', 'ok');
     closeModal('genre-submission-edit');

@@ -120,6 +120,14 @@ db.query('ALTER TABLE genre_submissions ADD COLUMN IF NOT EXISTS tags JSONB')
   .then(() => console.log('[Migration] genre_submissions.tags column ready'))
   .catch(e => console.error('[Migration] genre_submissions.tags:', e.message));
 
+db.query('ALTER TABLE curator_submissions ADD COLUMN IF NOT EXISTS bandcamp_url TEXT')
+  .then(() => console.log('[Migration] curator_submissions.bandcamp_url column ready'))
+  .catch(e => console.error('[Migration] curator_submissions.bandcamp_url:', e.message));
+
+db.query('ALTER TABLE genre_submissions ADD COLUMN IF NOT EXISTS bandcamp_url TEXT')
+  .then(() => console.log('[Migration] genre_submissions.bandcamp_url column ready'))
+  .catch(e => console.error('[Migration] genre_submissions.bandcamp_url:', e.message));
+
 // Attach user_id to votes table
 db.query(`ALTER TABLE curator_submission_votes ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL`)
   .then(() => console.log('[Migration] curator_submission_votes.user_id ready'))
@@ -2616,15 +2624,15 @@ app.get('/api/curator-submissions', async (req, res) => {
 
 // ── POST /api/curator-submissions ────────────────────────────
 app.post('/api/curator-submissions', async (req, res) => {
-  const { curator_id, title, artist, spotify_url, youtube_url, theme, week_number, curator_note } = req.body;
+  const { curator_id, title, artist, spotify_url, youtube_url, bandcamp_url, theme, week_number, curator_note } = req.body;
   if (!curator_id || !title || !artist) {
     return res.status(400).json({ error: 'curator_id, title, and artist are required.' });
   }
   try {
     const { rows } = await db.query(`
-      INSERT INTO curator_submissions (curator_id, title, artist, spotify_url, youtube_url, theme, week_number, curator_note)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *
-    `, [curator_id, title, artist, spotify_url || null, youtube_url || null, theme || null, week_number || 1, curator_note || null]);
+      INSERT INTO curator_submissions (curator_id, title, artist, spotify_url, youtube_url, bandcamp_url, theme, week_number, curator_note)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *
+    `, [curator_id, title, artist, spotify_url || null, youtube_url || null, bandcamp_url || null, theme || null, week_number || 1, curator_note || null]);
     res.json({ submission: rows[0] });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -2632,15 +2640,15 @@ app.post('/api/curator-submissions', async (req, res) => {
 
 // ── PATCH /api/curator-submissions/:id ───────────────────────────────────────
 app.patch('/api/curator-submissions/:id', async (req, res) => {
-  const { title, artist, spotify_url, youtube_url, theme, week_number, curator_note } = req.body;
+  const { title, artist, spotify_url, youtube_url, bandcamp_url, theme, week_number, curator_note } = req.body;
   if (!title || !artist) return res.status(400).json({ error: 'title and artist required.' });
   try {
     const { rows } = await db.query(
       `UPDATE curator_submissions SET
-        title=$1, artist=$2, spotify_url=$3, youtube_url=$4,
-        theme=$5, week_number=$6, curator_note=$7
-       WHERE id=$8 RETURNING *`,
-      [title, artist, spotify_url||null, youtube_url||null, theme||null, week_number||1, curator_note||null, req.params.id]
+        title=$1, artist=$2, spotify_url=$3, youtube_url=$4, bandcamp_url=$5,
+        theme=$6, week_number=$7, curator_note=$8
+       WHERE id=$9 RETURNING *`,
+      [title, artist, spotify_url||null, youtube_url||null, bandcamp_url||null, theme||null, week_number||1, curator_note||null, req.params.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Not found.' });
     res.json({ submission: rows[0] });
@@ -3005,13 +3013,13 @@ app.get('/api/genre-submissions', async (req, res) => {
 
 // ── POST /api/genre-submissions ──────────────────────────────────────────────
 app.post('/api/genre-submissions', async (req, res) => {
-  const { genre, week_title, title, artist, note, youtube_url, spotify_url, week_number, drop_date } = req.body;
+  const { genre, week_title, title, artist, note, youtube_url, spotify_url, bandcamp_url, week_number, drop_date } = req.body;
   if (!genre || !title || !artist) return res.status(400).json({ error: 'genre, title and artist required.' });
   try {
     const { rows } = await db.query(
-      `INSERT INTO genre_submissions (genre, week_title, title, artist, note, youtube_url, spotify_url, week_number, drop_date)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-      [genre, week_title||null, title, artist, note||null, youtube_url||null, spotify_url||null, week_number||1, drop_date||null]
+      `INSERT INTO genre_submissions (genre, week_title, title, artist, note, youtube_url, spotify_url, bandcamp_url, week_number, drop_date)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+      [genre, week_title||null, title, artist, note||null, youtube_url||null, spotify_url||null, bandcamp_url||null, week_number||1, drop_date||null]
     );
     // Auto-sync to songs table so the drop cron can pick it up
     const { rows: genreRows } = await db.query(
@@ -3031,13 +3039,13 @@ app.post('/api/genre-submissions', async (req, res) => {
 
 // ── PATCH /api/genre-submissions/:id ────────────────────────────────────────
 app.patch('/api/genre-submissions/:id', async (req, res) => {
-  const { genre, week_title, title, artist, note, youtube_url, spotify_url, week_number, drop_date } = req.body;
+  const { genre, week_title, title, artist, note, youtube_url, spotify_url, bandcamp_url, week_number, drop_date } = req.body;
   if (!title || !artist) return res.status(400).json({ error: 'title and artist required.' });
   try {
     const { rows } = await db.query(
       `UPDATE genre_submissions SET genre=$1, week_title=$2, title=$3, artist=$4, note=$5,
-       youtube_url=$6, spotify_url=$7, week_number=$8, drop_date=$9 WHERE id=$10 RETURNING *`,
-      [genre, week_title||null, title, artist, note||null, youtube_url||null, spotify_url||null, week_number||1, drop_date||null, req.params.id]
+       youtube_url=$6, spotify_url=$7, bandcamp_url=$8, week_number=$9, drop_date=$10 WHERE id=$11 RETURNING *`,
+      [genre, week_title||null, title, artist, note||null, youtube_url||null, spotify_url||null, bandcamp_url||null, week_number||1, drop_date||null, req.params.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Not found.' });
     // Auto-sync to songs table
