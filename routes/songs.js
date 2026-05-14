@@ -82,11 +82,11 @@ router.post('/songs/:id/autotag', async (req, res) => {
           role: 'user',
           content: `Tag this song. Title: "${title}". Artist: "${artist}".
 Return a JSON object with exactly these fields:
-- mood: array of 2-3 moods (e.g. "energetic", "melancholic", "upbeat", "gritty", "romantic")
-- energy: one of "low", "medium", "high"
-- era: decade string (e.g. "90s", "2000s", "2010s", "2020s")
-- tempo: one of "slow", "mid", "uptempo"
-- subgenre: specific subgenre string (e.g. "hard rock", "pop punk", "country pop")
+- mood: array of 1-3 values chosen from: "dark", "euphoric", "melancholic", "energetic", "chill"
+- energy: integer 1-10 (1=very low, 10=extremely high)
+- era: one of "60s", "70s", "80s", "90s", "00s", "modern"
+- tempo: one of "slow", "mid", "fast"
+- subgenre: specific subgenre string (e.g. "hard rock", "dream pop", "alt country")
 - similar_artists: array of 2-3 similar artist names`
         }
       ],

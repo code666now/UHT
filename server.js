@@ -2676,7 +2676,7 @@ app.post('/api/curator-submissions/:id/autotag', async (req, res) => {
       model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: 'You are a music tagger. Return only valid JSON, no markdown.' },
-        { role: 'user', content: `Tag this song. Title: "${title}". Artist: "${artist}". Return JSON with: mood (array of 2-3), energy ("low"/"medium"/"high"), era (e.g. "90s"), tempo ("slow"/"mid"/"uptempo"), subgenre (string), similar_artists (array of 2-3).` }
+        { role: 'user', content: `Tag this song. Title: "${title}". Artist: "${artist}". Return JSON with: mood (array of 1-3 from: "dark","euphoric","melancholic","energetic","chill"), energy (integer 1-10), era (one of "60s","70s","80s","90s","00s","modern"), tempo ("slow"/"mid"/"fast"), subgenre (specific string), similar_artists (array of 2-3).` }
       ],
       max_tokens: 200, temperature: 0.3
     });
@@ -3071,7 +3071,7 @@ app.post('/api/genre-submissions/:id/autotag', async (req, res) => {
       model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: 'You are a music tagger. Return only valid JSON, no markdown.' },
-        { role: 'user', content: `Tag this song. Title: "${title}". Artist: "${artist}". Return JSON with: mood (array of 2-3), energy ("low"/"medium"/"high"), era (e.g. "90s"), tempo ("slow"/"mid"/"uptempo"), subgenre (string), similar_artists (array of 2-3).` }
+        { role: 'user', content: `Tag this song. Title: "${title}". Artist: "${artist}". Return JSON with: mood (array of 1-3 from: "dark","euphoric","melancholic","energetic","chill"), energy (integer 1-10), era (one of "60s","70s","80s","90s","00s","modern"), tempo ("slow"/"mid"/"fast"), subgenre (specific string), similar_artists (array of 2-3).` }
       ],
       max_tokens: 200, temperature: 0.3
     });
