@@ -3797,7 +3797,6 @@ ${!ytId && d.spotify_url ? `<div class="player-outer" style="height:152px"><ifra
     <iframe style="border-radius:10px;display:block" src="https://open.spotify.com/embed/track/${d.spotify_url.match(/track\/([a-zA-Z0-9]+)/)?.[1]}" width="100%" height="152" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
   </div>
   ` : ''}
-  ${d.spotify_url ? `<button class="sp-whisper" onclick="var w=document.getElementById('spWrap');w.style.display=w.style.display==='none'?'block':'none'">Prefer Spotify?</button>` : ''}
   <button class="share-cta" onclick="sharePick()">↗ Share this pick with a friend</button>
 </div>
 
