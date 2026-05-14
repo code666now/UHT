@@ -8,7 +8,7 @@ const OpenAI  = require('openai');
 router.get('/songs', async (req, res) => {
   try {
     const { rows } = await db.query(`
-      SELECT s.*,
+      SELECT s.*, s.week_number,
         COALESCE(c.name, g.name) AS target_name,
         COALESCE(
           s.tags,

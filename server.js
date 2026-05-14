@@ -138,6 +138,10 @@ db.query(`ALTER TABLE curator_submission_votes DROP CONSTRAINT IF EXISTS curator
   .then(() => console.log('[Migration] curator_submission_votes FK dropped — genre votes enabled'))
   .catch(e => console.error('[Migration] votes FK drop:', e.message));
 
+db.query(`ALTER TABLE songs ADD COLUMN IF NOT EXISTS week_number INTEGER DEFAULT 1`)
+  .then(() => console.log('[Migration] songs.week_number ready'))
+  .catch(e => console.error('[Migration] songs.week_number:', e.message));
+
 // Confirmation tokens for web stranger subscribe flow
 db.query(`
   CREATE TABLE IF NOT EXISTS confirmation_tokens (
@@ -3221,20 +3225,29 @@ app.patch('/api/genre-submissions/:id', async (req, res) => {
       [genre, week_title||null, title, artist, note||null, youtube_url||null, spotify_url||null, bandcamp_url||null, week_number||1, drop_date||null, req.params.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Not found.' });
-    // Auto-sync to songs table
+    // Auto-sync to songs table — update existing row by title+artist+genre, or insert
     if (genre) {
       const { rows: genreRows } = await db.query(
         `SELECT id FROM genres WHERE LOWER(name) = LOWER($1) LIMIT 1`, [genre]
       );
       if (genreRows.length) {
-        await db.query(
-          `INSERT INTO songs (title, artist, genre_id, url, youtube_url)
-           VALUES ($1, $2, $3, $4, $5)
-           ON CONFLICT (title, artist) DO UPDATE SET
-             url        = EXCLUDED.url,
-             youtube_url = EXCLUDED.youtube_url`,
-          [title, artist, genreRows[0].id, spotify_url||null, youtube_url||null]
+        const gid = genreRows[0].id;
+        const { rows: existing } = await db.query(
+          `SELECT id FROM songs WHERE LOWER(title)=LOWER($1) AND LOWER(artist)=LOWER($2) AND genre_id=$3 LIMIT 1`,
+          [title, artist, gid]
         );
+        if (existing.length) {
+          await db.query(
+            `UPDATE songs SET url=$1, youtube_url=$2, week_number=$3 WHERE id=$4`,
+            [spotify_url||null, youtube_url||null, week_number||1, existing[0].id]
+          );
+        } else {
+          await db.query(
+            `INSERT INTO songs (title, artist, genre_id, url, youtube_url, week_number)
+             VALUES ($1,$2,$3,$4,$5,$6)`,
+            [title, artist, gid, spotify_url||null, youtube_url||null, week_number||1]
+          );
+        }
       }
     }
     res.json({ submission: rows[0] });

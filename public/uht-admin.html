@@ -907,6 +907,7 @@ async function loadSongs() {
           <td><strong>${esc(s.title)}</strong></td><td>${esc(s.artist)}</td>
           <td><span class="tag ${s.curator_id?'tag-curator':'tag-genre'}">${s.curator_id?'curator':'genre'}</span></td>
           <td>${esc(s.target_name||'—')}</td>
+          <td style="color:var(--muted);font-size:11px">Wk ${s.week_number||1}</td>
           <td style="display:flex;gap:6px;align-items:center">
             ${s.url?`<a href="${esc(s.url)}" target="_blank" style="color:var(--muted);font-size:11px">Spotify ↗</a>`:''}
             ${s.youtube_url?`<a href="${esc(s.youtube_url)}" target="_blank" style="color:var(--muted);font-size:11px">YT ↗</a>`:''}
