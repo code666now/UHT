@@ -9,7 +9,16 @@ router.get('/songs', async (req, res) => {
   try {
     const { rows } = await db.query(`
       SELECT s.*,
-        COALESCE(c.name, g.name) AS target_name
+        COALESCE(c.name, g.name) AS target_name,
+        COALESCE(
+          s.tags,
+          (SELECT cs.tags FROM curator_submissions cs
+           WHERE LOWER(cs.title)=LOWER(s.title) AND LOWER(cs.artist)=LOWER(s.artist)
+             AND cs.tags IS NOT NULL LIMIT 1),
+          (SELECT gs.tags FROM genre_submissions gs
+           WHERE LOWER(gs.title)=LOWER(s.title) AND LOWER(gs.artist)=LOWER(s.artist)
+             AND gs.tags IS NOT NULL LIMIT 1)
+        ) AS tags
       FROM songs s
       LEFT JOIN curators c ON c.id = s.curator_id
       LEFT JOIN genres   g ON g.id = s.genre_id

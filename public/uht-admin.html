@@ -1674,7 +1674,7 @@ async function loadSubmissions() {
       <tr style="${s.status === 'pending' ? 'background:rgba(232,184,75,0.06);' : ''}">
         <td style="color:var(--muted)">#${i+1}</td>
         <td>${esc(s.curator_name||'—')}</td>
-        <td><strong>${esc(s.title)}</strong></td>
+        <td><strong>${esc(s.title)}</strong> ${s.tags ? '<span style="font-size:10px;color:#E8B84B;opacity:.8">🏷</span>' : ''}</td>
         <td>${esc(s.artist)}</td>
         <td>${esc(s.theme||'—')}</td>
         <td style="color:var(--muted)">Wk ${s.week_number||1}</td>
@@ -1875,7 +1875,7 @@ async function loadGenreSubmissions() {
       <tr>
         <td style="color:var(--muted)">#${i+1}</td>
         <td><span class="tag tag-genre">${esc(s.genre)}</span></td>
-        <td><strong>${esc(s.title)}</strong></td>
+        <td><strong>${esc(s.title)}</strong> ${s.tags ? '<span style="font-size:10px;color:#E8B84B;opacity:.8">🏷</span>' : ''}</td>
         <td>${esc(s.artist)}</td>
         <td style="color:var(--muted)">${esc(s.week_title||'—')}</td>
         <td style="color:var(--muted)">Wk ${s.week_number||1}</td>
