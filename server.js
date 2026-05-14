@@ -3612,6 +3612,7 @@ app.get('/drop/curator/:slug', identifyDropUser, async (req, res) => {
 
   try {
     const ytId = d.youtube_url ? (d.youtube_url.match(/(?:v=|youtu\.be\/)([^&?/]+)/) || [])[1] : null;
+    const spotifyTrackId = d.spotify_url ? (d.spotify_url.match(/track\/([a-zA-Z0-9]+)/)?.[1] || null) : null;
     const pageUrl = '/drop/curator/' + slug;
     const firstName = curator.name.split(' ')[0];
     const { headerHTML: idHeader, cardHTML: idCard, cardCSS: idCSS, cardJS: idCardJS } = memberIdentityBlocks(req.dropUser);
@@ -3788,15 +3789,17 @@ ${curator.bio ? `<div class="bio"><p>${curator.bio}</p></div>` : ''}
 </div>
 
 ${ytId ? `<div class="player-outer" id="ytWrap"><div id="player"></div></div>` : ''}
-${!ytId && d.spotify_url ? `<div class="player-outer" style="height:152px"><iframe src="https://open.spotify.com/embed/track/${d.spotify_url.match(/track\/([a-zA-Z0-9]+)/)?.[1]}" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div>` : ''}
+${!ytId && spotifyTrackId ? `<div class="player-outer" style="height:152px"><iframe src="https://open.spotify.com/embed/track/${spotifyTrackId}" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div>` : ''}
+${!ytId && d.spotify_url && !spotifyTrackId ? `<div style="text-align:center;padding:24px 0"><a href="${d.spotify_url}" target="_blank" style="color:#1DB954;font-size:14px;letter-spacing:.06em">♫ Listen on Spotify ↗</a></div>` : ''}
 
 <div class="below-player">
-  ${ytId && d.spotify_url ? `
+  ${ytId && spotifyTrackId ? `
   <button class="sp-whisper" onclick="var w=document.getElementById('spWrap');w.style.display=w.style.display==='none'?'block':'none'">Prefer Spotify?</button>
   <div id="spWrap" style="display:none">
-    <iframe style="border-radius:10px;display:block" src="https://open.spotify.com/embed/track/${d.spotify_url.match(/track\/([a-zA-Z0-9]+)/)?.[1]}" width="100%" height="152" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+    <iframe style="border-radius:10px;display:block" src="https://open.spotify.com/embed/track/${spotifyTrackId}" width="100%" height="152" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
   </div>
   ` : ''}
+  ${ytId && d.spotify_url && !spotifyTrackId ? `<a href="${d.spotify_url}" target="_blank" class="sp-whisper" style="text-decoration:none">Listen on Spotify ↗</a>` : ''}
   <button class="share-cta" onclick="sharePick()">↗ Share this pick with a friend</button>
 </div>
 
@@ -4688,6 +4691,7 @@ app.get('/drop/:genre', identifyDropUser, async (req, res) => {
     const d = rows[0];
     const archive = rows.slice(1);
     const ytId = d.youtube_url ? (d.youtube_url.match(/(?:v=|youtu\.be\/)([^&?/]+)/) || [])[1] : null;
+    const spotifyTrackId = d.spotify_url ? (d.spotify_url.match(/track\/([a-zA-Z0-9]+)/)?.[1] || null) : null;
     const weekTitle = d.week_title || ('Undeniable ' + genre.charAt(0).toUpperCase() + genre.slice(1) + ' Hit of the Week');
     const genreLabel = genre.charAt(0).toUpperCase() + genre.slice(1);
     const isSubscriber = !!req.dropUser;
@@ -4817,15 +4821,16 @@ ${idHeader}
     </div>
   </div>` : `
   <div class="no-video">
-    ${d.spotify_url ? `<a class="spotify-btn" href="${d.spotify_url}" target="_blank">🎵 Play on Spotify</a>` : '<p style="opacity:.4">No playback source available.</p>'}
+    ${spotifyTrackId ? `<iframe src="https://open.spotify.com/embed/track/${spotifyTrackId}" style="border-radius:10px;display:block;width:100%;height:152px" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>` : d.spotify_url ? `<a class="spotify-btn" href="${d.spotify_url}" target="_blank">🎵 Play on Spotify</a>` : '<p style="opacity:.4">No playback source available.</p>'}
   </div>`}
 
   <div class="below-player" style="display:flex;gap:20px;justify-content:center;align-items:center;flex-wrap:wrap">
-    ${ytId && d.spotify_url ? `
+    ${ytId && spotifyTrackId ? `
     <button class="sp-whisper" onclick="var w=document.getElementById('spWrap');w.style.display=w.style.display==='none'?'block':'none'">Prefer Spotify?</button>` : ''}
+    ${ytId && d.spotify_url && !spotifyTrackId ? `<a href="${d.spotify_url}" target="_blank" class="sp-whisper" style="text-decoration:none">Listen on Spotify ↗</a>` : ''}
   </div>
-  ${ytId && d.spotify_url ? `<div id="spWrap" style="display:none">
-    <iframe style="border-radius:10px;display:block" src="https://open.spotify.com/embed/track/${(d.spotify_url.match(/track\/([a-zA-Z0-9]+)/)||[])[1]}" width="100%" height="152" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+  ${ytId && spotifyTrackId ? `<div id="spWrap" style="display:none">
+    <iframe style="border-radius:10px;display:block" src="https://open.spotify.com/embed/track/${spotifyTrackId}" width="100%" height="152" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
   </div>` : ''}
 
   <div class="vote-section">
