@@ -915,7 +915,7 @@ async function loadSongs() {
           <td>${s.tags ? `<span style="color:var(--muted);font-size:10px" title="${esc(JSON.stringify(s.tags))}">🏷 ${esc(s.tags.subgenre||'')} · ${esc((s.tags.mood||[]).join(', '))}</span>` : '<span style="color:var(--muted);font-size:10px">—</span>'}</td>
           <td style="display:flex;gap:6px;flex-wrap:wrap">
             <button class="btn" onclick="openEditSong(${s.id})">Edit</button>
-            <button class="btn" onclick="autoTagSong(${s.id})" style="background:rgba(232,184,75,0.1);border-color:rgba(232,184,75,0.4);color:#E8B84B" title="Auto-tag with AI">🏷 Tag</button>
+            <button class="btn" onclick="autoTagSong(${s.id})" style="background:rgba(232,184,75,0.1);border-color:rgba(232,184,75,0.4);color:#E8B84B" title="${s.tags ? 'Re-tag with AI' : 'Auto-tag with AI'}">${s.tags ? '🏷 Tagged' : '🏷 Tag'}</button>
             <button class="btn btn-danger" onclick="deleteSong(${s.id},'${esc(s.title)} by ${esc(s.artist)}')">Delete</button>
           </td>
         </tr>`).join('')
