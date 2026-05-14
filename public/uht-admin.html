@@ -1984,7 +1984,9 @@ function autoGenreWeekTitle(prefix) {
 }
 
 async function openEditGenreSubmission(btn) {
-  const d = btn.dataset;
+  const id = btn.dataset.id;
+  const s  = window._genreSubsMap[id];
+  if (!s) return toast('Submission not found', 'err');
   // Populate genre dropdown if empty
   const sel = document.getElementById('gse-genre');
   if (sel.options.length <= 1) {
@@ -1994,18 +1996,18 @@ async function openEditGenreSubmission(btn) {
         (data.genres||data).map(g => `<option value="${esc(g.name)}">${esc(g.name)}</option>`).join('');
     } catch(e) {}
   }
-  document.getElementById('gse-id').value        = d.id;
-  document.getElementById('gse-genre').value     = d.genre;
-  document.getElementById('gse-title').value     = d.title;
-  document.getElementById('gse-artist').value    = d.artist;
-  const autoTitle = _genreWeekTitles[(d.genre||'').toLowerCase()];
-  document.getElementById('gse-week-title').value = d.weekTitle || autoTitle || '';
-  document.getElementById('gse-spotify').value   = d.spotify;
-  document.getElementById('gse-youtube').value   = d.youtube;
-  document.getElementById('gse-bandcamp').value  = d.bandcamp || '';
-  document.getElementById('gse-week').value      = d.week || 1;
-  document.getElementById('gse-drop-date').value = d.dropDate || '';
-  document.getElementById('gse-note').value      = d.note;
+  document.getElementById('gse-id').value         = s.id;
+  document.getElementById('gse-genre').value      = s.genre || '';
+  document.getElementById('gse-title').value      = s.title || '';
+  document.getElementById('gse-artist').value     = s.artist || '';
+  const autoTitle = _genreWeekTitles[(s.genre||'').toLowerCase()];
+  document.getElementById('gse-week-title').value = s.week_title || autoTitle || '';
+  document.getElementById('gse-spotify').value    = s.spotify_url || '';
+  document.getElementById('gse-youtube').value    = s.youtube_url || '';
+  document.getElementById('gse-bandcamp').value   = s.bandcamp_url || '';
+  document.getElementById('gse-week').value       = s.week_number || 1;
+  document.getElementById('gse-drop-date').value  = s.drop_date ? s.drop_date.slice(0,10) : '';
+  document.getElementById('gse-note').value       = s.note || '';
   openModal('genre-submission-edit');
 }
 
