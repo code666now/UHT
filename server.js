@@ -5666,7 +5666,12 @@ app.get('/api/voter-intelligence', async (req, res) => {
         NULL        AS curator,
         v.vote,
         v.updated_at AS voted_at,
-        'sms'       AS source
+        'sms'       AS source,
+        COALESCE(
+          s.tags,
+          (SELECT cs2.tags FROM curator_submissions cs2 WHERE LOWER(cs2.title)=LOWER(s.title) AND LOWER(cs2.artist)=LOWER(s.artist) AND cs2.tags IS NOT NULL LIMIT 1),
+          (SELECT gs2.tags FROM genre_submissions gs2 WHERE LOWER(gs2.title)=LOWER(s.title) AND LOWER(gs2.artist)=LOWER(s.artist) AND gs2.tags IS NOT NULL LIMIT 1)
+        ) AS tags
       FROM votes v
       JOIN users u ON u.id = v.user_id
       JOIN songs s ON s.id = v.song_id
@@ -5687,7 +5692,8 @@ app.get('/api/voter-intelligence', async (req, res) => {
         c.name      AS curator,
         csv.vote,
         csv.voted_at,
-        'web'       AS source
+        'web'       AS source,
+        COALESCE(gs.tags, cs.tags) AS tags
       FROM curator_submission_votes csv
       JOIN users u ON u.id = csv.user_id
       LEFT JOIN genre_submissions   gs ON gs.id = csv.submission_id
@@ -5710,13 +5716,58 @@ app.get('/api/voter-intelligence', async (req, res) => {
         c.name      AS curator,
         csv.vote,
         csv.voted_at,
-        'web'       AS source
+        'web'       AS source,
+        COALESCE(gs.tags, cs.tags) AS tags
       FROM curator_submission_votes csv
       LEFT JOIN genre_submissions   gs ON gs.id = csv.submission_id
       LEFT JOIN curator_submissions cs ON cs.id = csv.submission_id
       LEFT JOIN curators c ON c.id = cs.curator_id
       WHERE csv.user_id IS NULL AND csv.voter_hash IS NOT NULL
     `);
+
+    // Helper: aggregate tags from a set of votes into a taste profile
+    function buildTasteProfile(votes) {
+      const hitVotes   = votes.filter(v => v.vote === 'hit'   || v.vote === 'HIT'   || v.vote === 'mega_hit');
+      const denyVotes  = votes.filter(v => v.vote === 'deny'  || v.vote === 'DENIED'|| v.vote === 'denied');
+      const taggedHits = hitVotes.filter(v => v.tags);
+      const taggedDeny = denyVotes.filter(v => v.tags);
+
+      if (!taggedHits.length && !taggedDeny.length) return null;
+
+      const tally = (arr, field) => {
+        const counts = {};
+        arr.forEach(v => {
+          const val = v.tags[field];
+          if (!val) return;
+          const vals = Array.isArray(val) ? val : [val];
+          vals.forEach(x => { counts[x] = (counts[x] || 0) + 1; });
+        });
+        return Object.entries(counts).sort((a,b) => b[1]-a[1]).map(([k,v]) => ({ value: k, count: v }));
+      };
+
+      const avgEnergy = arr => {
+        const nums = arr.map(v => v.tags?.energy).filter(n => typeof n === 'number');
+        return nums.length ? Math.round(nums.reduce((a,b) => a+b, 0) / nums.length * 10) / 10 : null;
+      };
+
+      return {
+        hit_count:    taggedHits.length,
+        deny_count:   taggedDeny.length,
+        hits: {
+          moods:    tally(taggedHits, 'mood'),
+          subgenres:tally(taggedHits, 'subgenre'),
+          eras:     tally(taggedHits, 'era'),
+          tempos:   tally(taggedHits, 'tempo'),
+          avg_energy: avgEnergy(taggedHits),
+          similar_artists: tally(taggedHits, 'similar_artists')
+        },
+        denies: {
+          moods:    tally(taggedDeny, 'mood'),
+          subgenres:tally(taggedDeny, 'subgenre'),
+          avg_energy: avgEnergy(taggedDeny)
+        }
+      };
+    }
 
     // Merge and group — identified users by user_id, anon by voter_hash
     const all = [...smsVotes, ...webVotes, ...anonVotes];
@@ -5741,13 +5792,18 @@ app.get('/api/voter-intelligence', async (req, res) => {
         curator:  row.curator,
         vote:     row.vote,
         voted_at: row.voted_at,
-        source:   row.source
+        source:   row.source,
+        tags:     row.tags || null
       });
     }
 
     // Sort each user's votes newest first; sort users by most recent vote
+    // Attach taste profile
     const users = Object.values(byUser);
-    users.forEach(u => u.votes.sort((a,b) => new Date(b.voted_at) - new Date(a.voted_at)));
+    users.forEach(u => {
+      u.votes.sort((a,b) => new Date(b.voted_at) - new Date(a.voted_at));
+      u.taste_profile = buildTasteProfile(u.votes);
+    });
     users.sort((a,b) => new Date(b.votes[0]?.voted_at||0) - new Date(a.votes[0]?.voted_at||0));
 
     res.json({ voters: users, total: users.length });
