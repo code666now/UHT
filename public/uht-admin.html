@@ -2049,7 +2049,7 @@ function openModal(n){
   const el = document.getElementById(`modal-${n}`);
   el.classList.add('open');
   // Clear all fields in add/create modals — skip edit modals (they pre-fill intentionally)
-  const skipClear = ['curator-edit','curator-profile','feature-curator'];
+  const skipClear = ['curator-edit','curator-profile','feature-curator','genre-submission-edit','community-submission-edit'];
   if (!n.startsWith('edit-') && !skipClear.includes(n)) {
     el.querySelectorAll('input:not([readonly]), select, textarea').forEach(f => { f.value = ''; });
   }
