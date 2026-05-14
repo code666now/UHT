@@ -2948,15 +2948,28 @@ app.post('/api/confirm/request', async (req, res) => {
     : phone;
   try {
     // Check if already subscribed
-    const { rows: existing } = await db.query('SELECT id FROM users WHERE phone=$1 LIMIT 1', [normalPhone]);
+    const { rows: existing } = await db.query('SELECT id, taste_token, name FROM users WHERE phone=$1 LIMIT 1', [normalPhone]);
     if (existing.length) {
-      // Already a user — send a gentle nudge but don't error
+      const u = existing[0];
+      const baseUrl = process.env.APP_URL || 'https://uht-app-production.up.railway.app';
+      let dropLink = null;
+
+      // Build their personal drop link for the page they came from
+      if (genre_id && u.taste_token) {
+        const { rows: g } = await db.query('SELECT name FROM genres WHERE id=$1 LIMIT 1', [genre_id]);
+        if (g.length) dropLink = `${baseUrl}/drop/${encodeURIComponent(g[0].name.toLowerCase())}?t=${u.taste_token}`;
+      } else if (curator_id && u.taste_token) {
+        const { rows: c } = await db.query('SELECT slug FROM curators WHERE id=$1 LIMIT 1', [curator_id]);
+        if (c.length) dropLink = `${baseUrl}/drop/curator/${c[0].slug}?t=${u.taste_token}`;
+      }
+
+      const greeting = u.name ? `Hey ${u.name.split(' ')[0]}` : 'Hey';
+      const body = dropLink
+        ? `${greeting} — you're already part of UHT. Here's your personal link for this week's drop: ${dropLink}`
+        : `${greeting} — you're already part of UHT. Your weekly drop arrives every Friday via your personal link. Reply STOP to opt out.`;
+
       const client = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-      await client.messages.create({
-        to: normalPhone,
-        from: process.env.TWILIO_FROM,
-        body: `You're already part of UHT. Your weekly drop arrives via your personal link. Reply STOP to opt out.`
-      });
+      await client.messages.create({ to: normalPhone, from: process.env.TWILIO_FROM, body });
       return res.json({ ok: true, already_subscribed: true });
     }
 
