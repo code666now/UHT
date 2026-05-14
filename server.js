@@ -3833,7 +3833,6 @@ ${!ytId && d.spotify_url && !spotifyTrackId ? `<div style="text-align:center;pad
   </div>
 </div>
 
-${d.bandcamp_url ? `<div style="text-align:center;padding:4px 0 16px"><a href="${d.bandcamp_url}" target="_blank" class="sp-whisper" style="text-decoration:none">Support on Bandcamp</a></div>` : ''}
 
 ${!isFollowing ? `
 <div class="post-nudge" id="nudgeWrap">
@@ -5142,7 +5141,6 @@ function downloadShareCard(){
 
 <!-- POST-VOTE SUBSCRIBE NUDGE -->
 <div id="post-vote" style="display:none">
-${d.bandcamp_url ? `<div style="text-align:center;padding:4px 0 16px"><a href="${d.bandcamp_url}" target="_blank" class="sp-whisper" style="text-decoration:none">Support on Bandcamp</a></div>` : ''}
 ${!isSubscriber && nudgeGenreId ? `
 <div class="post-nudge" id="nudgeWrap">
   <p class="post-nudge-title">Enjoyed <em>${d.title}</em>?<br>Get next week's ${genreLabel} pick sent to your phone.</p>
