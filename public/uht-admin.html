@@ -1212,6 +1212,16 @@ async function autoTagSong(id) {
     loadSongs();
   } catch(e) { toast('Auto-tag failed: ' + e.message, 'err'); }
 }
+
+async function autoTagSubmission(type, id) {
+  try {
+    toast('Tagging with AI...', 'ok');
+    const endpoint = type === 'curator' ? `/api/curator-submissions/${id}/autotag` : `/api/genre-submissions/${id}/autotag`;
+    const { tags } = await api('POST', endpoint);
+    toast(`Tagged: ${tags.subgenre} · ${tags.energy} energy · ${tags.era}`, 'ok');
+    if (type === 'curator') loadSubmissions(); else loadGenreSubmissions();
+  } catch(e) { toast('Auto-tag failed: ' + e.message, 'err'); }
+}
 async function deleteGenre(id, label) { if(!confirm(`Delete genre "${label}"?\n\nThis cannot be undone.`)) return; try { await api('DELETE',`/api/genres/${id}`); toast('Deleted.','ok'); loadGenres(); } catch(e){toast(e.message,'err');} }
 async function deleteCurator(id, label) { if(!confirm(`Delete curator "${label}"?\n\nThis cannot be undone.`)) return; try { await api('DELETE',`/api/curators/${id}`); toast('Deleted.','ok'); loadCurators(); } catch(e){toast(e.message,'err');} }
 
@@ -1676,6 +1686,7 @@ async function loadSubmissions() {
         </td>
         <td style="display:flex;gap:6px">
           ${s.status === 'pending' ? `<button class="btn" style="color:#E8B84B;border-color:rgba(232,184,75,0.4)" onclick="approveSubmission(${s.id})">✓ Approve</button>` : '<span style="color:var(--muted);font-size:11px">Approved</span>'}
+          <button class="btn" onclick="autoTagSubmission('curator',${s.id})" style="background:rgba(232,184,75,0.1);border-color:rgba(232,184,75,0.4);color:#E8B84B" title="${s.tags ? 'Re-tag with AI' : 'Auto-tag with AI'}">${s.tags ? '🏷 Tagged' : '🏷 Tag'}</button>
           <button class="btn btn-danger" onclick="deleteSubmission(${s.id},'${esc(s.title)} by ${esc(s.artist)}')">Delete</button>
         </td>
       </tr>
@@ -1840,6 +1851,7 @@ async function loadGenreSubmissions() {
             data-drop-date="${s.drop_date ? s.drop_date.slice(0,10) : ''}"
             data-note="${esc(s.note||'')}"
             onclick="openEditGenreSubmission(this)">Edit</button>
+          <button class="btn" onclick="autoTagSubmission('genre',${s.id})" style="background:rgba(232,184,75,0.1);border-color:rgba(232,184,75,0.4);color:#E8B84B" title="${s.tags ? 'Re-tag with AI' : 'Auto-tag with AI'}">${s.tags ? '🏷 Tagged' : '🏷 Tag'}</button>
           <button class="btn btn-danger" onclick="deleteGenreSubmission(${s.id},'${esc(s.title)} by ${esc(s.artist)}')">Delete</button>
         </td>
       </tr>

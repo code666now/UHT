@@ -112,6 +112,14 @@ db.query('ALTER TABLE songs ADD COLUMN IF NOT EXISTS tags JSONB')
   .then(() => console.log('[Migration] songs.tags column ready'))
   .catch(e => console.error('[Migration] songs.tags:', e.message));
 
+db.query('ALTER TABLE curator_submissions ADD COLUMN IF NOT EXISTS tags JSONB')
+  .then(() => console.log('[Migration] curator_submissions.tags column ready'))
+  .catch(e => console.error('[Migration] curator_submissions.tags:', e.message));
+
+db.query('ALTER TABLE genre_submissions ADD COLUMN IF NOT EXISTS tags JSONB')
+  .then(() => console.log('[Migration] genre_submissions.tags column ready'))
+  .catch(e => console.error('[Migration] genre_submissions.tags:', e.message));
+
 // Attach user_id to votes table
 db.query(`ALTER TABLE curator_submission_votes ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL`)
   .then(() => console.log('[Migration] curator_submission_votes.user_id ready'))
@@ -2655,6 +2663,31 @@ app.delete('/api/curator-submissions/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── POST /api/curator-submissions/:id/autotag ───────────────────────────────
+app.post('/api/curator-submissions/:id/autotag', async (req, res) => {
+  if (!process.env.OPENAI_API_KEY) return res.status(503).json({ error: 'OPENAI_API_KEY not configured.' });
+  try {
+    const { rows } = await db.query('SELECT title, artist FROM curator_submissions WHERE id=$1', [req.params.id]);
+    if (!rows.length) return res.status(404).json({ error: 'Not found.' });
+    const { title, artist } = rows[0];
+    const OpenAI = require('openai');
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: 'You are a music tagger. Return only valid JSON, no markdown.' },
+        { role: 'user', content: `Tag this song. Title: "${title}". Artist: "${artist}". Return JSON with: mood (array of 2-3), energy ("low"/"medium"/"high"), era (e.g. "90s"), tempo ("slow"/"mid"/"uptempo"), subgenre (string), similar_artists (array of 2-3).` }
+      ],
+      max_tokens: 200, temperature: 0.3
+    });
+    const tags = JSON.parse(completion.choices[0].message.content.trim());
+    await db.query('UPDATE curator_submissions SET tags=$1 WHERE id=$2', [JSON.stringify(tags), req.params.id]);
+    // Also update songs table if a matching song exists
+    await db.query('UPDATE songs SET tags=$1 WHERE LOWER(title)=LOWER($2) AND LOWER(artist)=LOWER($3)', [JSON.stringify(tags), title, artist]).catch(()=>{});
+    res.json({ ok: true, tags });
+  } catch(e) { console.error('[autotag curator]', e.message); res.status(500).json({ error: e.message }); }
+});
+
 // ── DELETE /api/curator-submissions/:id/votes ────────────────
 app.delete('/api/curator-submissions/:id/votes', async (req, res) => {
   try {
@@ -3023,6 +3056,31 @@ app.patch('/api/genre-submissions/:id', async (req, res) => {
     }
     res.json({ submission: rows[0] });
   } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── POST /api/genre-submissions/:id/autotag ─────────────────────────────────
+app.post('/api/genre-submissions/:id/autotag', async (req, res) => {
+  if (!process.env.OPENAI_API_KEY) return res.status(503).json({ error: 'OPENAI_API_KEY not configured.' });
+  try {
+    const { rows } = await db.query('SELECT title, artist FROM genre_submissions WHERE id=$1', [req.params.id]);
+    if (!rows.length) return res.status(404).json({ error: 'Not found.' });
+    const { title, artist } = rows[0];
+    const OpenAI = require('openai');
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: 'You are a music tagger. Return only valid JSON, no markdown.' },
+        { role: 'user', content: `Tag this song. Title: "${title}". Artist: "${artist}". Return JSON with: mood (array of 2-3), energy ("low"/"medium"/"high"), era (e.g. "90s"), tempo ("slow"/"mid"/"uptempo"), subgenre (string), similar_artists (array of 2-3).` }
+      ],
+      max_tokens: 200, temperature: 0.3
+    });
+    const tags = JSON.parse(completion.choices[0].message.content.trim());
+    await db.query('UPDATE genre_submissions SET tags=$1 WHERE id=$2', [JSON.stringify(tags), req.params.id]);
+    // Also update songs table if a matching song exists
+    await db.query('UPDATE songs SET tags=$1 WHERE LOWER(title)=LOWER($2) AND LOWER(artist)=LOWER($3)', [JSON.stringify(tags), title, artist]).catch(()=>{});
+    res.json({ ok: true, tags });
+  } catch(e) { console.error('[autotag genre]', e.message); res.status(500).json({ error: e.message }); }
 });
 
 // ── DELETE /api/genre-submissions/:id ───────────────────────────────────────
