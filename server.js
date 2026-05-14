@@ -3230,7 +3230,9 @@ app.patch('/api/genre-submissions/:id', async (req, res) => {
         await db.query(
           `INSERT INTO songs (title, artist, genre_id, url, youtube_url)
            VALUES ($1, $2, $3, $4, $5)
-           ON CONFLICT DO NOTHING`,
+           ON CONFLICT (title, artist) DO UPDATE SET
+             url        = EXCLUDED.url,
+             youtube_url = EXCLUDED.youtube_url`,
           [title, artist, genreRows[0].id, spotify_url||null, youtube_url||null]
         );
       }
