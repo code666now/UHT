@@ -75,8 +75,13 @@ async function identifyDropUser(req, res, next) {
         res.setHeader('Set-Cookie',
           `uht_session=${signed}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 24 * 3600}${isProd ? '; Secure' : ''}`
         );
-        // Fire-and-forget last_seen update
+        // Fire-and-forget last_seen + open tracking on their subscription
         db.query('UPDATE users SET last_seen_at=NOW() WHERE id=$1', [rows[0].id]).catch(() => {});
+        db.query(
+          `UPDATE subscriptions SET last_opened_at=NOW()
+           WHERE user_id=$1 AND last_opened_at IS NULL OR last_opened_at < NOW() - INTERVAL '6 hours'`,
+          [rows[0].id]
+        ).catch(() => {});
       }
     } else if (sessionVal) {
       // Returning browser — validate signed session
@@ -91,6 +96,10 @@ async function identifyDropUser(req, res, next) {
 }
 
 // ── Startup migrations ────────────────────────────────────────────────────────
+db.query('ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS last_opened_at TIMESTAMPTZ')
+  .then(() => console.log('[Migration] subscriptions.last_opened_at ready'))
+  .catch(e => console.error('[Migration] subscriptions.last_opened_at:', e.message));
+
 db.query('ALTER TABLE curators ADD COLUMN IF NOT EXISTS playlist_image_url TEXT')
   .then(() => console.log('[Migration] playlist_image_url column ready'))
   .catch(e => console.error('[Migration] playlist_image_url:', e.message));
@@ -98,6 +107,10 @@ db.query('ALTER TABLE curators ADD COLUMN IF NOT EXISTS playlist_image_url TEXT'
 db.query('ALTER TABLE songs ADD COLUMN IF NOT EXISTS youtube_url TEXT')
   .then(() => console.log('[Migration] songs.youtube_url column ready'))
   .catch(e => console.error('[Migration] songs.youtube_url:', e.message));
+
+db.query('ALTER TABLE songs ADD COLUMN IF NOT EXISTS tags JSONB')
+  .then(() => console.log('[Migration] songs.tags column ready'))
+  .catch(e => console.error('[Migration] songs.tags:', e.message));
 
 // Attach user_id to votes table
 db.query(`ALTER TABLE curator_submission_votes ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL`)
@@ -306,7 +319,7 @@ app.get("/admin", requireAdmin, (req, res) => res.sendFile(require("path").join(
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may12-v44' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may13-v49' });
 });
 
 
@@ -2783,7 +2796,7 @@ app.post('/api/send_code', async (req, res) => {
 
 // ── Twilio Verify: verify OTP + subscribe ─────────────────────────────────────
 app.post('/api/verify_code', async (req, res) => {
-  const { phone, code, genre, genre_id, curator_id, name, email } = req.body;
+  const { phone, code, genre, genre_id, curator_id, name, email, voter_id } = req.body;
   if (!phone || !code) return res.status(400).json({ error: 'phone and code required' });
   const digits = phone.replace(/\D/g,'');
   const normalPhone = digits.length === 10 ? '+1' + digits
@@ -2840,6 +2853,25 @@ app.post('/api/verify_code', async (req, res) => {
          ON CONFLICT (user_id, curator_id) DO UPDATE SET is_active = true`,
         [user.id, curator_id]
       );
+    }
+
+    // Merge anonymous votes — if voter_id was passed, link any prior anonymous votes to this user
+    if (voter_id) {
+      try {
+        const voterHash = require('crypto').createHash('sha256').update(voter_id).digest('hex');
+        const { rowCount } = await db.query(
+          `UPDATE curator_submission_votes
+           SET user_id = $1
+           WHERE voter_hash = $2 AND user_id IS NULL`,
+          [user.id, voterHash]
+        );
+        if (rowCount > 0) {
+          console.log(`[verify_code] Merged ${rowCount} anonymous vote(s) → user ${user.id}`);
+        }
+      } catch (mergeErr) {
+        console.error('[verify_code] voter merge error:', mergeErr.message);
+        // Non-fatal — don't block the subscribe response
+      }
     }
 
     res.json({ ok: true, status: 'approved', is_new: !user.name && !genre_id && !curator_id ? undefined : true, taste_token: user.taste_token || null });
@@ -3500,6 +3532,18 @@ app.get('/drop/curator/:slug', identifyDropUser, async (req, res) => {
     return res.send(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${curator.name}' Picks — Undeniable Hits</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#000;color:#f3f1ea;font-family:Georgia,'Times New Roman',serif;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:32px;text-align:center}</style></head><body><div><p style="font-size:10px;letter-spacing:.35em;text-transform:uppercase;opacity:.4;margin-bottom:16px">Undeniable Hits</p><h1 style="font-size:28px;margin-bottom:12px">${firstName}' Picks</h1><p style="opacity:.55;font-size:15px;line-height:1.6">${firstName}' first pick drops Monday.<br>Subscribe at <a href="${base}/curator/${slug}" style="color:#E8B84B;text-decoration:none">${(base||'undeniablehits.com').replace('https://','')}/curator/${slug}</a></p></div></body></html>`);
   }
 
+  // Check if this visitor is already following this curator
+  let isFollowing = false;
+  if (req.dropUser) {
+    try {
+      const { rows: fRows } = await db.query(
+        `SELECT id FROM subscriptions WHERE user_id=$1 AND curator_id=$2 AND is_active=TRUE LIMIT 1`,
+        [req.dropUser.id, curator.id]
+      );
+      isFollowing = fRows.length > 0;
+    } catch(_) {}
+  }
+
   try {
     const ytId = d.youtube_url ? (d.youtube_url.match(/(?:v=|youtu\.be\/)([^&?/]+)/) || [])[1] : null;
     const pageUrl = '/drop/curator/' + slug;
@@ -3613,6 +3657,18 @@ html,body{background:#080808;color:#ede8df;font-family:'Inter',sans-serif;overfl
 .bottom-share{font-size:9px;letter-spacing:.25em;text-transform:uppercase;color:rgba(237,232,223,0.2);cursor:pointer;background:none;border:none;font-family:'Inter',sans-serif}
 .bottom-share:hover{color:rgba(237,232,223,0.5)}
 
+/* Post-vote nudge */
+.post-nudge{max-width:400px;margin:0 auto;padding:32px 24px;text-align:center}
+.post-nudge-title{font-size:15px;line-height:1.6;color:rgba(237,232,223,0.85);margin-bottom:20px}
+.post-nudge-title em{font-style:italic;color:#E8B84B}
+.post-nudge input{width:100%;padding:16px;background:rgba(237,232,223,0.06);border:1px solid rgba(237,232,223,0.15);border-radius:8px;color:#ede8df;font-family:'Inter',sans-serif;font-size:16px;text-align:center;margin-bottom:10px;outline:none;box-sizing:border-box}
+.post-nudge input::placeholder{color:rgba(237,232,223,0.3)}
+.post-nudge input:focus{border-color:rgba(237,232,223,0.4)}
+.post-nudge-btn{width:100%;padding:16px;background:#ede8df;color:#080808;border:none;border-radius:8px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;letter-spacing:.03em;cursor:pointer;transition:opacity .2s}
+.post-nudge-btn:hover{opacity:.9}
+.post-nudge-msg{font-size:12px;color:rgba(237,232,223,0.4);margin-top:10px;min-height:18px}
+.post-nudge-legal{font-size:10px;color:rgba(237,232,223,0.2);margin-top:8px}
+
 /* Follow modal */
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);z-index:999;display:none;align-items:flex-end;justify-content:center}
 .modal-bg.open{display:flex}
@@ -3707,6 +3763,24 @@ ${!ytId && d.spotify_url ? `<div class="player-outer" style="height:152px"><ifra
     <span>💀 <span id="cntDenied">—</span> DENIED</span>
   </div>
 </div>
+
+${!isFollowing ? `
+<div class="post-nudge" id="nudgeWrap">
+  <p class="post-nudge-title">Enjoyed <em>${d.title}</em>?<br>Get ${firstName}'s next pick sent to your phone every Monday.</p>
+  <div id="nudgePhone">
+    <input type="tel" id="nudgePhoneInput" placeholder="(555) 867-5309" inputmode="tel" autocomplete="tel">
+    <button class="post-nudge-btn" onclick="nudgeSubmit()">Follow ${firstName} →</button>
+    <div class="post-nudge-msg" id="nudgeMsg"></div>
+    <p class="post-nudge-legal">Weekly SMS · Reply STOP anytime</p>
+  </div>
+  <div id="nudgeVerify" style="display:none">
+    <input type="text" id="nudgeCode" placeholder="6-digit code" maxlength="6" inputmode="numeric" style="letter-spacing:.2em">
+    <input type="text" id="nudgeName" placeholder="First name" autocomplete="given-name">
+    <button class="post-nudge-btn" onclick="nudgeVerify()">Confirm →</button>
+    <div class="post-nudge-msg" id="nudgeVerifyMsg"></div>
+  </div>
+</div>
+` : ''}
 
 ${allSubs && allSubs.length > 0 ? `
 <div class="archive">
@@ -3875,12 +3949,61 @@ function submitFollowCode(){
   if(!name){msg.textContent='First name is required.';return;}
   msg.textContent='Verifying...';
   fetch('/api/verify_code',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({phone:_followPhone,code:code,curator_id:${curator.id},name:name})})
+    body:JSON.stringify({phone:_followPhone,code:code,curator_id:${curator.id},name:name,voter_id:getVoterId()})})
     .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d};});})
     .then(function(res){
       if(res.ok){
         document.getElementById('followPhaseCode').innerHTML='';
         msg.textContent='You are now following ${firstName} 🌙';
+        var nw=document.getElementById('nudgeWrap');
+        if(nw) nw.style.display='none';
+      } else {
+        msg.textContent=res.data.error||'Invalid code.';
+      }
+    })
+    .catch(function(){msg.textContent='Network error. Try again.';});
+}
+
+// Voter ID helper (persistent anonymous token)
+function getVoterId(){
+  var k='uht_voter_id';
+  var id=localStorage.getItem(k);
+  if(!id){id=([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,function(c){return(c^crypto.getRandomValues(new Uint8Array(1))[0]&15>>c/4).toString(16);});localStorage.setItem(k,id);}
+  return id;
+}
+
+// Post-vote nudge
+var _nudgePhone='';
+function nudgeSubmit(){
+  var raw=document.getElementById('nudgePhoneInput').value.trim();
+  var msg=document.getElementById('nudgeMsg');
+  if(!raw){msg.textContent='Enter your phone number.';return;}
+  var digits=raw.replace(/\D/g,'');
+  _nudgePhone=digits.length===10?'+1'+digits:digits.length===11&&digits[0]==='1'?'+'+digits:'+'+digits;
+  msg.textContent='Sending code...';
+  fetch('/api/send_code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone:_nudgePhone})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.error){msg.textContent=d.error;return;}
+      document.getElementById('nudgePhone').style.display='none';
+      document.getElementById('nudgeVerify').style.display='block';
+      setTimeout(function(){document.getElementById('nudgeCode').focus();},100);
+    })
+    .catch(function(){msg.textContent='Network error. Try again.';});
+}
+function nudgeVerify(){
+  var code=document.getElementById('nudgeCode').value.trim();
+  var name=(document.getElementById('nudgeName').value||'').trim();
+  var msg=document.getElementById('nudgeVerifyMsg');
+  if(!code){msg.textContent='Enter the code from your text.';return;}
+  if(!name){msg.textContent='First name is required.';return;}
+  msg.textContent='Verifying...';
+  fetch('/api/verify_code',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({phone:_nudgePhone,code:code,curator_id:${curator.id},name:name,voter_id:getVoterId()})})
+    .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d};});})
+    .then(function(res){
+      if(res.ok){
+        document.getElementById('nudgeWrap').innerHTML='<div style="padding:16px 0;font-size:15px;color:#E8B84B;letter-spacing:.05em;text-align:center">You\\'re following ${firstName}. Next pick drops Monday. 🌙</div>';
       } else {
         msg.textContent=res.data.error||'Invalid code.';
       }
@@ -4884,7 +5007,7 @@ function nudgeVerify(){
   if(!name){msg.textContent='First name is required.';return;}
   msg.textContent='Verifying...';
   fetch('/api/verify_code',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({phone:_nudgePhone,code:code,genre_id:${nudgeGenreId},name:name})})
+    body:JSON.stringify({phone:_nudgePhone,code:code,genre_id:${nudgeGenreId},name:name,voter_id:getVoterId()})})
     .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d};});})
     .then(function(res){
       if(res.ok){
@@ -5452,6 +5575,110 @@ app.get('/api/deliveries', async (req, res) => {
       LIMIT 50
     `);
     res.json({ deliveries: rows });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── GET /api/voter-intelligence ──────────────────────────────────────────────
+app.get('/api/voter-intelligence', async (req, res) => {
+  try {
+    // SMS votes (user voted via text)
+    const { rows: smsVotes } = await db.query(`
+      SELECT
+        u.id        AS user_id,
+        u.name,
+        u.phone,
+        u.email,
+        s.title,
+        s.artist,
+        COALESCE(g.name, 'Unknown') AS genre,
+        NULL        AS curator,
+        v.vote,
+        v.updated_at AS voted_at,
+        'sms'       AS source
+      FROM votes v
+      JOIN users u ON u.id = v.user_id
+      JOIN songs s ON s.id = v.song_id
+      LEFT JOIN genres g ON g.id = s.genre_id
+    `);
+
+    // Web votes by identified users (taste_token / session cookie)
+    const { rows: webVotes } = await db.query(`
+      SELECT
+        u.id        AS user_id,
+        NULL        AS voter_hash,
+        u.name,
+        u.phone,
+        u.email,
+        COALESCE(gs.title, cs.title) AS title,
+        COALESCE(gs.artist, cs.artist) AS artist,
+        COALESCE(gs.genre, 'curator') AS genre,
+        c.name      AS curator,
+        csv.vote,
+        csv.voted_at,
+        'web'       AS source
+      FROM curator_submission_votes csv
+      JOIN users u ON u.id = csv.user_id
+      LEFT JOIN genre_submissions   gs ON gs.id = csv.submission_id
+      LEFT JOIN curator_submissions cs ON cs.id = csv.submission_id
+      LEFT JOIN curators c ON c.id = cs.curator_id
+      WHERE csv.user_id IS NOT NULL
+    `);
+
+    // Anonymous web votes — voter_hash only, no linked account yet
+    const { rows: anonVotes } = await db.query(`
+      SELECT
+        NULL        AS user_id,
+        csv.voter_hash,
+        NULL        AS name,
+        NULL        AS phone,
+        NULL        AS email,
+        COALESCE(gs.title, cs.title) AS title,
+        COALESCE(gs.artist, cs.artist) AS artist,
+        COALESCE(gs.genre, 'curator') AS genre,
+        c.name      AS curator,
+        csv.vote,
+        csv.voted_at,
+        'web'       AS source
+      FROM curator_submission_votes csv
+      LEFT JOIN genre_submissions   gs ON gs.id = csv.submission_id
+      LEFT JOIN curator_submissions cs ON cs.id = csv.submission_id
+      LEFT JOIN curators c ON c.id = cs.curator_id
+      WHERE csv.user_id IS NULL AND csv.voter_hash IS NOT NULL
+    `);
+
+    // Merge and group — identified users by user_id, anon by voter_hash
+    const all = [...smsVotes, ...webVotes, ...anonVotes];
+    const byUser = {};
+    for (const row of all) {
+      const key = row.user_id ? `uid_${row.user_id}` : `hash_${row.voter_hash}`;
+      if (!byUser[key]) {
+        byUser[key] = {
+          user_id:    row.user_id,
+          voter_hash: row.voter_hash || null,
+          name:       row.name,
+          phone:      row.phone,
+          email:      row.email,
+          anonymous:  !row.user_id,
+          votes:      []
+        };
+      }
+      byUser[key].votes.push({
+        title:    row.title,
+        artist:   row.artist,
+        genre:    row.genre,
+        curator:  row.curator,
+        vote:     row.vote,
+        voted_at: row.voted_at,
+        source:   row.source
+      });
+    }
+
+    // Sort each user's votes newest first; sort users by most recent vote
+    const users = Object.values(byUser);
+    users.forEach(u => u.votes.sort((a,b) => new Date(b.voted_at) - new Date(a.voted_at)));
+    users.sort((a,b) => new Date(b.votes[0]?.voted_at||0) - new Date(a.votes[0]?.voted_at||0));
+
+    res.json({ voters: users, total: users.length });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

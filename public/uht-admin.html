@@ -54,6 +54,14 @@ nav{padding:16px 0;flex:1}
 .panel{display:none;flex:1;overflow-y:auto;padding:32px}
 .panel.active{display:block}
 
+/* ── Voter Intel tabs ── */
+.vi-tab{background:none;border:none;border-bottom:2px solid transparent;color:rgba(232,228,217,0.55);font-size:12px;letter-spacing:.06em;text-transform:uppercase;padding:10px 20px;cursor:pointer;font-family:inherit;transition:color .15s,border-color .15s;margin-bottom:-1px}
+.vi-tab:hover{color:rgba(232,228,217,0.85)}
+.vi-tab.active{color:#f3f1ea;border-bottom-color:var(--accent)}
+.vi-pill{background:var(--card);border:1px solid var(--border);border-radius:16px;color:var(--muted);font-size:11px;letter-spacing:.04em;padding:5px 14px;cursor:pointer;transition:all .15s;font-family:inherit}
+.vi-pill:hover{color:var(--ink);border-color:rgba(255,255,255,.2)}
+.vi-pill.active{background:var(--accent);border-color:var(--accent);color:#000;font-weight:600}
+
 /* ── Stats ── */
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:32px}
 .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px}
@@ -225,6 +233,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
       <div class="nav-item" data-panel="messages"><span class="icon">✉</span> Messages</div>
       <div class="nav-item" data-panel="featured"><span class="icon">▶</span> Featured Drop</div>
       <div class="nav-item" data-panel="submissions"><span class="icon">♫</span> Submissions</div>
+      <div class="nav-item" data-panel="voter-intel"><span class="icon">◑</span> Voter Intel</div>
     </nav>
     <div class="sidebar-footer">
       <span class="api-dot" id="api-dot"></span>
@@ -275,8 +284,8 @@ tr:hover td{background:rgba(255,255,255,.025)}
         <button class="btn btn-primary" onclick="openAddSong()">+ Add Song</button>
       </div>
       <div class="table-wrap"><table>
-        <thead><tr><th>#</th><th>Title</th><th>Artist</th><th>Type</th><th>Target</th><th>URL</th><th></th></tr></thead>
-        <tbody id="songs-tbody"><tr class="empty-row"><td colspan="7">Loading…</td></tr></tbody>
+        <thead><tr><th>#</th><th>Title</th><th>Artist</th><th>Type</th><th>Target</th><th>URL</th><th>Tags</th><th></th></tr></thead>
+        <tbody id="songs-tbody"><tr class="empty-row"><td colspan="8">Loading…</td></tr></tbody>
       </table></div>
     </div>
 
@@ -310,9 +319,17 @@ tr:hover td{background:rgba(255,255,255,.025)}
         <div class="section-title">Subscribers</div>
         <button class="btn btn-primary" onclick="openModal('subscriber')">+ Add Subscriber</button>
       </div>
+      <!-- Open rate stats -->
+      <div id="subs-stats" style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap"></div>
+      <!-- Filter row -->
+      <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center">
+        <button class="vi-pill active" id="subs-filter-all" onclick="subsFilter('all')">All</button>
+        <button class="vi-pill" id="subs-filter-opened" onclick="subsFilter('opened')">Opened</button>
+        <button class="vi-pill" id="subs-filter-never" onclick="subsFilter('never')">Never Opened</button>
+      </div>
       <div class="table-wrap"><table>
-        <thead><tr><th>#</th><th>Phone</th><th>Name</th><th>Subscribed To</th><th>Type</th><th>Status</th><th>Joined</th><th></th></tr></thead>
-        <tbody id="subs-tbody"><tr class="empty-row"><td colspan="8">Loading…</td></tr></tbody>
+        <thead><tr><th>#</th><th>Phone</th><th>Name</th><th>Subscribed To</th><th>Type</th><th>Status</th><th>Joined</th><th>Last Drop Sent</th><th>Opened</th><th></th></tr></thead>
+        <tbody id="subs-tbody"><tr class="empty-row"><td colspan="10">Loading…</td></tr></tbody>
       </table></div>
     </div>
 
@@ -431,6 +448,40 @@ tr:hover td{background:rgba(255,255,255,.025)}
         <thead><tr><th>#</th><th>Genre</th><th>Title</th><th>Artist</th><th>Week Title</th><th>Week</th><th>Drop Date</th><th>Links</th><th></th></tr></thead>
         <tbody id="genre-submissions-tbody"><tr class="empty-row"><td colspan="9">Loading…</td></tr></tbody>
       </table></div>
+    </div>
+
+    <!-- ══ Voter Intel ══════════════════════════════════════════ -->
+    <div class="panel" id="panel-voter-intel">
+      <div class="section-header">
+        <div class="section-title">Voter Intelligence</div>
+        <button class="btn" onclick="loadVoterIntel()" style="font-size:11px">↺ Refresh</button>
+      </div>
+
+      <!-- Tabs -->
+      <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:20px">
+        <button class="vi-tab active" data-tab="all" onclick="viSwitchTab('all')">All Voters</button>
+        <button class="vi-tab" data-tab="genre" onclick="viSwitchTab('genre')">By Genre</button>
+        <button class="vi-tab" data-tab="curator" onclick="viSwitchTab('curator')">By Curator</button>
+      </div>
+
+      <!-- Search bar -->
+      <div style="position:relative;margin-bottom:20px">
+        <input id="vi-search" type="text" placeholder="Search by name or phone…"
+          oninput="viOnSearch(this.value)"
+          style="width:100%;box-sizing:border-box;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:9px 36px 9px 14px;color:var(--ink);font-size:13px;outline:none">
+        <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none">⌕</span>
+      </div>
+
+      <!-- Summary stats bar -->
+      <div id="vi-stats" style="display:flex;gap:20px;margin-bottom:20px;flex-wrap:wrap"></div>
+
+      <!-- Sub-tab pill row (genre names / curator names) — shown when not on All tab -->
+      <div id="vi-subtabs" style="display:none;flex-wrap:wrap;gap:8px;margin-bottom:20px"></div>
+
+      <!-- Content -->
+      <div id="voter-intel-wrap">
+        <div style="padding:32px;text-align:center;color:var(--muted)">Loading…</div>
+      </div>
     </div>
 
   </div>
@@ -861,8 +912,10 @@ async function loadSongs() {
             ${s.youtube_url?`<a href="${esc(s.youtube_url)}" target="_blank" style="color:var(--muted);font-size:11px">YT ↗</a>`:''}
             ${!s.url && !s.youtube_url ? '—' : ''}
           </td>
-          <td style="display:flex;gap:6px">
+          <td>${s.tags ? `<span style="color:var(--muted);font-size:10px" title="${esc(JSON.stringify(s.tags))}">🏷 ${esc(s.tags.subgenre||'')} · ${esc((s.tags.mood||[]).join(', '))}</span>` : '<span style="color:var(--muted);font-size:10px">—</span>'}</td>
+          <td style="display:flex;gap:6px;flex-wrap:wrap">
             <button class="btn" onclick="openEditSong(${s.id})">Edit</button>
+            <button class="btn" onclick="autoTagSong(${s.id})" style="background:rgba(232,184,75,0.1);border-color:rgba(232,184,75,0.4);color:#E8B84B" title="Auto-tag with AI">🏷 Tag</button>
             <button class="btn btn-danger" onclick="deleteSong(${s.id},'${esc(s.title)} by ${esc(s.artist)}')">Delete</button>
           </td>
         </tr>`).join('')
@@ -916,27 +969,92 @@ async function loadCurators() {
   } catch(e) { tbody.innerHTML=`<tr class="empty-row"><td colspan="6">${esc(e.message)} (API: ${API})</td></tr>`; }
 }
 
+let _allSubs = [];
+let _subsFilter = 'all';
+
 async function loadSubscribers() {
   const tbody = document.getElementById('subs-tbody');
   try {
     const {subscribers} = await api('GET','/api/subscribers');
-    tbody.innerHTML = subscribers.length
-      ? subscribers.map(s=>`<tr>
-          <td style="color:var(--muted)">#${s.id}</td>
-          <td>${esc(s.phone)}</td>
-          <td>${esc(s.name||'—')}</td>
-          <td><strong>${esc(s.target_name||'—')}</strong></td>
-          <td><span class="tag ${s.curator_id?'tag-curator':'tag-genre'}">${s.curator_id?'curator':'genre'}</span></td>
-          <td><span class="tag ${s.is_active?'tag-active':'tag-inactive'}">${s.is_active?'active':'paused'}</span></td>
-          <td>${fmtDate(s.created_at)}</td>
-          <td>
-            <button class="btn" onclick="editSub(${s.id},${s.user_id||s.id},'${esc(s.phone)}','${esc(s.name||'')}','${esc(s.email||'')}',${s.genre_id||'null'},${s.curator_id||'null'})">Edit</button>
-            <button class="btn" style="margin-left:4px" onclick="toggleSub(${s.id},${s.is_active})">${s.is_active?'Pause':'Resume'}</button>
-            <button class="btn btn-danger" style="margin-left:4px" onclick="deleteSub(${s.id},'${esc(s.phone)}${s.name ? ' · '+esc(s.name) : ''}')">Remove</button>
-          </td>
-        </tr>`).join('')
-      : '<tr class="empty-row"><td colspan="8">No subscribers yet.</td></tr>';
-  } catch(e) { tbody.innerHTML=`<tr class="empty-row"><td colspan="8">${esc(e.message)}</td></tr>`; }
+    _allSubs = subscribers || [];
+    renderSubsTable();
+  } catch(e) { tbody.innerHTML=`<tr class="empty-row"><td colspan="10">${esc(e.message)}</td></tr>`; }
+}
+
+function subsFilter(f) {
+  _subsFilter = f;
+  ['all','opened','never'].forEach(k => {
+    document.getElementById('subs-filter-'+k).classList.toggle('active', k === f);
+  });
+  renderSubsTable();
+}
+
+function renderSubsTable() {
+  const tbody  = document.getElementById('subs-tbody');
+  const stats  = document.getElementById('subs-stats');
+
+  const withDrop  = _allSubs.filter(s => s.last_sent_at);
+  const opened    = _allSubs.filter(s => s.last_opened_at);
+  const never     = withDrop.filter(s => !s.last_opened_at);
+  const openRate  = withDrop.length ? Math.round(opened.length / withDrop.length * 100) : 0;
+
+  // Avg hours to open (only for those who opened and had a drop sent)
+  const openTimes = opened.filter(s => s.last_sent_at).map(s =>
+    (new Date(s.last_opened_at) - new Date(s.last_sent_at)) / 3600000
+  ).filter(h => h >= 0);
+  const avgHrs = openTimes.length ? Math.round(openTimes.reduce((a,b)=>a+b,0)/openTimes.length) : null;
+
+  stats.innerHTML = [
+    { label:'Total subscribers', val: _allSubs.length },
+    { label:'Opened last drop',  val: opened.length + (withDrop.length ? ' / '+withDrop.length : ''), accent: false },
+    { label:'Open rate',         val: withDrop.length ? openRate+'%' : '—', accent: openRate >= 50 },
+    { label:'Never opened',      val: never.length, accent: never.length > 0 },
+    { label:'Avg open time',     val: avgHrs !== null ? avgHrs+'h after send' : '—' },
+  ].map(s => `<div style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:10px 16px;min-width:110px">
+    <div style="font-size:18px;font-weight:700;color:${s.accent?'var(--accent)':'var(--ink)'}">${s.val}</div>
+    <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">${s.label}</div>
+  </div>`).join('');
+
+  // Apply filter
+  let subs = _allSubs;
+  if (_subsFilter === 'opened') subs = opened;
+  if (_subsFilter === 'never')  subs = never;
+
+  if (!subs.length) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="10">${_subsFilter==='never'?'Everyone has opened their link.':'No subscribers yet.'}</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = subs.map(s => {
+    // Open status indicator
+    let openedCell;
+    if (!s.last_sent_at) {
+      openedCell = '<span style="color:var(--muted);font-size:11px">no drop sent</span>';
+    } else if (s.last_opened_at) {
+      const hrs = Math.round((new Date(s.last_opened_at) - new Date(s.last_sent_at)) / 3600000);
+      const color = hrs <= 24 ? '#4caf50' : 'var(--accent)';
+      openedCell = `<span style="color:${color};font-size:11px">✓ ${fmtDate(s.last_opened_at)}<br><span style="opacity:.6">${hrs}h after send</span></span>`;
+    } else {
+      openedCell = '<span style="color:#e74c3c;font-size:11px">✗ never</span>';
+    }
+
+    return `<tr>
+      <td style="color:var(--muted)">#${s.id}</td>
+      <td>${esc(s.phone)}</td>
+      <td>${esc(s.name||'—')}</td>
+      <td><strong>${esc(s.target_name||'—')}</strong></td>
+      <td><span class="tag ${s.curator_id?'tag-curator':'tag-genre'}">${s.curator_id?'curator':'genre'}</span></td>
+      <td><span class="tag ${s.is_active?'tag-active':'tag-inactive'}">${s.is_active?'active':'paused'}</span></td>
+      <td>${fmtDate(s.created_at)}</td>
+      <td style="font-size:11px;color:var(--muted)">${s.last_sent_at ? fmtDate(s.last_sent_at) : '—'}</td>
+      <td>${openedCell}</td>
+      <td>
+        <button class="btn" onclick="editSub(${s.id},${s.user_id||s.id},'${esc(s.phone)}','${esc(s.name||'')}','${esc(s.email||'')}',${s.genre_id||'null'},${s.curator_id||'null'})">Edit</button>
+        <button class="btn" style="margin-left:4px" onclick="toggleSub(${s.id},${s.is_active})">${s.is_active?'Pause':'Resume'}</button>
+        <button class="btn btn-danger" style="margin-left:4px" onclick="deleteSub(${s.id},'${esc(s.phone)}${s.name ? ' · '+esc(s.name) : ''}')">Remove</button>
+      </td>
+    </tr>`;
+  }).join('');
 }
 
 async function loadVotes() {
@@ -1085,6 +1203,15 @@ async function submitSubscriber() {
 
 // ── Deletes / toggles ─────────────────────────────────────────
 async function deleteSong(id, label) { if(!confirm(`Delete song:\n"${label}"?\n\nThis cannot be undone.`)) return; try { await api('DELETE',`/api/songs/${id}`); toast('Deleted.','ok'); loadSongs(); loadDashboard(); } catch(e){toast(e.message,'err');} }
+
+async function autoTagSong(id) {
+  try {
+    toast('Tagging with AI...', 'ok');
+    const { tags } = await api('POST', `/api/songs/${id}/autotag`);
+    toast(`Tagged: ${tags.subgenre} · ${tags.energy} energy · ${tags.era}`, 'ok');
+    loadSongs();
+  } catch(e) { toast('Auto-tag failed: ' + e.message, 'err'); }
+}
 async function deleteGenre(id, label) { if(!confirm(`Delete genre "${label}"?\n\nThis cannot be undone.`)) return; try { await api('DELETE',`/api/genres/${id}`); toast('Deleted.','ok'); loadGenres(); } catch(e){toast(e.message,'err');} }
 async function deleteCurator(id, label) { if(!confirm(`Delete curator "${label}"?\n\nThis cannot be undone.`)) return; try { await api('DELETE',`/api/curators/${id}`); toast('Deleted.','ok'); loadCurators(); } catch(e){toast(e.message,'err');} }
 
@@ -1875,6 +2002,7 @@ const panelMeta={
   submissions:{title:'Curator Submissions',sub:'Songs submitted by curators'},
   messages:{title:'Messages',sub:'SMS drops and logs'},
   featured:{title:'Featured Drop',sub:'Homepage video section'},
+  'voter-intel':{title:'Voter Intelligence',sub:'Full vote history per listener'},
 };
 document.querySelectorAll('.nav-item').forEach(item=>{
   item.addEventListener('click',()=>{
@@ -1889,6 +2017,7 @@ document.querySelectorAll('.nav-item').forEach(item=>{
     if (name === 'submissions') loadSubmissionsPanel();
     if (name === 'messages') loadMessages();
     if (name === 'featured') loadFeaturedDrop();
+    if (name === 'voter-intel') loadVoterIntel();
   });
 });
 
@@ -2052,6 +2181,352 @@ async function saveFeaturedDrop() {
     st.style.color = 'var(--accent)';
     st.textContent = 'Error: ' + e.message;
   }
+}
+
+// ── Voter Intelligence ────────────────────────────────────────
+let _viAllVoters = [];
+let _viTab       = 'all';   // 'all' | 'genre' | 'curator'
+let _viSubKey    = null;    // selected genre name or curator name
+let _viSearch    = '';
+
+function viTasteProfile(voter) {
+  const votes = voter.votes || [];
+  const total = votes.length;
+  if (!total) return { label: 'No votes', hitRate: 0, topGenre: '—', genreBreakdown: [] };
+
+  const hits    = votes.filter(v => ['hit','mega_hit','ultra_hit'].includes(v.vote)).length;
+  const megaHits = votes.filter(v => ['mega_hit','ultra_hit'].includes(v.vote)).length;
+  const denied  = votes.filter(v => ['denied','deny'].includes(v.vote)).length;
+  const hitRate = Math.round((hits / total) * 100);
+
+  // Genre breakdown
+  const genreCount = {};
+  votes.forEach(v => {
+    const g = v.curator ? ('curator:' + v.curator) : (v.genre || 'unknown');
+    genreCount[g] = (genreCount[g] || 0) + 1;
+  });
+  const genreBreakdown = Object.entries(genreCount)
+    .sort((a,b) => b[1]-a[1])
+    .map(([g, n]) => ({ genre: g, count: n, pct: Math.round((n/total)*100) }));
+  const topGenre = genreBreakdown[0]?.genre || '—';
+
+  // Personality label
+  let label;
+  if (total < 2)       label = 'New listener';
+  else if (hitRate >= 80) label = megaHits > 0 ? 'Mega fan' : 'Easy crowd';
+  else if (hitRate >= 55) label = 'Open ear';
+  else if (hitRate >= 35) label = 'Selective';
+  else                  label = 'Hard to please';
+
+  return { label, hitRate, topGenre, genreBreakdown, total, hits, megaHits, denied };
+}
+
+function renderVoterCard(v) {
+  const isAnon = v.anonymous || !v.user_id;
+  const name  = v.name  || (isAnon ? 'Anonymous Listener' : 'Unknown');
+  const phone = v.phone || (isAnon ? 'No account yet' : '—');
+  const email = v.email || '';
+  const hashTag = v.voter_hash ? ' · #' + v.voter_hash.slice(0,8) : '';
+  const p     = viTasteProfile(v);
+
+  // hit rate bar color
+  const barColor = p.hitRate >= 55 ? '#4caf50' : p.hitRate >= 35 ? 'var(--accent)' : '#e74c3c';
+
+  // genre pills
+  const genrePills = p.genreBreakdown.slice(0,4).map(g => {
+    const name = g.genre.replace('curator:','').replace(/^./,c=>c.toUpperCase());
+    return `<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;background:rgba(255,255,255,.06);color:var(--muted);margin:2px">${esc(name)} <b style="color:var(--ink)">${g.pct}%</b></span>`;
+  }).join('');
+
+  // Recent votes — last 5
+  const recent = (v.votes||[]).slice(0,5).map(vt => {
+    const isHit   = ['hit','mega_hit','ultra_hit'].includes(vt.vote);
+    const isMega  = ['mega_hit','ultra_hit'].includes(vt.vote);
+    const isDeny  = ['denied','deny'].includes(vt.vote);
+    const dot     = isMega ? '★' : isHit ? '●' : '○';
+    const dotClr  = isMega ? 'var(--accent)' : isHit ? '#4caf50' : '#e74c3c';
+    const label   = isMega ? 'MEGA HIT' : isHit ? 'HIT' : 'DENIED';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04)">
+      <span style="color:${dotClr};font-size:10px;width:12px;text-align:center;flex-shrink:0">${dot}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(vt.title||'—')}</div>
+        <div style="font-size:10px;color:var(--muted)">${esc(vt.artist||'—')} · ${esc(vt.genre||vt.curator||'')}</div>
+      </div>
+      <span style="font-size:10px;font-weight:700;color:${dotClr};flex-shrink:0">${label}</span>
+    </div>`;
+  }).join('');
+
+  const initials = name.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase() || '?';
+
+  return `<div class="vi-card" data-name="${esc(name.toLowerCase())}" data-phone="${esc(phone)}"
+    style="background:var(--card);border:1px solid var(--border);border-radius:8px;margin-bottom:16px;overflow:hidden">
+
+    <!-- Header row -->
+    <div style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-bottom:1px solid var(--border)">
+      <div style="width:40px;height:40px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#000;flex-shrink:0">${initials}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:var(--ink)">${esc(name)}${isAnon?'<span style="font-size:9px;vertical-align:middle;margin-left:6px;opacity:.45;text-transform:uppercase;letter-spacing:.06em">unlinked</span>':''}</div>
+        <div style="font-size:11px;color:var(--muted)">${esc(phone)}${email?' · '+esc(email):''}${isAnon&&v.voter_hash?'<span style="opacity:.4"> · token '+esc(v.voter_hash.slice(0,8))+'</span>':''}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:11px;font-weight:600;color:var(--ink);background:rgba(255,255,255,.06);border-radius:12px;padding:3px 10px;display:inline-block">${esc(p.label)}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:3px">${p.total} vote${p.total!==1?'s':''}</div>
+      </div>
+    </div>
+
+    <!-- Taste stats -->
+    <div style="display:flex;gap:0;border-bottom:1px solid var(--border)">
+      <div style="flex:1;padding:12px 16px;border-right:1px solid var(--border)">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Hit Rate</div>
+        <div style="font-size:22px;font-weight:700;color:${barColor};line-height:1">${p.hitRate}%</div>
+        <div style="height:3px;background:rgba(255,255,255,.08);border-radius:2px;margin-top:6px">
+          <div style="height:3px;width:${p.hitRate}%;background:${barColor};border-radius:2px;transition:width .4s"></div>
+        </div>
+      </div>
+      <div style="flex:1;padding:12px 16px;border-right:1px solid var(--border)">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Top Genre</div>
+        <div style="font-size:13px;font-weight:600;color:var(--ink);text-transform:capitalize">${esc(p.topGenre.replace('curator:',''))}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">${p.genreBreakdown[0]?.count||0} votes</div>
+      </div>
+      <div style="flex:1;padding:12px 16px">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Breakdown</div>
+        <div style="font-size:11px;color:#4caf50">${p.hits} HIT${p.megaHits?' ('+p.megaHits+' ★)':''}</div>
+        <div style="font-size:11px;color:#e74c3c">${p.denied} DENIED</div>
+      </div>
+    </div>
+
+    <!-- Genre affinity pills -->
+    ${p.genreBreakdown.length > 1 ? `<div style="padding:8px 16px;border-bottom:1px solid var(--border);font-size:10px;color:var(--muted)">
+      <span style="margin-right:6px;text-transform:uppercase;letter-spacing:.05em">Listens to:</span>${genrePills}
+    </div>` : ''}
+
+    <!-- Recent votes -->
+    <div style="padding:10px 16px">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Recent verdicts</div>
+      ${recent || '<div style="font-size:12px;color:var(--muted)">No votes yet</div>'}
+      ${p.total > 5 ? `<div style="font-size:10px;color:var(--muted);margin-top:6px;opacity:.6">+ ${p.total - 5} more vote${p.total-5!==1?'s':''}</div>` : ''}
+    </div>
+  </div>`;
+}
+
+async function loadVoterIntel() {
+  const wrap  = document.getElementById('voter-intel-wrap');
+  const stats = document.getElementById('vi-stats');
+  wrap.innerHTML  = '<div style="padding:32px;text-align:center;color:var(--muted)">Loading…</div>';
+  stats.innerHTML = '';
+  try {
+    const data = await api('GET', '/api/voter-intelligence');
+    _viAllVoters = data.voters || [];
+
+    if (!_viAllVoters.length) {
+      wrap.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted);font-size:13px">No identified votes yet.<br><span style="opacity:.6;font-size:12px">Votes appear here once a subscriber votes on a drop page.</span></div>';
+      return;
+    }
+
+    // Top-level stats
+    const totalVotes = _viAllVoters.reduce((s,v) => s + v.votes.length, 0);
+    const avgHitRate = Math.round(_viAllVoters.reduce((s,v) => s + viTasteProfile(v).hitRate, 0) / _viAllVoters.length);
+    const megaFans   = _viAllVoters.filter(v => viTasteProfile(v).hitRate >= 80).length;
+    const statItems  = [
+      { label:'Identified voters', val: _viAllVoters.length },
+      { label:'Total votes cast',  val: totalVotes },
+      { label:'Avg hit rate',      val: avgHitRate + '%' },
+      { label:'Easy crowds (≥80%)',val: megaFans },
+    ];
+    stats.innerHTML = statItems.map(s =>
+      `<div style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:10px 16px;min-width:120px">
+        <div style="font-size:18px;font-weight:700;color:var(--ink)">${s.val}</div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">${s.label}</div>
+      </div>`
+    ).join('');
+
+    viRebuild();
+  } catch(e) {
+    wrap.innerHTML = `<div style="color:var(--accent);padding:16px">Error: ${esc(e.message)}</div>`;
+  }
+}
+
+// ── Tab switching ─────────────────────────────────────────────
+function viSwitchTab(tab) {
+  _viTab    = tab;
+  _viSubKey = null;
+  document.getElementById('vi-search').value = '';
+  _viSearch = '';
+  document.querySelectorAll('.vi-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  viRebuild();
+}
+
+function viOnSearch(q) {
+  _viSearch = (q||'').toLowerCase().trim();
+  viRenderCurrent();
+}
+
+// ── Main render dispatcher ────────────────────────────────────
+function viRebuild() {
+  const subtabs = document.getElementById('vi-subtabs');
+
+  if (_viTab === 'all') {
+    subtabs.style.display = 'none';
+    viRenderCurrent();
+    return;
+  }
+
+  // Build sub-tab pills — always show all known genres/curators, overlay vote data
+  const keys = new Set();
+  if (_viTab === 'genre') {
+    (GENRES||[]).forEach(g => { if (g.name) keys.add(g.name); });
+    _viAllVoters.forEach(voter => voter.votes.forEach(vt => {
+      if (!vt.curator && vt.genre) keys.add(vt.genre);
+    }));
+  } else {
+    (CURATORS||[]).forEach(c => { if (c.name) keys.add(c.name); });
+    _viAllVoters.forEach(voter => voter.votes.forEach(vt => {
+      if (vt.curator) keys.add(vt.curator);
+    }));
+  }
+
+  const sorted = [...keys].sort();
+  if (!_viSubKey || !keys.has(_viSubKey)) _viSubKey = sorted[0] || null;
+
+  subtabs.style.display = 'flex';
+  subtabs.innerHTML = sorted.map(k =>
+    `<button class="vi-pill${k === _viSubKey ? ' active' : ''}"
+      onclick="viSelectSub('${k.replace(/'/g,"\\'")}')">${esc(k.charAt(0).toUpperCase()+k.slice(1))}</button>`
+  ).join('');
+
+  viRenderCurrent();
+}
+
+function viSelectSub(key) {
+  _viSubKey = key;
+  _viSearch = '';
+  document.getElementById('vi-search').value = '';
+  document.querySelectorAll('.vi-pill').forEach(b =>
+    b.classList.toggle('active', b.textContent.toLowerCase() === key.toLowerCase())
+  );
+  viRenderCurrent();
+}
+
+// ── Render for current tab state ──────────────────────────────
+function viRenderCurrent() {
+  if (_viTab === 'all') {
+    let voters = _viAllVoters;
+    if (_viSearch) voters = voters.filter(v =>
+      (v.name||'').toLowerCase().includes(_viSearch) ||
+      (v.phone||'').includes(_viSearch) ||
+      (v.email||'').toLowerCase().includes(_viSearch)
+    );
+    renderVoterGrid(voters);
+    return;
+  }
+
+  // Genre or Curator tab — render a verdict table for the selected sub-key
+  renderVerdictTable(_viTab, _viSubKey, _viSearch);
+}
+
+// ── Verdict table (genre or curator view) ─────────────────────
+function renderVerdictTable(tabType, key, search) {
+  const wrap = document.getElementById('voter-intel-wrap');
+  if (!key) {
+    wrap.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted)">No data yet.</div>';
+    return;
+  }
+
+  // Collect rows: one row per voter who voted on this genre/curator
+  const rows = [];
+  _viAllVoters.forEach(voter => {
+    const relevant = voter.votes.filter(vt => {
+      if (tabType === 'genre')   return !vt.curator && (vt.genre||'unknown').toLowerCase() === key.toLowerCase();
+      if (tabType === 'curator') return vt.curator && vt.curator.toLowerCase() === key.toLowerCase();
+      return false;
+    });
+    if (!relevant.length) return;
+    relevant.forEach(vt => {
+      rows.push({ voter, vt });
+    });
+  });
+
+  // Apply search
+  const filtered = search
+    ? rows.filter(r =>
+        (r.voter.name||'').toLowerCase().includes(search) ||
+        (r.voter.phone||'').includes(search)
+      )
+    : rows;
+
+  if (!filtered.length) {
+    wrap.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted)">No votes yet for this ' + tabType + '.</div>';
+    return;
+  }
+
+  const VOTE_COLOR = { hit:'#4caf50', mega_hit:'var(--accent)', ultra_hit:'var(--accent)', denied:'#e74c3c', deny:'#e74c3c' };
+  const VOTE_LABEL = { hit:'HIT', mega_hit:'MEGA HIT', ultra_hit:'MEGA HIT', denied:'DENIED', deny:'DENIED' };
+
+  const isAnon = v => v.anonymous || !v.user_id;
+
+  const tableRows = filtered.map(({voter: v, vt}) => {
+    const name  = v.name  || (isAnon(v) ? 'Anonymous' : '—');
+    const phone = v.phone || '—';
+    const clr   = VOTE_COLOR[vt.vote] || 'var(--muted)';
+    const lbl   = VOTE_LABEL[vt.vote] || (vt.vote||'').toUpperCase();
+    const initials = name.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase()||'?';
+    return `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:10px 12px;white-space:nowrap">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#000;flex-shrink:0">${initials}</div>
+          <div>
+            <div style="font-size:12px;color:var(--ink)">${esc(name)}${isAnon(v)?'<span style="font-size:9px;opacity:.4;margin-left:4px">unlinked</span>':''}</div>
+            <div style="font-size:10px;color:var(--muted)">${esc(phone)}</div>
+          </div>
+        </div>
+      </td>
+      <td style="padding:10px 12px;font-size:12px;color:var(--ink)">${esc(vt.title||'—')}</td>
+      <td style="padding:10px 12px;font-size:11px;color:var(--muted)">${esc(vt.artist||'—')}</td>
+      <td style="padding:10px 12px;font-size:11px;font-weight:700;color:${clr}">${lbl}</td>
+      <td style="padding:10px 12px;font-size:10px;color:var(--muted)">${fmtDate(vt.voted_at)}</td>
+      <td style="padding:10px 12px;font-size:10px;color:var(--muted);opacity:.5">${vt.source||''}</td>
+    </tr>`;
+  }).join('');
+
+  // Tally for this key
+  const hits   = filtered.filter(r => ['hit','mega_hit','ultra_hit'].includes(r.vt.vote)).length;
+  const denied = filtered.filter(r => ['denied','deny'].includes(r.vt.vote)).length;
+  const hitPct = filtered.length ? Math.round(hits/filtered.length*100) : 0;
+
+  wrap.innerHTML = `
+    <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 16px;font-size:12px">
+        <b style="color:var(--ink)">${filtered.length}</b> <span style="color:var(--muted)">votes</span>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 16px;font-size:12px">
+        <b style="color:#4caf50">${hitPct}%</b> <span style="color:var(--muted)">hit rate</span>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 16px;font-size:12px">
+        <b style="color:#4caf50">${hits}</b> <span style="color:var(--muted)">HIT</span>
+        &nbsp;·&nbsp;
+        <b style="color:#e74c3c">${denied}</b> <span style="color:var(--muted)">DENIED</span>
+      </div>
+    </div>
+    <div class="table-wrap"><table style="width:100%;border-collapse:collapse">
+      <thead><tr style="border-bottom:1px solid var(--border)">
+        <th style="padding:8px 12px;font-size:10px;text-align:left;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Voter</th>
+        <th style="padding:8px 12px;font-size:10px;text-align:left;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Song</th>
+        <th style="padding:8px 12px;font-size:10px;text-align:left;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Artist</th>
+        <th style="padding:8px 12px;font-size:10px;text-align:left;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Verdict</th>
+        <th style="padding:8px 12px;font-size:10px;text-align:left;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Date</th>
+        <th style="padding:8px 12px;font-size:10px;text-align:left;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Via</th>
+      </tr></thead>
+      <tbody>${tableRows}</tbody>
+    </table></div>`;
+}
+
+function renderVoterGrid(voters) {
+  const wrap = document.getElementById('voter-intel-wrap');
+  if (!voters.length) {
+    wrap.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted)">No matching voters.</div>';
+    return;
+  }
+  wrap.innerHTML = voters.map(renderVoterCard).join('');
 }
 
 // ── Boot ──────────────────────────────────────────────────────

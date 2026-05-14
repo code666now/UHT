@@ -2,6 +2,7 @@
 const express = require('express');
 const router  = express.Router();
 const db      = require('../db');
+const OpenAI  = require('openai');
 
 // ── GET /api/songs ────────────────────────────────────────────────────────────
 router.get('/songs', async (req, res) => {
@@ -57,6 +58,55 @@ router.delete('/songs/:id', async (req, res) => {
     await db.query('DELETE FROM songs WHERE id = $1', [id]);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── POST /api/songs/:id/autotag ───────────────────────────────────────────────
+router.post('/songs/:id/autotag', async (req, res) => {
+  if (!process.env.OPENAI_API_KEY) {
+    return res.status(503).json({ error: 'OPENAI_API_KEY not configured.' });
+  }
+  try {
+    const { rows } = await db.query('SELECT title, artist FROM songs WHERE id=$1', [req.params.id]);
+    if (!rows.length) return res.status(404).json({ error: 'Song not found.' });
+    const { title, artist } = rows[0];
+
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a music tagger. Return only valid JSON, no markdown.'
+        },
+        {
+          role: 'user',
+          content: `Tag this song. Title: "${title}". Artist: "${artist}".
+Return a JSON object with exactly these fields:
+- mood: array of 2-3 moods (e.g. "energetic", "melancholic", "upbeat", "gritty", "romantic")
+- energy: one of "low", "medium", "high"
+- era: decade string (e.g. "90s", "2000s", "2010s", "2020s")
+- tempo: one of "slow", "mid", "uptempo"
+- subgenre: specific subgenre string (e.g. "hard rock", "pop punk", "country pop")
+- similar_artists: array of 2-3 similar artist names`
+        }
+      ],
+      max_tokens: 200,
+      temperature: 0.3
+    });
+
+    let tags;
+    try {
+      tags = JSON.parse(completion.choices[0].message.content.trim());
+    } catch (e) {
+      return res.status(500).json({ error: 'Failed to parse AI response.', raw: completion.choices[0].message.content });
+    }
+
+    await db.query('UPDATE songs SET tags=$1 WHERE id=$2', [JSON.stringify(tags), req.params.id]);
+    res.json({ ok: true, tags });
+  } catch (e) {
+    console.error('[autotag error]', e.message);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 module.exports = router;
