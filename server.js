@@ -3797,10 +3797,7 @@ ${!ytId && d.spotify_url ? `<div class="player-outer" style="height:152px"><ifra
     <iframe style="border-radius:10px;display:block" src="https://open.spotify.com/embed/track/${d.spotify_url.match(/track\/([a-zA-Z0-9]+)/)?.[1]}" width="100%" height="152" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
   </div>
   ` : ''}
-  <div style="display:flex;gap:16px;justify-content:center;align-items:center;margin-top:6px;flex-wrap:wrap">
-    ${d.spotify_url ? `<button class="sp-whisper" onclick="var w=document.getElementById('spWrap');w.style.display=w.style.display==='none'?'block':'none'">Prefer Spotify?</button>` : ''}
-    ${d.bandcamp_url ? `<a href="${d.bandcamp_url}" target="_blank" class="sp-whisper" style="text-decoration:none">Support on Bandcamp</a>` : ''}
-  </div>
+  ${d.spotify_url ? `<button class="sp-whisper" onclick="var w=document.getElementById('spWrap');w.style.display=w.style.display==='none'?'block':'none'">Prefer Spotify?</button>` : ''}
   <button class="share-cta" onclick="sharePick()">↗ Share this pick with a friend</button>
 </div>
 
@@ -3833,6 +3830,8 @@ ${!ytId && d.spotify_url ? `<div class="player-outer" style="height:152px"><ifra
     <span>💀 <span id="cntDenied">—</span> DENIED</span>
   </div>
 </div>
+
+${d.bandcamp_url ? `<div style="text-align:center;padding:4px 0 16px"><a href="${d.bandcamp_url}" target="_blank" class="sp-whisper" style="text-decoration:none">Support on Bandcamp</a></div>` : ''}
 
 ${!isFollowing ? `
 <div class="post-nudge" id="nudgeWrap">
@@ -4825,7 +4824,6 @@ ${idHeader}
   <div class="below-player" style="display:flex;gap:20px;justify-content:center;align-items:center;flex-wrap:wrap">
     ${ytId && d.spotify_url ? `
     <button class="sp-whisper" onclick="var w=document.getElementById('spWrap');w.style.display=w.style.display==='none'?'block':'none'">Prefer Spotify?</button>` : ''}
-    ${d.bandcamp_url ? `<a href="${d.bandcamp_url}" target="_blank" class="sp-whisper" style="text-decoration:none">Support on Bandcamp</a>` : ''}
   </div>
   ${ytId && d.spotify_url ? `<div id="spWrap" style="display:none">
     <iframe style="border-radius:10px;display:block" src="https://open.spotify.com/embed/track/${(d.spotify_url.match(/track\/([a-zA-Z0-9]+)/)||[])[1]}" width="100%" height="152" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
@@ -5140,6 +5138,7 @@ function downloadShareCard(){
 
 <!-- POST-VOTE SUBSCRIBE NUDGE -->
 <div id="post-vote" style="display:none">
+${d.bandcamp_url ? `<div style="text-align:center;padding:4px 0 16px"><a href="${d.bandcamp_url}" target="_blank" class="sp-whisper" style="text-decoration:none">Support on Bandcamp</a></div>` : ''}
 ${!isSubscriber && nudgeGenreId ? `
 <div class="post-nudge" id="nudgeWrap">
   <p class="post-nudge-title">Enjoyed <em>${d.title}</em>?<br>Get next week's ${genreLabel} pick sent to your phone.</p>
