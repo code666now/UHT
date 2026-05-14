@@ -3797,10 +3797,10 @@ ${!ytId && d.spotify_url ? `<div class="player-outer" style="height:152px"><ifra
     <iframe style="border-radius:10px;display:block" src="https://open.spotify.com/embed/track/${d.spotify_url.match(/track\/([a-zA-Z0-9]+)/)?.[1]}" width="100%" height="152" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
   </div>
   ` : ''}
-  ${d.bandcamp_url ? `<div style="display:flex;gap:10px;justify-content:center;margin-top:10px">
-    ${d.spotify_url ? `<a href="${d.spotify_url}" target="_blank" style="display:inline-block;padding:9px 20px;border-radius:999px;background:#1DB954;color:#fff;text-decoration:none;font-size:12px;letter-spacing:.06em">♫ Spotify</a>` : ''}
-    <a href="${d.bandcamp_url}" target="_blank" style="display:inline-block;padding:9px 20px;border-radius:999px;background:#1da0c3;color:#fff;text-decoration:none;font-size:12px;letter-spacing:.06em">⛺ Buy on Bandcamp</a>
-  </div>` : ''}
+  <div style="display:flex;gap:16px;justify-content:center;align-items:center;margin-top:6px;flex-wrap:wrap">
+    ${d.spotify_url ? `<button class="sp-whisper" onclick="var w=document.getElementById('spWrap');w.style.display=w.style.display==='none'?'block':'none'">Prefer Spotify?</button>` : ''}
+    ${d.bandcamp_url ? `<a href="${d.bandcamp_url}" target="_blank" class="sp-whisper" style="text-decoration:none">Support on Bandcamp</a>` : ''}
+  </div>
   <button class="share-cta" onclick="sharePick()">↗ Share this pick with a friend</button>
 </div>
 
@@ -4822,17 +4822,13 @@ ${idHeader}
     ${d.spotify_url ? `<a class="spotify-btn" href="${d.spotify_url}" target="_blank">🎵 Play on Spotify</a>` : '<p style="opacity:.4">No playback source available.</p>'}
   </div>`}
 
-  ${ytId && d.spotify_url ? `
-  <div class="below-player">
-    <button class="sp-whisper" onclick="var w=document.getElementById('spWrap');w.style.display=w.style.display==='none'?'block':'none'">Prefer Spotify?</button>
-    <div id="spWrap" style="display:none">
-      <iframe style="border-radius:10px;display:block" src="https://open.spotify.com/embed/track/${(d.spotify_url.match(/track\/([a-zA-Z0-9]+)/)||[])[1]}" width="100%" height="152" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
-    </div>
-  </div>` : ''}
-
-  ${d.bandcamp_url ? `<div style="display:flex;gap:10px;justify-content:center;margin:10px 0">
-    ${d.spotify_url ? `<a href="${d.spotify_url}" target="_blank" style="display:inline-block;padding:9px 20px;border-radius:999px;background:#1DB954;color:#fff;text-decoration:none;font-size:12px;letter-spacing:.06em">♫ Spotify</a>` : ''}
-    <a href="${d.bandcamp_url}" target="_blank" style="display:inline-block;padding:9px 20px;border-radius:999px;background:#1da0c3;color:#fff;text-decoration:none;font-size:12px;letter-spacing:.06em">⛺ Buy on Bandcamp</a>
+  <div class="below-player" style="display:flex;gap:20px;justify-content:center;align-items:center;flex-wrap:wrap">
+    ${ytId && d.spotify_url ? `
+    <button class="sp-whisper" onclick="var w=document.getElementById('spWrap');w.style.display=w.style.display==='none'?'block':'none'">Prefer Spotify?</button>` : ''}
+    ${d.bandcamp_url ? `<a href="${d.bandcamp_url}" target="_blank" class="sp-whisper" style="text-decoration:none">Support on Bandcamp</a>` : ''}
+  </div>
+  ${ytId && d.spotify_url ? `<div id="spWrap" style="display:none">
+    <iframe style="border-radius:10px;display:block" src="https://open.spotify.com/embed/track/${(d.spotify_url.match(/track\/([a-zA-Z0-9]+)/)||[])[1]}" width="100%" height="152" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
   </div>` : ''}
 
   <div class="vote-section">
