@@ -3463,7 +3463,7 @@ body{background:#111;min-height:100vh;display:flex;flex-direction:column;align-i
 
   <div class="name-block">
     <div class="curator-name">${c.name}</div>
-    ${c.city ? `<div style="font-size:10px;letter-spacing:.18em;text-transform:uppercase;opacity:.35;margin-bottom:4px">${c.city}</div>` : ''}
+    ${c.city ? `<div style="font-size:9px;letter-spacing:.28em;text-transform:uppercase;color:rgba(243,241,234,0.55);margin-bottom:6px">${c.city}</div>` : ''}
     <div class="curator-sub">Curator of the Month · ${month}</div>
     ${theme ? `<div class="curator-theme">${theme}</div>` : ''}
   </div>
