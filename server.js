@@ -4303,8 +4303,8 @@ ${idCardJS}
 const TIER_ORDER = ['🌙 Rising Curator', '🎯 Hit Hunter', '👑 Tastemaker', '🏆 Legend'];
 const TIER_THRESHOLDS = { '🎯 Hit Hunter': 8, '👑 Tastemaker': 18, '🏆 Legend': 28 };
 const TIER_MESSAGES = {
-  '🎯 Hit Hunter':  (name, hits) => `Hi ${name}, you've gone from Rising Curator to Hit Hunter! Keep hunting those gems — ${18 - hits} more points and you become a Tastemaker.`,
-  '👑 Tastemaker':  (name, hits) => `Hi ${name}, you've gone from Hit Hunter to Tastemaker! Your picks are landing — ${28 - hits} more points and you reach Legend.`,
+  '🎯 Hit Hunter':  (name, hits) => `Hi ${name}, you've gone from Rising Curator to Hit Hunter! Keep hunting those gems — ${18 - hits} more votes and you become a Tastemaker.`,
+  '👑 Tastemaker':  (name, hits) => `Hi ${name}, you've gone from Hit Hunter to Tastemaker! Your picks are landing — ${28 - hits} more votes and you reach Legend.`,
   '🏆 Legend':      (name)       => `Hi ${name}, you're a Legend on UHT. Your taste is undeniable.`,
 };
 async function notifyCuratorTierUp(curator, currentTier, totalHits) {
