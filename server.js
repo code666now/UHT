@@ -3778,13 +3778,16 @@ app.get('/drop/curator/:slug', identifyDropUser, async (req, res) => {
             LEFT JOIN curator_submission_votes v ON v.submission_id = cs.id
             WHERE cs.curator_id=$1 AND COALESCE(cs.status,'approved')='approved' AND cs.delivered_at IS NOT NULL
             GROUP BY cs.id ORDER BY cs.week_number ASC`, [curator.id]),
-          db.query(`SELECT COUNT(*) AS hits FROM curator_submission_votes WHERE submission_id IN (SELECT id FROM curator_submissions WHERE curator_id=$1) AND vote='hit'`, [curator.id])
+          db.query(`SELECT
+            COALESCE(SUM(CASE WHEN vote='mega_hit' THEN 2 WHEN vote='hit' THEN 1 ELSE 0 END),0) AS score
+            FROM curator_submission_votes
+            WHERE submission_id IN (SELECT id FROM curator_submissions WHERE curator_id=$1)`, [curator.id])
         ]),
         timeout2
       ]);
       d        = subRes.rows[0]    || null;
       allSubs  = allSubsRes.rows   || [];
-      const totalHits = parseInt(hitRes.rows[0]?.hits || 0, 10);
+      const totalHits = parseInt(hitRes.rows[0]?.score || 0, 10);
       curatorTier =
         totalHits >= 28 ? '🏆 Legend' :
         totalHits >= 18 ? '👑 Tastemaker' :
@@ -4300,8 +4303,8 @@ ${idCardJS}
 const TIER_ORDER = ['🌙 Rising Curator', '🎯 Hit Hunter', '👑 Tastemaker', '🏆 Legend'];
 const TIER_THRESHOLDS = { '🎯 Hit Hunter': 8, '👑 Tastemaker': 18, '🏆 Legend': 28 };
 const TIER_MESSAGES = {
-  '🎯 Hit Hunter':  (name, hits) => `Hi ${name}, you've gone from Rising Curator to Hit Hunter! Keep hunting those gems — ${18 - hits} more votes and you become a Tastemaker.`,
-  '👑 Tastemaker':  (name, hits) => `Hi ${name}, you've gone from Hit Hunter to Tastemaker! Your picks are landing — ${28 - hits} more votes and you reach Legend.`,
+  '🎯 Hit Hunter':  (name, hits) => `Hi ${name}, you've gone from Rising Curator to Hit Hunter! Keep hunting those gems — ${18 - hits} more points and you become a Tastemaker.`,
+  '👑 Tastemaker':  (name, hits) => `Hi ${name}, you've gone from Hit Hunter to Tastemaker! Your picks are landing — ${28 - hits} more points and you reach Legend.`,
   '🏆 Legend':      (name)       => `Hi ${name}, you're a Legend on UHT. Your taste is undeniable.`,
 };
 async function notifyCuratorTierUp(curator, currentTier, totalHits) {
