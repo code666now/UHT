@@ -138,6 +138,11 @@ db.query(`ALTER TABLE curator_submission_votes DROP CONSTRAINT IF EXISTS curator
   .then(() => console.log('[Migration] curator_submission_votes FK dropped — genre votes enabled'))
   .catch(e => console.error('[Migration] votes FK drop:', e.message));
 
+// Partial unique index required for anonymous voter upsert (ON CONFLICT ... WHERE voter_hash IS NOT NULL)
+db.query(`CREATE UNIQUE INDEX IF NOT EXISTS csv_submission_voter_hash_uidx ON curator_submission_votes(submission_id, voter_hash) WHERE voter_hash IS NOT NULL`)
+  .then(() => console.log('[Migration] csv_submission_voter_hash_uidx ready'))
+  .catch(e => console.error('[Migration] csv partial index:', e.message));
+
 db.query(`ALTER TABLE songs ADD COLUMN IF NOT EXISTS week_number INTEGER DEFAULT 1`)
   .then(() => console.log('[Migration] songs.week_number ready'))
   .catch(e => console.error('[Migration] songs.week_number:', e.message));
@@ -4231,10 +4236,12 @@ function vote(v){
     if(vc){vc.style.display='block';}
     var pv=document.getElementById('post-vote');
     if(pv){setTimeout(function(){pv.style.display='block';pv.classList.add('slide-up');},600);}
-    return fetch('/api/genre-vote/${d.id}/counts');
+    // Counts fetch is fire-and-forget — never re-enables buttons on failure
+    fetch('/api/genre-vote/${d.id}/counts')
+      .then(function(r){return r.json();})
+      .then(updateCounts)
+      .catch(function(){});
   })
-  .then(function(r){return r.json();})
-  .then(updateCounts)
   .catch(function(){
     if(msg)msg.textContent='Try again.';
     ['vMega','vHit','vDenied'].forEach(function(id){var b=document.getElementById(id);if(b)b.disabled=false;});
@@ -4772,22 +4779,23 @@ function vote(v){
     if(!r.ok) throw new Error('vote failed');
     localStorage.setItem('uht_vote_${d.id}', v);
     if(msg) msg.textContent=labels[v]||'Recorded!';
-    return fetch('/api/genre-vote/${d.id}/counts');
-  })
-  .then(function(r){ return r && r.json(); })
-  .then(function(data){
-    if(!data) return;
-    var mega=data.mega_hits||0, hits=data.hits||0, denied=data.denied||0, total=data.total||0;
-    var megaPct=total ? Math.round(mega/total*100) : 0;
-    var hitPct =total ? Math.round(hits/total*100) : 0;
-    var denPct =total ? (100-megaPct-hitPct) : 0;
-    document.getElementById('barMega').style.width=megaPct+'%';
-    document.getElementById('barHit').style.width=hitPct+'%';
-    document.getElementById('barDenied').style.width=denPct+'%';
-    document.getElementById('cntMega').textContent=mega;
-    document.getElementById('cntHit').textContent=hits;
-    document.getElementById('cntDenied').textContent=denied;
-    document.getElementById('cntTotal').textContent=total+' vote'+(total===1?'':'s');
+    // Counts fetch is fire-and-forget — never re-enables buttons on failure
+    fetch('/api/genre-vote/${d.id}/counts')
+      .then(function(r){ return r && r.json(); })
+      .then(function(data){
+        if(!data) return;
+        var mega=data.mega_hits||0, hits=data.hits||0, denied=data.denied||0, total=data.total||0;
+        var megaPct=total ? Math.round(mega/total*100) : 0;
+        var hitPct =total ? Math.round(hits/total*100) : 0;
+        var denPct =total ? (100-megaPct-hitPct) : 0;
+        document.getElementById('barMega').style.width=megaPct+'%';
+        document.getElementById('barHit').style.width=hitPct+'%';
+        document.getElementById('barDenied').style.width=denPct+'%';
+        document.getElementById('cntMega').textContent=mega;
+        document.getElementById('cntHit').textContent=hits;
+        document.getElementById('cntDenied').textContent=denied;
+        document.getElementById('cntTotal').textContent=total+' vote'+(total===1?'':'s');
+      }).catch(function(){});
   })
   .catch(function(){
     if(msg)msg.textContent='Try again.';
