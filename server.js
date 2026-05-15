@@ -180,6 +180,7 @@ db.query(`ALTER TABLE curators ADD COLUMN IF NOT EXISTS submit_token TEXT`)
 db.query(`ALTER TABLE curators ADD COLUMN IF NOT EXISTS phone TEXT`)
   .then(() => db.query(`ALTER TABLE curators ADD COLUMN IF NOT EXISTS welcome_sent_at TIMESTAMP`))
   .then(() => db.query(`ALTER TABLE curators ADD COLUMN IF NOT EXISTS submit_token TEXT`))
+  .then(() => db.query(`ALTER TABLE curators ADD COLUMN IF NOT EXISTS city TEXT`))
   .then(() => db.query(`ALTER TABLE curator_submissions ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'approved'`))
   .then(() => db.query(`ALTER TABLE curator_submissions ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMPTZ`))
   // Backfill submit_token for any curators that don't have one yet
@@ -644,6 +645,10 @@ html,body{
   font-weight:normal;line-height:0.9;letter-spacing:-0.01em;
   margin-bottom:0;
 }
+.hero-city{
+  font-size:0.62rem;letter-spacing:0.22em;text-transform:uppercase;
+  opacity:0.4;margin-top:4px;font-style:normal;
+}
 
 /* ── BELOW HERO (invite + form) ── */
 .below-hero{
@@ -829,6 +834,7 @@ input[type="tel"]:focus,input[type="text"]:focus{
   <div class="hero-overlay"></div>
   <div class="hero-name-overlay">
     <div class="hero-name">${c.name}</div>
+    ${c.city ? `<div class="hero-city">${c.city}</div>` : ''}
     <div class="badge-founding-below">Founding Curator</div>
     ${month ? `<div class="badge-month-below">${month}</div>` : ''}
   </div>
@@ -1120,7 +1126,7 @@ app.get('/', async (req, res) => {
   try {
     const [genresResult, curatorsResult, currentDropsResult, communityDropResult, featuredDropResult] = await Promise.all([
       db.query('SELECT id, name FROM genres ORDER BY name ASC'),
-      db.query('SELECT id, name, bio, statement, image_url, playlist_image_url, instagram, curator_month FROM curators ORDER BY name ASC'),
+      db.query('SELECT id, name, bio, statement, image_url, playlist_image_url, instagram, curator_month, city FROM curators ORDER BY name ASC'),
       // Latest drop per genre
       db.query(`
         SELECT DISTINCT ON (LOWER(genre)) LOWER(genre) AS genre_key, title, artist
@@ -1276,7 +1282,8 @@ a{color:inherit;text-decoration:none}
 .curator-card:hover .curator-img{filter:brightness(1)}
 .curator-img-placeholder{width:100%;aspect-ratio:1/1;background:rgba(243,241,234,0.06);display:flex;align-items:center;justify-content:center;font-size:48px}
 .curator-body{padding:20px 22px 24px}
-.curator-name{font-size:17px;font-weight:600;margin-bottom:6px}
+.curator-name{font-size:17px;font-weight:600;margin-bottom:2px}
+.curator-city{font-size:10px;letter-spacing:.18em;text-transform:uppercase;opacity:.3;margin-bottom:8px}
 .curator-bio{font-size:13px;opacity:.4;line-height:1.6;margin-bottom:10px}
 .curator-insta{font-size:10px;letter-spacing:.2em;text-transform:uppercase;opacity:.28}
 .curator-see{font-size:11px;letter-spacing:.2em;text-transform:uppercase;opacity:.28;margin-top:14px;transition:opacity .2s}
@@ -1615,6 +1622,7 @@ select.sub-input option{background:#111;color:#f3f1ea}
             <span style="color:#E8B84B;font-size:9px;letter-spacing:.32em;text-transform:uppercase;font-family:Georgia,serif">No. 01 · Founding Curator</span>
           </div>
           <div class="curator-name" style="font-size:20px">${c.name}</div>
+          ${c.city ? `<div class="curator-city">${c.city}</div>` : ''}
           ${c.bio ? `<div class="curator-bio">${c.bio}</div>` : ''}
           ${c.instagram ? `<div class="curator-insta">@${c.instagram}</div>` : ''}
           <button class="curator-follow-btn" onclick="event.stopPropagation();openCuratorModal(${c.id},true)">+ Follow</button>
@@ -1633,6 +1641,7 @@ select.sub-input option{background:#111;color:#f3f1ea}
         <div class="curator-body">
           <div class="curator-month-tag">${c.curator_month || 'May 2026'} · Founding Curator</div>
           <div class="curator-name">${c.name}</div>
+          ${c.city ? `<div class="curator-city">${c.city}</div>` : ''}
           ${c.bio ? `<div class="curator-bio">${c.bio}</div>` : ''}
           ${c.instagram ? `<div class="curator-insta">@${c.instagram}</div>` : ''}
           <div class="curator-see">+ Follow</div>
@@ -1955,7 +1964,7 @@ function handleVerify(){
 
 
 // ── Curator data (server-rendered) ──
-var _curators = ${JSON.stringify(curators.map(c => ({id:c.id,name:c.name,bio:c.bio||'',statement:c.statement||'',instagram:c.instagram||'',image_url:c.image_url ? '/curator-image/'+c.id : '',playlist_image_url:c.playlist_image_url ? '/curator-playlist-image/'+c.id : '',curator_month:c.curator_month||''})))};
+var _curators = ${JSON.stringify(curators.map(c => ({id:c.id,name:c.name,bio:c.bio||'',statement:c.statement||'',instagram:c.instagram||'',city:c.city||'',image_url:c.image_url ? '/curator-image/'+c.id : '',playlist_image_url:c.playlist_image_url ? '/curator-playlist-image/'+c.id : '',curator_month:c.curator_month||''})))};
 // image_url / playlist_image_url are now always proxy URLs, never base64 blobs
 var _cmCuratorId = null;
 
@@ -2383,7 +2392,7 @@ app.get('/api/genres', async (req, res) => {
 // GET /api/curators  — for future curator-select UI
 app.get('/api/curators', async (req, res) => {
   try {
-    const { rows } = await db.query('SELECT id, name, bio, statement, image_url, instagram, curator_month FROM curators ORDER BY name ASC');
+    const { rows } = await db.query('SELECT id, name, bio, statement, image_url, instagram, curator_month, city FROM curators ORDER BY name ASC');
     res.json({ curators: rows });
   } catch (err) {
     console.error('[API] curators error:', err.message);
@@ -3440,6 +3449,7 @@ body{background:#111;min-height:100vh;display:flex;flex-direction:column;align-i
 
   <div class="name-block">
     <div class="curator-name">${c.name}</div>
+    ${c.city ? `<div style="font-size:10px;letter-spacing:.18em;text-transform:uppercase;opacity:.35;margin-bottom:4px">${c.city}</div>` : ''}
     <div class="curator-sub">Curator of the Month · ${month}</div>
     ${theme ? `<div class="curator-theme">${theme}</div>` : ''}
   </div>
@@ -6045,12 +6055,12 @@ app.get('/api/votes', async (req, res) => {
 
 // ── PATCH /api/curators/:id ───────────────────────────────────────────────────
 app.patch('/api/curators/:id', async (req, res) => {
-  const { name, bio, statement, image_url, playlist_image_url, instagram, phone, curator_month, monthly_theme } = req.body;
+  const { name, bio, statement, image_url, playlist_image_url, instagram, phone, curator_month, monthly_theme, city } = req.body;
   if (!name) return res.status(400).json({ error: 'name required.' });
   try {
     // Only overwrite image fields if a value is explicitly provided — prevents wiping images on metadata-only saves
-    const fields = ['name=$1','bio=$2','statement=$3','instagram=$4','phone=$5','curator_month=$6','monthly_theme=$7'];
-    const vals = [name, bio||null, statement||null, instagram||null, phone||null, curator_month||null, monthly_theme||null];
+    const fields = ['name=$1','bio=$2','statement=$3','instagram=$4','phone=$5','curator_month=$6','monthly_theme=$7','city=$8'];
+    const vals = [name, bio||null, statement||null, instagram||null, phone||null, curator_month||null, monthly_theme||null, city||null];
     let idx = vals.length + 1;
     if (image_url !== undefined) { fields.push(`image_url=$${idx++}`); vals.push(image_url||null); }
     if (playlist_image_url !== undefined) { fields.push(`playlist_image_url=$${idx++}`); vals.push(playlist_image_url||null); }

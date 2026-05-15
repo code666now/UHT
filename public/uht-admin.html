@@ -682,6 +682,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
     <div class="field"><label>Bio</label><textarea id="edit-curator-bio" placeholder="Straight heat every Friday…"></textarea></div>
     <div class="field"><label>Curator Statement <span style="font-weight:400;opacity:.5;font-size:11px">— long form, up to 3 paragraphs</span></label><textarea id="edit-curator-statement" placeholder="Write the curator's full statement here…" rows="8" style="min-height:160px;resize:vertical"></textarea></div>
     <div class="field"><label>Instagram</label><input type="text" id="edit-curator-instagram" placeholder="@handle"></div>
+    <div class="field"><label>City</label><input type="text" id="edit-curator-city" placeholder="San Francisco, CA"></div>
     <div class="field"><label>Phone <span style="font-weight:400;opacity:.5;font-size:11px">— for welcome SMS + curator messages</span></label><input type="tel" id="edit-curator-phone" placeholder="+1 (555) 000-0000"></div>
     <div class="field-row">
       <div class="field"><label>Curator Month</label><input type="text" id="edit-curator-month" placeholder="April 2026"></div>
@@ -1338,6 +1339,7 @@ function openEditCurator(id) {
   document.getElementById('edit-curator-bio').value = c.bio || '';
   document.getElementById('edit-curator-statement').value = c.statement || '';
   document.getElementById('edit-curator-instagram').value = c.instagram || '';
+  document.getElementById('edit-curator-city').value = c.city || '';
   document.getElementById('edit-curator-phone').value = c.phone || '';
   document.getElementById('edit-curator-month').value = c.curator_month || '';
   document.getElementById('edit-monthly-theme').value = c.monthly_theme || '';
@@ -1412,10 +1414,11 @@ async function submitEditCurator() {
   try {
     const statement = document.getElementById('edit-curator-statement').value.trim() || null;
     const instagram = document.getElementById('edit-curator-instagram').value.trim();
+    const city = document.getElementById('edit-curator-city').value.trim() || null;
     const phone = document.getElementById('edit-curator-phone').value.trim() || null;
     const curator_month = document.getElementById('edit-curator-month').value.trim() || null;
     const monthly_theme = document.getElementById('edit-monthly-theme').value.trim() || null;
-    const payload = { name, bio, statement, instagram, phone, curator_month, monthly_theme };
+    const payload = { name, bio, statement, instagram, city, phone, curator_month, monthly_theme };
     // Only send image fields if a new file was uploaded or URL manually changed
     const imgUrl = document.getElementById('edit-curator-img-url').value.trim();
     if (_editCuratorImgBase64) payload.image_url = _editCuratorImgBase64;
