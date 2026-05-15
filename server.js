@@ -3974,6 +3974,7 @@ ${idHeader}
   <div class="hero-name">
     <div class="hero-name-left">
       <div class="c-name">${curator.name}</div>
+      ${curator.city ? `<div style="font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:rgba(237,232,223,0.35);margin-top:4px">${curator.city}</div>` : ''}
       <div class="c-tier">${curatorTier}</div>
     </div>
     <div class="hero-actions">
