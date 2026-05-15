@@ -3510,31 +3510,31 @@ body{background:#111;min-height:100vh;display:flex;flex-direction:column;align-i
 </div>
 <div class="copy-msg" id="copyMsg"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
 var cardUrl = '${cardUrl}';
 var curatorName = '${c.name}';
 
 function saveCard() {
   var btn = document.querySelector('.btn-primary');
-  btn.textContent = 'Saving…';
+  btn.textContent = 'Generating…';
   btn.disabled = true;
-  html2canvas(document.getElementById('card'), {
-    scale: 3,
-    useCORS: true,
-    backgroundColor: '#000',
-    logging: false
-  }).then(function(canvas) {
-    var a = document.createElement('a');
-    a.download = '${slug}-curator-card.png';
-    a.href = canvas.toDataURL('image/png');
-    a.click();
-    btn.textContent = '↓ Save Card';
-    btn.disabled = false;
-  }).catch(function() {
-    btn.textContent = '↓ Save Card';
-    btn.disabled = false;
-  });
+  fetch('/curator/${slug}/card.png')
+    .then(function(r) {
+      if (!r.ok) throw new Error('Failed');
+      return r.blob();
+    })
+    .then(function(blob) {
+      var a = document.createElement('a');
+      a.download = '${slug}-curator-card.png';
+      a.href = URL.createObjectURL(blob);
+      a.click();
+      btn.textContent = '↓ Save Card';
+      btn.disabled = false;
+    })
+    .catch(function() {
+      btn.textContent = '↓ Save Card';
+      btn.disabled = false;
+    });
 }
 
 function shareCard() {
@@ -3557,6 +3557,45 @@ function shareCard() {
   } catch(e) {
     console.error('/curator/:slug/card error:', e.message);
     res.status(500).send('Something went wrong.');
+  }
+});
+
+// ── GET /curator/:slug/card.png — Puppeteer card image ───────────────────────
+app.get('/curator/:slug/card.png', async (req, res) => {
+  const slug = req.params.slug.toLowerCase().replace(/-/g, '');
+  try {
+    const base = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+    const cardUrl = `${base}/curator/${slug}/card?puppeteer=1`;
+
+    const chromium  = require('@sparticuz/chromium');
+    const puppeteer = require('puppeteer-core');
+
+    const browser = await puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: { width: 640, height: 1100, deviceScaleFactor: 2 },
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
+    });
+
+    const page = await browser.newPage();
+    await page.goto(cardUrl, { waitUntil: 'networkidle0', timeout: 15000 });
+
+    // Clip to just the card element
+    const cardEl = await page.$('#card');
+    const box    = cardEl ? await cardEl.boundingBox() : null;
+    const clip   = box
+      ? { x: box.x, y: box.y, width: box.width, height: box.height }
+      : undefined;
+
+    const png = await page.screenshot({ type: 'png', clip });
+    await browser.close();
+
+    res.set('Content-Type', 'image/png');
+    res.set('Cache-Control', 'public, max-age=60');
+    res.send(png);
+  } catch(e) {
+    console.error('/curator/:slug/card.png error:', e.message);
+    res.status(500).json({ error: e.message });
   }
 });
 
