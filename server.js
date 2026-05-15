@@ -3567,14 +3567,13 @@ app.get('/curator/:slug/card.png', async (req, res) => {
     const base = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
     const cardUrl = `${base}/curator/${slug}/card?puppeteer=1`;
 
-    const chromium  = require('@sparticuz/chromium');
     const puppeteer = require('puppeteer-core');
 
     const browser = await puppeteer.launch({
-      args: chromium.args,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
       defaultViewport: { width: 640, height: 1100, deviceScaleFactor: 2 },
-      executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
+      executablePath: process.env.CHROMIUM_EXECUTABLE_PATH || '/usr/bin/chromium',
+      headless: true,
     });
 
     const page = await browser.newPage();

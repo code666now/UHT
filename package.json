@@ -11,7 +11,6 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@sparticuz/chromium": "^148.0.0",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "jimp": "^1.6.1",
