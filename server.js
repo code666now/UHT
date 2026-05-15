@@ -545,7 +545,6 @@ app.get('/follow/curator/:slug', async (req, res) => {
         FROM curator_submissions cs
         WHERE cs.curator_id=$1
           AND COALESCE(cs.status,'approved')='approved'
-          AND cs.delivered_at IS NOT NULL
         ORDER BY cs.week_number DESC, cs.submitted_at DESC LIMIT 1`, [c.id]),
       db.query(`
         SELECT
