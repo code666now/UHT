@@ -328,8 +328,8 @@ tr:hover td{background:rgba(255,255,255,.025)}
         <button class="vi-pill" id="subs-filter-never" onclick="subsFilter('never')">Never Opened</button>
       </div>
       <div class="table-wrap"><table>
-        <thead><tr><th>#</th><th>Phone</th><th>Name</th><th>Subscribed To</th><th>Type</th><th>Status</th><th>Joined</th><th>Last Drop Sent</th><th>Opened</th><th></th></tr></thead>
-        <tbody id="subs-tbody"><tr class="empty-row"><td colspan="10">Loading…</td></tr></tbody>
+        <thead><tr><th>#</th><th>Phone</th><th>Name</th><th>Subscriptions</th><th>Joined</th><th>Last Drop Sent</th><th>Opened</th></tr></thead>
+        <tbody id="subs-tbody"><tr class="empty-row"><td colspan="7">Loading…</td></tr></tbody>
       </table></div>
     </div>
 
@@ -995,66 +995,93 @@ function renderSubsTable() {
   const tbody  = document.getElementById('subs-tbody');
   const stats  = document.getElementById('subs-stats');
 
-  const withDrop  = _allSubs.filter(s => s.last_sent_at);
-  const opened    = _allSubs.filter(s => s.last_opened_at);
-  const never     = withDrop.filter(s => !s.last_opened_at);
-  const openRate  = withDrop.length ? Math.round(opened.length / withDrop.length * 100) : 0;
+  // Group subscriptions by phone — one person may have curator + genre subs
+  const byPhone = {};
+  _allSubs.forEach(s => {
+    if (!byPhone[s.phone]) byPhone[s.phone] = [];
+    byPhone[s.phone].push(s);
+  });
+  const people = Object.values(byPhone); // array of arrays
 
-  // Avg hours to open (only for those who opened and had a drop sent)
-  const openTimes = opened.filter(s => s.last_sent_at).map(s =>
-    (new Date(s.last_opened_at) - new Date(s.last_sent_at)) / 3600000
-  ).filter(h => h >= 0);
+  // Stats operate on unique people, open = any sub was opened
+  const peopleWithDrop = people.filter(g => g.some(s => s.last_sent_at));
+  const peopleOpened   = people.filter(g => g.some(s => s.last_opened_at));
+  const peopleNever    = peopleWithDrop.filter(g => !g.some(s => s.last_opened_at));
+  const openRate = peopleWithDrop.length ? Math.round(peopleOpened.length / peopleWithDrop.length * 100) : 0;
+
+  const openTimes = peopleOpened.flatMap(g =>
+    g.filter(s => s.last_sent_at && s.last_opened_at)
+     .map(s => (new Date(s.last_opened_at) - new Date(s.last_sent_at)) / 3600000)
+     .filter(h => h >= 0)
+  );
   const avgHrs = openTimes.length ? Math.round(openTimes.reduce((a,b)=>a+b,0)/openTimes.length) : null;
 
   stats.innerHTML = [
-    { label:'Total subscribers', val: _allSubs.length },
-    { label:'Opened last drop',  val: opened.length + (withDrop.length ? ' / '+withDrop.length : ''), accent: false },
-    { label:'Open rate',         val: withDrop.length ? openRate+'%' : '—', accent: openRate >= 50 },
-    { label:'Never opened',      val: never.length, accent: never.length > 0 },
+    { label:'Total subscribers', val: people.length },
+    { label:'Opened last drop',  val: peopleOpened.length + (peopleWithDrop.length ? ' / '+peopleWithDrop.length : ''), accent: false },
+    { label:'Open rate',         val: peopleWithDrop.length ? openRate+'%' : '—', accent: openRate >= 50 },
+    { label:'Never opened',      val: peopleNever.length, accent: peopleNever.length > 0 },
     { label:'Avg open time',     val: avgHrs !== null ? avgHrs+'h after send' : '—' },
   ].map(s => `<div style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:10px 16px;min-width:110px">
     <div style="font-size:18px;font-weight:700;color:${s.accent?'var(--accent)':'var(--ink)'}">${s.val}</div>
     <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:2px">${s.label}</div>
   </div>`).join('');
 
-  // Apply filter
-  let subs = _allSubs;
-  if (_subsFilter === 'opened') subs = opened;
-  if (_subsFilter === 'never')  subs = never;
+  // Apply filter — a person passes if any of their subs pass
+  let filtered = people;
+  if (_subsFilter === 'opened') filtered = peopleOpened;
+  if (_subsFilter === 'never')  filtered = peopleNever;
 
-  if (!subs.length) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="10">${_subsFilter==='never'?'Everyone has opened their link.':'No subscribers yet.'}</td></tr>`;
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="9">${_subsFilter==='never'?'Everyone has opened their link.':'No subscribers yet.'}</td></tr>`;
     return;
   }
 
-  tbody.innerHTML = subs.map(s => {
-    // Open status indicator
+  tbody.innerHTML = filtered.map((group, gi) => {
+    const first = group[0]; // use first sub for shared fields (name, phone, joined)
+
+    // Joined = earliest subscription date
+    const joinedDates = group.map(s => new Date(s.created_at)).filter(Boolean);
+    const joinedDate  = joinedDates.length ? new Date(Math.min(...joinedDates)) : null;
+
+    // Best open status across all subs
+    const anyOpened  = group.find(s => s.last_opened_at);
+    const anyDrop    = group.find(s => s.last_sent_at);
+    const latestSent = group.filter(s=>s.last_sent_at).sort((a,b)=>new Date(b.last_sent_at)-new Date(a.last_sent_at))[0];
     let openedCell;
-    if (!s.last_sent_at) {
+    if (!anyDrop) {
       openedCell = '<span style="color:var(--muted);font-size:11px">no drop sent</span>';
-    } else if (s.last_opened_at) {
-      const hrs = Math.round((new Date(s.last_opened_at) - new Date(s.last_sent_at)) / 3600000);
+    } else if (anyOpened) {
+      const hrs = Math.round((new Date(anyOpened.last_opened_at) - new Date(anyOpened.last_sent_at)) / 3600000);
       const color = hrs <= 24 ? '#4caf50' : 'var(--accent)';
-      openedCell = `<span style="color:${color};font-size:11px">✓ ${fmtDate(s.last_opened_at)}<br><span style="opacity:.6">${hrs}h after send</span></span>`;
+      openedCell = `<span style="color:${color};font-size:11px">✓ ${fmtDate(anyOpened.last_opened_at)}<br><span style="opacity:.6">${hrs}h after send</span></span>`;
     } else {
       openedCell = '<span style="color:#e74c3c;font-size:11px">✗ never</span>';
     }
 
+    // Subscription chips — one per record, each with its own actions
+    const subChips = group.map(s => {
+      const isActive = s.is_active;
+      const isCurator = !!s.curator_id;
+      const label = esc(s.target_name || (isCurator ? 'Curator' : 'Genre'));
+      return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap">
+        <span class="tag ${isCurator?'tag-curator':'tag-genre'}" style="font-size:10px">${isCurator?'curator':'genre'}</span>
+        <strong style="font-size:12px">${label}</strong>
+        <span class="tag ${isActive?'tag-active':'tag-inactive'}" style="font-size:10px">${isActive?'active':'paused'}</span>
+        <button class="btn" style="padding:2px 7px;font-size:10px" onclick="editSub(${s.id},${s.user_id||s.id},'${esc(s.phone)}','${esc(s.name||'')}','${esc(s.email||'')}',${s.genre_id||'null'},${s.curator_id||'null'})">Edit</button>
+        <button class="btn" style="padding:2px 7px;font-size:10px" onclick="toggleSub(${s.id},${s.is_active})">${isActive?'Pause':'Resume'}</button>
+        <button class="btn btn-danger" style="padding:2px 7px;font-size:10px" onclick="deleteSub(${s.id},'${esc(s.phone)}${first.name?' · '+esc(first.name):''}')">Remove</button>
+      </div>`;
+    }).join('');
+
     return `<tr>
-      <td style="color:var(--muted)">#${s.id}</td>
-      <td>${esc(s.phone)}</td>
-      <td>${esc(s.name||'—')}</td>
-      <td><strong>${esc(s.target_name||'—')}</strong></td>
-      <td><span class="tag ${s.curator_id?'tag-curator':'tag-genre'}">${s.curator_id?'curator':'genre'}</span></td>
-      <td><span class="tag ${s.is_active?'tag-active':'tag-inactive'}">${s.is_active?'active':'paused'}</span></td>
-      <td>${fmtDate(s.created_at)}</td>
-      <td style="font-size:11px;color:var(--muted)">${s.last_sent_at ? fmtDate(s.last_sent_at) : '—'}</td>
+      <td style="color:var(--muted)">#${gi+1}</td>
+      <td>${esc(first.phone)}</td>
+      <td>${esc(first.name||'—')}</td>
+      <td style="min-width:220px">${subChips}</td>
+      <td>${joinedDate ? fmtDate(joinedDate.toISOString()) : '—'}</td>
+      <td style="font-size:11px;color:var(--muted)">${latestSent ? fmtDate(latestSent.last_sent_at) : '—'}</td>
       <td>${openedCell}</td>
-      <td>
-        <button class="btn" onclick="editSub(${s.id},${s.user_id||s.id},'${esc(s.phone)}','${esc(s.name||'')}','${esc(s.email||'')}',${s.genre_id||'null'},${s.curator_id||'null'})">Edit</button>
-        <button class="btn" style="margin-left:4px" onclick="toggleSub(${s.id},${s.is_active})">${s.is_active?'Pause':'Resume'}</button>
-        <button class="btn btn-danger" style="margin-left:4px" onclick="deleteSub(${s.id},'${esc(s.phone)}${s.name ? ' · '+esc(s.name) : ''}')">Remove</button>
-      </td>
     </tr>`;
   }).join('');
 }
