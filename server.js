@@ -3335,7 +3335,7 @@ app.get('/curator/:slug/card', async (req, res) => {
       `, [c.id]),
       db.query(`
         SELECT cs.title, cs.artist, cs.week_number,
-          COUNT(*) FILTER (WHERE v.vote='hit') AS hits,
+          COUNT(*) FILTER (WHERE v.vote IN ('hit','mega_hit')) AS hits,
           COUNT(*) FILTER (WHERE v.vote='denied') AS denies
         FROM curator_submissions cs
         LEFT JOIN curator_submission_votes v ON v.submission_id = cs.id
