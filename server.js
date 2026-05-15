@@ -211,20 +211,27 @@ db.query(`ALTER TABLE curators ADD COLUMN IF NOT EXISTS phone TEXT`)
       RETURNING cs.id, cs.title, cs.artist, cs.week_number
     `);
     if (rows.length) console.log(`[Migration] Backfilled delivered_at for week-1 picks:`, rows.map(r=>r.title).join(', '));
-    // Clear any delivered_at on week 2+ that got accidentally stamped
-    const { rowCount } = await db.query(`
-      UPDATE curator_submissions
-      SET delivered_at = NULL
-      WHERE COALESCE(status,'approved') = 'approved'
-        AND week_number > 1
-        AND delivered_at IS NOT NULL
-        AND id NOT IN (
-          SELECT DISTINCT ON (curator_id) id FROM curator_submissions
-          WHERE COALESCE(status,'approved')='approved'
-          ORDER BY curator_id, week_number ASC
+    // Backfill delivered_at for any week that was actually sent (has delivery records) but wasn't stamped
+    const { rows: backfilled } = await db.query(`
+      UPDATE curator_submissions cs
+      SET delivered_at = (
+        SELECT MIN(d.sent_at) FROM deliveries d
+        JOIN songs s ON s.id = d.song_id
+        WHERE s.curator_id = cs.curator_id
+          AND LOWER(s.title)  = LOWER(cs.title)
+          AND LOWER(s.artist) = LOWER(cs.artist)
+      )
+      WHERE cs.delivered_at IS NULL
+        AND EXISTS (
+          SELECT 1 FROM deliveries d
+          JOIN songs s ON s.id = d.song_id
+          WHERE s.curator_id = cs.curator_id
+            AND LOWER(s.title)  = LOWER(cs.title)
+            AND LOWER(s.artist) = LOWER(cs.artist)
         )
+      RETURNING cs.id, cs.title, cs.week_number
     `);
-    if (rowCount) console.log(`[Migration] Cleared delivered_at from ${rowCount} future week submission(s)`);
+    if (backfilled.length) console.log(`[Migration] Stamped delivered_at from deliveries for:`, backfilled.map(r=>`Wk${r.week_number} ${r.title}`).join(', '));
   })
   .catch(e => console.error('[Migration] curators phone/welcome/submit_token:', e.message));
 
@@ -545,6 +552,7 @@ app.get('/follow/curator/:slug', async (req, res) => {
         FROM curator_submissions cs
         WHERE cs.curator_id=$1
           AND COALESCE(cs.status,'approved')='approved'
+          AND cs.delivered_at IS NOT NULL
         ORDER BY cs.week_number DESC, cs.submitted_at DESC LIMIT 1`, [c.id]),
       db.query(`
         SELECT
