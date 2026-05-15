@@ -3331,6 +3331,8 @@ app.get('/curator/:slug/card', async (req, res) => {
           + COALESCE((SELECT COUNT(*) FROM curator_submission_votes WHERE submission_id IN (SELECT id FROM curator_submissions WHERE curator_id=$1) AND vote='hit'),0) AS total_hits,
           COALESCE((SELECT COUNT(*) FROM song_votes WHERE curator_id=$1 AND vote_type='denied'),0)
           + COALESCE((SELECT COUNT(*) FROM curator_submission_votes WHERE submission_id IN (SELECT id FROM curator_submissions WHERE curator_id=$1) AND vote='denied'),0) AS total_denies,
+          COALESCE((SELECT COUNT(*) FROM song_votes WHERE curator_id=$1 AND vote_type='mega_hit'),0)
+          + COALESCE((SELECT COUNT(*) FROM curator_submission_votes WHERE submission_id IN (SELECT id FROM curator_submissions WHERE curator_id=$1) AND vote='mega_hit'),0) AS total_mega_hits,
           (SELECT COUNT(*) FROM curator_submissions WHERE curator_id=$1) AS pick_count
       `, [c.id]),
       db.query(`
@@ -3345,8 +3347,9 @@ app.get('/curator/:slug/card', async (req, res) => {
       `, [c.id])
     ]);
 
-    const totalHits   = parseInt(statsRes.rows[0]?.total_hits   || 0);
-    const totalDenies = parseInt(statsRes.rows[0]?.total_denies || 0);
+    const totalHits      = parseInt(statsRes.rows[0]?.total_hits      || 0);
+    const totalDenies    = parseInt(statsRes.rows[0]?.total_denies    || 0);
+    const totalMegaHits  = parseInt(statsRes.rows[0]?.total_mega_hits || 0);
     const totalVotes  = totalHits + totalDenies;
     const pickCount   = parseInt(statsRes.rows[0]?.pick_count   || 0);
     const hitRate     = totalVotes > 0 ? Math.round(totalHits / totalVotes * 100) : 0;
@@ -3469,6 +3472,11 @@ body{background:#111;min-height:100vh;display:flex;flex-direction:column;align-i
     <div class="stat">
       <div class="stat-val">${totalHits}</div>
       <div class="stat-lbl">HITs</div>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat">
+      <div class="stat-val" style="color:#E8B84B">${totalMegaHits}</div>
+      <div class="stat-lbl">Mega HITs</div>
     </div>
     <div class="stat-divider"></div>
     <div class="stat">
