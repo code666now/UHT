@@ -3365,7 +3365,7 @@ app.get('/curator/:slug/card', async (req, res) => {
     const picks   = subsRes.rows;
 
     const picksHtml = picks.length ? picks.map(p => {
-      const verdict = parseInt(p.hits) > parseInt(p.denies) ? 'HIT' : parseInt(p.denies) > 0 ? 'DENIED' : '—';
+      const verdict = parseInt(p.hits) > 0 && parseInt(p.hits) >= parseInt(p.denies) ? 'HIT' : parseInt(p.denies) > parseInt(p.hits) ? 'DENIED' : '—';
       const verdictColor = verdict === 'HIT' ? '#E8B84B' : verdict === 'DENIED' ? '#ff4444' : 'rgba(243,241,234,0.3)';
       return `<div class="pick-row">
         <span class="pick-week">Wk ${p.week_number || '—'}</span>
