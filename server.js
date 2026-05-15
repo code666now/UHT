@@ -3803,9 +3803,13 @@ app.get('/drop/curator/:slug', identifyDropUser, async (req, res) => {
     return res.send(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${curator.name}' Picks — Undeniable Hits</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#000;color:#f3f1ea;font-family:Georgia,'Times New Roman',serif;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:32px;text-align:center}</style></head><body><div><p style="font-size:10px;letter-spacing:.35em;text-transform:uppercase;opacity:.4;margin-bottom:16px">Undeniable Hits</p><h1 style="font-size:28px;margin-bottom:12px">${firstName}' Picks</h1><p style="opacity:.55;font-size:15px;line-height:1.6">${firstName}' first pick drops Monday.<br>Subscribe at <a href="${base}/curator/${slug}" style="color:#E8B84B;text-decoration:none">${(base||'undeniablehits.com').replace('https://','')}/curator/${slug}</a></p></div></body></html>`);
   }
 
+  // Admin preview mode: ?preview=1 + admin cookie → render as a follower
+  const adminCookie = (req.headers.cookie || '').split(';').map(c=>c.trim().split('=')).find(([k])=>k==='uht_admin');
+  const isAdminPreview = req.query.preview === '1' && adminCookie && decodeURIComponent(adminCookie[1]) === makeAdminToken();
+
   // Check if this visitor is already following this curator
-  let isFollowing = false;
-  if (req.dropUser) {
+  let isFollowing = isAdminPreview;
+  if (!isAdminPreview && req.dropUser) {
     try {
       const { rows: fRows } = await db.query(
         `SELECT id FROM subscriptions WHERE user_id=$1 AND curator_id=$2 AND is_active=TRUE LIMIT 1`,
