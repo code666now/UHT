@@ -328,8 +328,8 @@ tr:hover td{background:rgba(255,255,255,.025)}
         <button class="vi-pill" id="subs-filter-never" onclick="subsFilter('never')">Never Opened</button>
       </div>
       <div class="table-wrap"><table>
-        <thead><tr><th>#</th><th>Phone</th><th>Name</th><th>Subscriptions</th><th>Joined</th><th>Last Drop Sent</th><th>Opened</th></tr></thead>
-        <tbody id="subs-tbody"><tr class="empty-row"><td colspan="7">Loading…</td></tr></tbody>
+        <thead><tr><th>#</th><th>Phone</th><th>Name</th><th>Subscriptions</th><th>Joined</th><th>Last Drop Sent</th><th>Opened</th><th></th></tr></thead>
+        <tbody id="subs-tbody"><tr class="empty-row"><td colspan="8">Loading…</td></tr></tbody>
       </table></div>
     </div>
 
@@ -1033,7 +1033,7 @@ function renderSubsTable() {
   if (_subsFilter === 'never')  filtered = peopleNever;
 
   if (!filtered.length) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="9">${_subsFilter==='never'?'Everyone has opened their link.':'No subscribers yet.'}</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="8">${_subsFilter==='never'?'Everyone has opened their link.':'No subscribers yet.'}</td></tr>`;
     return;
   }
 
@@ -1059,29 +1059,45 @@ function renderSubsTable() {
       openedCell = '<span style="color:#e74c3c;font-size:11px">✗ never</span>';
     }
 
-    // Subscription chips — one per record, each with its own actions
+    // Subscription chips — clean labels only, no per-chip buttons
     const subChips = group.map(s => {
-      const isActive = s.is_active;
       const isCurator = !!s.curator_id;
       const label = esc(s.target_name || (isCurator ? 'Curator' : 'Genre'));
-      return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap">
+      const isActive = s.is_active;
+      return `<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">
         <span class="tag ${isCurator?'tag-curator':'tag-genre'}" style="font-size:10px">${isCurator?'curator':'genre'}</span>
-        <strong style="font-size:12px">${label}</strong>
-        <span class="tag ${isActive?'tag-active':'tag-inactive'}" style="font-size:10px">${isActive?'active':'paused'}</span>
-        <button class="btn" style="padding:2px 7px;font-size:10px" onclick="editSub(${s.id},${s.user_id||s.id},'${esc(s.phone)}','${esc(s.name||'')}','${esc(s.email||'')}',${s.genre_id||'null'},${s.curator_id||'null'})">Edit</button>
-        <button class="btn" style="padding:2px 7px;font-size:10px" onclick="toggleSub(${s.id},${s.is_active})">${isActive?'Pause':'Resume'}</button>
-        <button class="btn btn-danger" style="padding:2px 7px;font-size:10px" onclick="deleteSub(${s.id},'${esc(s.phone)}${first.name?' · '+esc(first.name):''}')">Remove</button>
+        <span style="font-size:12px;font-weight:600">${label}</span>
+        ${!isActive ? '<span class="tag tag-inactive" style="font-size:10px">paused</span>' : ''}
       </div>`;
     }).join('');
+
+    // Actions — one set per person, at the end of the row
+    // Use the first sub for edit (if only one), or open a manage modal for multiple
+    const primarySub = group[0];
+    const actionBtns = group.length === 1
+      ? `<button class="btn" onclick="editSub(${primarySub.id},${primarySub.user_id||primarySub.id},'${esc(primarySub.phone)}','${esc(primarySub.name||'')}','${esc(primarySub.email||'')}',${primarySub.genre_id||'null'},${primarySub.curator_id||'null'})">Edit</button>
+         <button class="btn" style="margin-left:4px" onclick="toggleSub(${primarySub.id},${primarySub.is_active})">${primarySub.is_active?'Pause':'Resume'}</button>
+         <button class="btn btn-danger" style="margin-left:4px" onclick="deleteSub(${primarySub.id},'${esc(primarySub.phone)}${first.name?' · '+esc(first.name):''}')">Remove</button>`
+      : group.map(s => {
+          const isCurator = !!s.curator_id;
+          const label = esc(s.target_name || (isCurator ? 'Curator' : 'Genre'));
+          return `<div style="margin-bottom:4px;white-space:nowrap">
+            <span style="font-size:10px;color:var(--muted);margin-right:4px">${label}</span>
+            <button class="btn" onclick="editSub(${s.id},${s.user_id||s.id},'${esc(s.phone)}','${esc(s.name||'')}','${esc(s.email||'')}',${s.genre_id||'null'},${s.curator_id||'null'})">Edit</button>
+            <button class="btn" style="margin-left:3px" onclick="toggleSub(${s.id},${s.is_active})">${s.is_active?'Pause':'Resume'}</button>
+            <button class="btn btn-danger" style="margin-left:3px" onclick="deleteSub(${s.id},'${esc(s.phone)}${first.name?' · '+esc(first.name):''}')">Remove</button>
+          </div>`;
+        }).join('');
 
     return `<tr>
       <td style="color:var(--muted)">#${gi+1}</td>
       <td>${esc(first.phone)}</td>
       <td>${esc(first.name||'—')}</td>
-      <td style="min-width:220px">${subChips}</td>
+      <td>${subChips}</td>
       <td>${joinedDate ? fmtDate(joinedDate.toISOString()) : '—'}</td>
       <td style="font-size:11px;color:var(--muted)">${latestSent ? fmtDate(latestSent.last_sent_at) : '—'}</td>
       <td>${openedCell}</td>
+      <td style="white-space:nowrap">${actionBtns}</td>
     </tr>`;
   }).join('');
 }
