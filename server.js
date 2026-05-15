@@ -142,6 +142,10 @@ db.query(`ALTER TABLE songs ADD COLUMN IF NOT EXISTS week_number INTEGER DEFAULT
   .then(() => console.log('[Migration] songs.week_number ready'))
   .catch(e => console.error('[Migration] songs.week_number:', e.message));
 
+db.query(`ALTER TABLE curators ADD COLUMN IF NOT EXISTS notified_tier TEXT`)
+  .then(() => console.log('[Migration] curators.notified_tier ready'))
+  .catch(e => console.error('[Migration] curators.notified_tier:', e.message));
+
 // Confirmation tokens for web stranger subscribe flow
 db.query(`
   CREATE TABLE IF NOT EXISTS confirmation_tokens (
@@ -3786,6 +3790,9 @@ app.get('/drop/curator/:slug', identifyDropUser, async (req, res) => {
         totalHits >= 18 ? '👑 Tastemaker' :
         totalHits >= 8  ? '🎯 Hit Hunter' :
                           '🌙 Rising Curator';
+
+      // Fire tier-up SMS if curator just crossed a new threshold
+      notifyCuratorTierUp(curator, curatorTier).catch(() => {});
     }
   } catch(e) {
     console.error('/drop/curator/:slug DB error:', e.message);
@@ -4288,6 +4295,36 @@ ${idCardJS}
   }
 });
 
+
+// ── Curator tier-up SMS notification ─────────────────────────────────────────
+const TIER_ORDER = ['🌙 Rising Curator', '🎯 Hit Hunter', '👑 Tastemaker', '🏆 Legend'];
+const TIER_MESSAGES = {
+  '🎯 Hit Hunter':  (name) => `${name}, you just reached Hit Hunter on UHT. Your followers are listening. Keep the picks coming.`,
+  '👑 Tastemaker':  (name) => `${name}, Tastemaker. Your picks are landing. UHT is watching.`,
+  '🏆 Legend':      (name) => `${name}, you're a Legend on UHT. Your taste is undeniable.`,
+};
+async function notifyCuratorTierUp(curator, currentTier) {
+  if (!curator?.phone) return; // no phone on file
+  const prevTier = curator.notified_tier || '🌙 Rising Curator';
+  if (currentTier === prevTier) return; // no change
+  if (TIER_ORDER.indexOf(currentTier) <= TIER_ORDER.indexOf(prevTier)) return; // not higher
+
+  const msgFn = TIER_MESSAGES[currentTier];
+  if (!msgFn) return;
+
+  const firstName = curator.name.split(' ')[0];
+  try {
+    await twilioClient.messages.create({
+      from: process.env.TWILIO_FROM || process.env.TWILIO_PHONE_NUMBER,
+      to:   curator.phone,
+      body: msgFn(firstName),
+    });
+    await db.query(`UPDATE curators SET notified_tier=$1 WHERE id=$2`, [currentTier, curator.id]);
+    console.log(`[TierUp] Notified ${curator.name} → ${currentTier}`);
+  } catch(e) {
+    console.error(`[TierUp] SMS failed for ${curator.name}:`, e.message);
+  }
+}
 
 // ── Shared: member identity header + collectible card ────────────────────────
 // Returns { headerHTML, cardHTML, cardCSS, cardJS }
