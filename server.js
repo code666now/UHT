@@ -3792,7 +3792,7 @@ app.get('/drop/curator/:slug', identifyDropUser, async (req, res) => {
                           '🌙 Rising Curator';
 
       // Fire tier-up SMS if curator just crossed a new threshold
-      notifyCuratorTierUp(curator, curatorTier).catch(() => {});
+      notifyCuratorTierUp(curator, curatorTier, totalHits).catch(() => {});
     }
   } catch(e) {
     console.error('/drop/curator/:slug DB error:', e.message);
@@ -4298,12 +4298,13 @@ ${idCardJS}
 
 // ── Curator tier-up SMS notification ─────────────────────────────────────────
 const TIER_ORDER = ['🌙 Rising Curator', '🎯 Hit Hunter', '👑 Tastemaker', '🏆 Legend'];
+const TIER_THRESHOLDS = { '🎯 Hit Hunter': 8, '👑 Tastemaker': 18, '🏆 Legend': 28 };
 const TIER_MESSAGES = {
-  '🎯 Hit Hunter':  (name) => `${name}, you just reached Hit Hunter on UHT. Your followers are listening. Keep the picks coming.`,
-  '👑 Tastemaker':  (name) => `${name}, Tastemaker. Your picks are landing. UHT is watching.`,
-  '🏆 Legend':      (name) => `${name}, you're a Legend on UHT. Your taste is undeniable.`,
+  '🎯 Hit Hunter':  (name, hits) => `Hi ${name}, you've gone from Rising Curator to Hit Hunter! Keep hunting those gems — ${18 - hits} more votes and you become a Tastemaker.`,
+  '👑 Tastemaker':  (name, hits) => `Hi ${name}, you've gone from Hit Hunter to Tastemaker! Your picks are landing — ${28 - hits} more votes and you reach Legend.`,
+  '🏆 Legend':      (name)       => `Hi ${name}, you're a Legend on UHT. Your taste is undeniable.`,
 };
-async function notifyCuratorTierUp(curator, currentTier) {
+async function notifyCuratorTierUp(curator, currentTier, totalHits) {
   if (!curator?.phone) return; // no phone on file
   const prevTier = curator.notified_tier || '🌙 Rising Curator';
   if (currentTier === prevTier) return; // no change
@@ -4317,7 +4318,7 @@ async function notifyCuratorTierUp(curator, currentTier) {
     await twilioClient.messages.create({
       from: process.env.TWILIO_FROM || process.env.TWILIO_PHONE_NUMBER,
       to:   curator.phone,
-      body: msgFn(firstName),
+      body: msgFn(firstName, totalHits),
     });
     await db.query(`UPDATE curators SET notified_tier=$1 WHERE id=$2`, [currentTier, curator.id]);
     console.log(`[TierUp] Notified ${curator.name} → ${currentTier}`);
