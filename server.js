@@ -3649,7 +3649,7 @@ body{
   background-image:url('${base}/record-store.png');
   background-size:cover;
   background-position:center;
-  opacity:0.18;
+  opacity:0.30;
   mix-blend-mode:luminosity;
   pointer-events:none;
   z-index:0
