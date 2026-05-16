@@ -4051,7 +4051,8 @@ app.post('/api/send-founding-card', async (req, res) => {
   const railwayBase = process.env.RAILWAY_BASE_URL || 'https://uht-app-production.up.railway.app';
   const passportUrl = `${base}/member/${slug}?name=${encodeURIComponent(safeName)}&number=${encodeURIComponent(safeNumber)}&date=${encodeURIComponent(safeDate)}`;
   const cardUrl     = `${base}/card/${slug}?name=${encodeURIComponent(safeName)}&number=${encodeURIComponent(safeNumber)}&date=${encodeURIComponent(safeDate)}`;
-  const body        = `Welcome to Undeniable Hits, ${safeName}! You're Founding Member #${safeNumber}.\n\nOne of the first 100. Your card is permanent record.\n\nEvery week, one song via text. Vote on your taste.\n\nYour first drop arrives Friday.`;
+  const body        = req.body.customBody ||
+    `Welcome to Undeniable Hits, ${safeName}! You're Founding Member #${safeNumber}.\n\nOne of the first 100. Your card is permanent record.\n\nEvery week, one song via text. Vote on your taste.\n\nYour first drop arrives Friday.`;
 
   // Generate PNG via Puppeteer and save with a unique timestamped filename
   // so Twilio always fetches a fresh image (it caches by path, not query params)
