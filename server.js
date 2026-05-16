@@ -376,6 +376,72 @@ app.get('/health', (req, res) => {
 });
 
 // TEMP — remove after blast
+app.get('/admin/blast-founding-x7k9', async (req, res) => {
+  const { rows } = await db.query(`
+    SELECT id, name, phone, member_number
+    FROM users
+    WHERE member_number IS NOT NULL
+      AND name IS NOT NULL
+      AND name NOT ILIKE 'Unknown%'
+    ORDER BY member_number ASC
+  `);
+
+  res.json({ ok: true, queued: rows.length, message: 'Blast started in background' });
+
+  // Fire-and-forget with 4s delay between each to avoid Twilio rate limits
+  (async () => {
+    const puppeteer    = require('puppeteer-core');
+    const railwayBase  = process.env.RAILWAY_BASE_URL || 'https://uht-app-production.up.railway.app';
+    const twilioC      = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+
+    for (const u of rows) {
+      try {
+        // Special case: Ty Bud keeps full name
+        const rawFirst  = u.member_number === 8 ? 'Ty Bud' :
+          (u.name.trim().split(/\s+/)[0].replace(/[^a-zA-Z'-]/g,''));
+        const cardName  = rawFirst.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+        const num       = String(u.member_number).padStart(3,'0');
+        const cardDate  = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+        const slug      = cardName.toLowerCase().replace(/[^a-z0-9]+/g,'-') + '-' + num;
+        const ts        = Date.now();
+        const fname     = `${slug}-${ts}.png`;
+        const outPath   = require('path').join(__dirname, 'public', 'generated', fname);
+        const cardHtml  = `${railwayBase}/test-founding-card?name=${encodeURIComponent(cardName)}&number=${encodeURIComponent(num)}&date=${encodeURIComponent(cardDate)}&puppeteer=1`;
+        const mmsBody   = `Hi ${cardName}! This is your Founding 100 card. You showed up early. This is a permanent token of gratitude. #${num}. Thank you for being here from the beginning.`;
+
+        const browser = await puppeteer.launch({
+          args: ['--no-sandbox','--disable-setuid-sandbox','--disable-dev-shm-usage'],
+          defaultViewport: { width: 640, height: 900, deviceScaleFactor: 2 },
+          executablePath: process.env.CHROMIUM_EXECUTABLE_PATH || '/usr/bin/chromium',
+          headless: true,
+        });
+        const page = await browser.newPage();
+        await page.goto(cardHtml, { waitUntil: 'networkidle0', timeout: 15000 });
+        await new Promise(r => setTimeout(r, 800));
+        const cardEl = await page.$('#card');
+        const box    = cardEl ? await cardEl.boundingBox() : null;
+        const clip   = box ? { x: box.x, y: box.y, width: box.width, height: box.height } : undefined;
+        const png    = await page.screenshot({ type: 'png', clip });
+        await browser.close();
+        require('fs').writeFileSync(outPath, png);
+
+        const imgUrl = `${railwayBase}/generated/${fname}`;
+        await twilioC.messages.create({
+          from: process.env.TWILIO_FROM || process.env.TWILIO_PHONE_NUMBER,
+          to: u.phone,
+          body: mmsBody,
+          mediaUrl: [imgUrl],
+        });
+        console.log(`[Blast] ✓ #${num} ${cardName} → ${u.phone}`);
+        await new Promise(r => setTimeout(r, 4000)); // 4s between sends
+      } catch(err) {
+        console.error(`[Blast] ✗ #${u.member_number} ${u.name}: ${err.message}`);
+      }
+    }
+    console.log('[Blast] Complete — all members sent.');
+  })();
+});
+
 app.get('/admin/blast-preview-x7k9', async (req, res) => {
   const { rows } = await db.query(`
     SELECT id, name, phone, member_number
