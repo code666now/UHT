@@ -3612,7 +3612,25 @@ app.get('/test-founding-card', (req, res) => {
   const number = (req.query.number || '027').trim().padStart(3, '0');
   const date   = (req.query.date   || '05/19/2026').trim();
   const base   = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
-  const pngUrl = `${base}/test-founding-card.png?name=${encodeURIComponent(name)}&number=${encodeURIComponent(number)}&date=${encodeURIComponent(date)}`;
+
+  // Resolve slug — use explicit slug param if provided (from member page), else derive
+  const slug = req.query.slug
+    ? req.query.slug
+    : name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + number;
+
+  // Check for uploaded photo
+  const fs   = require('fs');
+  const path = require('path');
+  const exts = ['jpg', 'jpeg', 'png', 'webp'];
+  let photoUrl = '';
+  for (const ext of exts) {
+    if (fs.existsSync(path.join(__dirname, 'public', 'generated', `${slug}-photo.${ext}`))) {
+      photoUrl = `${base}/generated/${slug}-photo.${ext}`;
+      break;
+    }
+  }
+
+  const pngUrl = `${base}/test-founding-card.png?name=${encodeURIComponent(name)}&number=${encodeURIComponent(number)}&date=${encodeURIComponent(date)}&slug=${encodeURIComponent(slug)}`;
 
   res.send(`<!DOCTYPE html>
 <html lang="en">
@@ -3723,7 +3741,9 @@ body{background:#0a0a0a;min-height:100vh;display:flex;flex-direction:column;alig
   </div>
 
   <div class="hero">
-    <div class="hero-icon">🎧</div>
+    ${photoUrl
+      ? `<div class="hero-icon" style="background:none;border:2px solid #E8B84B;overflow:hidden;padding:0"><img src="${photoUrl}" style="width:100%;height:100%;object-fit:cover;display:block"></div>`
+      : `<div class="hero-icon">🎧</div>`}
     <div class="member-name">${name}</div>
     <div class="member-tag">Music Lover · Founding Member</div>
     <div class="shimmer"></div>
@@ -3804,14 +3824,16 @@ app.get('/test-founding-card.png', async (req, res) => {
   const number = (req.query.number || '027').trim().padStart(3, '0');
   const date   = (req.query.date   || '05/19/2026').trim();
 
-  // Slug for filename: "peter-027"
-  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  const filename = `${slug}-${number}.png`;
+  // Use explicit slug if passed (preserves photo lookup consistency)
+  const slug     = req.query.slug
+    ? req.query.slug
+    : name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + number;
+  const filename = `${slug}.png`;
   const outPath  = require('path').join(__dirname, 'public', 'generated', filename);
 
   try {
     const base    = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
-    const cardUrl = `${base}/test-founding-card?name=${encodeURIComponent(name)}&number=${encodeURIComponent(number)}&date=${encodeURIComponent(date)}&puppeteer=1`;
+    const cardUrl = `${base}/test-founding-card?name=${encodeURIComponent(name)}&number=${encodeURIComponent(number)}&date=${encodeURIComponent(date)}&slug=${encodeURIComponent(slug)}&puppeteer=1`;
 
     const puppeteer = require('puppeteer-core');
     const browser   = await puppeteer.launch({
@@ -3854,14 +3876,16 @@ app.post('/api/send-founding-card', async (req, res) => {
   const safeName   = (name   || 'Peter').trim();
   const safeNumber = (number || '027').trim().padStart(3, '0');
   const safeDate   = (date   || '05/19/2026').trim();
+  const slug       = safeName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + safeNumber;
 
   const digits = phone.replace(/\D/g, '');
   const to     = digits.length === 10 ? '+1' + digits
     : digits.length === 11 && digits.startsWith('1') ? '+' + digits : phone;
 
-  const base   = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
-  const imgUrl = `${base}/test-founding-card.png?name=${encodeURIComponent(safeName)}&number=${encodeURIComponent(safeNumber)}&date=${encodeURIComponent(safeDate)}`;
-  const body   = `Welcome to Undeniable Hits, ${safeName}! You're Founding Member #${safeNumber}.\n\nOne of the first 100. Your card is permanent record.\n\nEvery week, one song via text. Vote on your taste.\n\nYour first drop arrives Friday.`;
+  const base      = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+  const imgUrl    = `${base}/test-founding-card.png?name=${encodeURIComponent(safeName)}&number=${encodeURIComponent(safeNumber)}&date=${encodeURIComponent(safeDate)}`;
+  const memberUrl = `${base}/member/${slug}?name=${encodeURIComponent(safeName)}&number=${encodeURIComponent(safeNumber)}&date=${encodeURIComponent(safeDate)}`;
+  const body      = `Welcome to Undeniable Hits, ${safeName}! You're Founding Member #${safeNumber}.\n\nOne of the first 100. Your card is permanent record.\n\nEvery week, one song via text. Vote on your taste.\n\nYour first drop arrives Friday.\n\nPersonalize your card → ${memberUrl}`;
 
   try {
     await twilioClient.messages.create({
@@ -3871,11 +3895,209 @@ app.post('/api/send-founding-card', async (req, res) => {
       mediaUrl: [imgUrl],
     });
     console.log(`[FoundingCard] MMS sent to ${to}`);
-    res.json({ ok: true, to, imgUrl });
+    res.json({ ok: true, to, imgUrl, memberUrl });
   } catch(e) {
     console.error('[FoundingCard] MMS error:', e.message);
     res.status(500).json({ error: e.message });
   }
+});
+
+// ── GET /member/:slug — Personal member card page ────────────────────────────
+app.get('/member/:slug', (req, res) => {
+  const slug     = req.params.slug;
+  const name     = (req.query.name   || 'Member').trim();
+  const number   = (req.query.number || '001').trim().padStart(3, '0');
+  const date     = (req.query.date   || '').trim();
+  const base     = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+
+  // Check if a photo has been uploaded for this slug
+  const fs       = require('fs');
+  const path     = require('path');
+  const photoDir = path.join(__dirname, 'public', 'generated');
+  const exts     = ['jpg', 'jpeg', 'png', 'webp'];
+  let   photoUrl = '';
+  for (const ext of exts) {
+    if (fs.existsSync(path.join(photoDir, `${slug}-photo.${ext}`))) {
+      photoUrl = `${base}/generated/${slug}-photo.${ext}`;
+      break;
+    }
+  }
+
+  const cardPngUrl = `${base}/test-founding-card.png?name=${encodeURIComponent(name)}&number=${encodeURIComponent(number)}&date=${encodeURIComponent(date)}&slug=${encodeURIComponent(slug)}`;
+
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>${name} · Founding Member #${number} · Undeniable Hits</title>
+<meta property="og:title" content="${name} · Founding Member #${number}">
+<meta property="og:description" content="One of the first 100. Undeniable Hits.">
+<meta property="og:image" content="${cardPngUrl}">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0a;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px 16px 48px;font-family:Georgia,'Times New Roman',serif;gap:0}
+
+.top-bar{width:100%;max-width:380px;display:flex;justify-content:center;padding-bottom:20px}
+.brand{font-size:11px;letter-spacing:.4em;text-transform:uppercase;color:rgba(232,184,75,0.6)}
+
+.card-wrap{width:100%;max-width:340px;position:relative}
+.card-img{width:100%;border-radius:3px;display:block;border:1.5px solid #E8B84B;box-shadow:0 0 40px rgba(232,184,75,0.15)}
+.card-loading{width:100%;aspect-ratio:340/480;background:#111;border-radius:3px;border:1.5px solid rgba(232,184,75,0.3);display:flex;align-items:center;justify-content:center;color:rgba(232,184,75,0.4);font-size:12px;letter-spacing:.3em;text-transform:uppercase}
+
+.actions{width:100%;max-width:340px;margin-top:16px;display:flex;gap:10px}
+.btn{flex:1;padding:14px 10px;border:1px solid rgba(232,184,75,0.4);background:transparent;color:#f3f1ea;font-family:Georgia,serif;font-size:11px;letter-spacing:.2em;text-transform:uppercase;cursor:pointer;transition:all .2s;border-radius:2px}
+.btn:active{background:rgba(232,184,75,0.08)}
+.btn-gold{background:#E8B84B;color:#000;border-color:#E8B84B;font-weight:700}
+.btn-gold:active{background:#d4a73c}
+
+.divider{width:100%;max-width:340px;height:1px;background:rgba(232,184,75,0.12);margin:24px 0}
+
+.upload-section{width:100%;max-width:340px;text-align:center}
+.upload-label{font-size:8px;letter-spacing:.4em;text-transform:uppercase;color:rgba(243,241,234,0.35);margin-bottom:12px;display:block}
+.upload-box{width:100%;padding:20px;border:1px dashed rgba(232,184,75,0.3);border-radius:3px;cursor:pointer;transition:all .2s;background:transparent}
+.upload-box:active{border-color:#E8B84B;background:rgba(232,184,75,0.04)}
+.upload-icon{font-size:24px;margin-bottom:6px}
+.upload-text{font-size:11px;color:rgba(243,241,234,0.5);letter-spacing:.05em}
+.upload-sub{font-size:9px;color:rgba(243,241,234,0.25);margin-top:4px;letter-spacing:.05em}
+#fileInput{display:none}
+
+.status{margin-top:12px;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:rgba(232,184,75,0.6);text-align:center;min-height:16px}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <span class="brand">Undeniable Hits · Founding 100</span>
+</div>
+
+<div class="card-wrap">
+  <div class="card-loading" id="cardLoading">Loading card…</div>
+  <img id="cardImg" class="card-img" style="display:none" alt="${name} Founding Member Card">
+</div>
+
+<div class="actions">
+  <button class="btn btn-gold" onclick="downloadCard()">↓ Download</button>
+  <button class="btn" onclick="shareCard()">↑ Share</button>
+</div>
+
+<div class="divider"></div>
+
+<div class="upload-section">
+  <span class="upload-label">Add your photo to the card</span>
+  <div class="upload-box" onclick="document.getElementById('fileInput').click()">
+    <div class="upload-icon">📷</div>
+    <div class="upload-text">${photoUrl ? 'Change photo' : 'Tap to upload a photo'}</div>
+    <div class="upload-sub">${photoUrl ? 'Your photo is on the card' : 'Your face, your card'}</div>
+  </div>
+  <input type="file" id="fileInput" accept="image/*" onchange="uploadPhoto(this)">
+  <div class="status" id="status"></div>
+</div>
+
+<script>
+var slug      = '${slug}';
+var name      = '${name}';
+var number    = '${number}';
+var cardPngUrl = '${cardPngUrl}';
+var pageUrl   = window.location.href;
+
+// Load card image
+var img = document.getElementById('cardImg');
+img.onload = function() {
+  document.getElementById('cardLoading').style.display = 'none';
+  img.style.display = 'block';
+};
+img.onerror = function() {
+  document.getElementById('cardLoading').textContent = 'Card unavailable';
+};
+img.src = cardPngUrl + '&t=' + Date.now();
+
+function downloadCard() {
+  var btn = document.querySelector('.btn-gold');
+  btn.textContent = 'Generating…';
+  btn.disabled = true;
+  fetch(cardPngUrl + '&t=' + Date.now())
+    .then(function(r){ return r.blob(); })
+    .then(function(blob){
+      var a = document.createElement('a');
+      a.download = name.toLowerCase() + '-founding-card.png';
+      a.href = URL.createObjectURL(blob);
+      a.click();
+      btn.textContent = '↓ Download';
+      btn.disabled = false;
+    })
+    .catch(function(){
+      btn.textContent = '↓ Download';
+      btn.disabled = false;
+    });
+}
+
+function shareCard() {
+  if (navigator.share) {
+    navigator.share({
+      title: name + ' · Founding Member #' + number + ' · Undeniable Hits',
+      url: pageUrl
+    }).catch(function(){});
+  } else {
+    navigator.clipboard.writeText(pageUrl).then(function(){
+      document.getElementById('status').textContent = 'Link copied';
+      setTimeout(function(){ document.getElementById('status').textContent = ''; }, 2000);
+    });
+  }
+}
+
+function uploadPhoto(input) {
+  if (!input.files || !input.files[0]) return;
+  var file = input.files[0];
+  var status = document.getElementById('status');
+  status.textContent = 'Uploading…';
+
+  var formData = new FormData();
+  formData.append('photo', file);
+
+  fetch('/member/' + slug + '/photo', { method: 'POST', body: formData })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if (data.ok) {
+        status.textContent = 'Regenerating card…';
+        // Reload card image with cache bust
+        setTimeout(function(){
+          img.src = cardPngUrl + '&t=' + Date.now();
+          img.onload = function(){
+            document.getElementById('cardLoading').style.display = 'none';
+            img.style.display = 'block';
+            status.textContent = 'Card updated.';
+            setTimeout(function(){ status.textContent = ''; }, 3000);
+          };
+        }, 1500);
+      } else {
+        status.textContent = 'Upload failed. Try again.';
+      }
+    })
+    .catch(function(){
+      status.textContent = 'Upload failed. Try again.';
+    });
+}
+</script>
+</body>
+</html>`);
+});
+
+// ── POST /member/:slug/photo — Upload photo for a member card ─────────────────
+const multer  = require('multer');
+const _photoStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, require('path').join(__dirname, 'public', 'generated')),
+  filename:    (req, file, cb) => {
+    const ext = require('path').extname(file.originalname).toLowerCase() || '.jpg';
+    cb(null, `${req.params.slug}-photo${ext}`);
+  }
+});
+const _photoUpload = multer({ storage: _photoStorage, limits: { fileSize: 10 * 1024 * 1024 } });
+
+app.post('/member/:slug/photo', _photoUpload.single('photo'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file received' });
+  console.log(`[FoundingCard] Photo uploaded for ${req.params.slug}: ${req.file.filename}`);
+  res.json({ ok: true, filename: req.file.filename });
 });
 
 // ── GET /curator/:slug — Curator intro page (Friday teaser, no song) ─────────
