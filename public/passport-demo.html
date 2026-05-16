@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>UHT Music Passport — Adrian</title>
+<style>
+  /* ── Reset & Base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --black:   #0a0a0a;
+    --navy:    #0d1117;
+    --cream:   #f3f1ea;
+    --text:    #f3f1ea;
+    --dark:    #111;
+    --gold:    #E8B84B;
+    --grey:    #444;
+    --red:     #ff4444;
+    --mono:    "Courier New", Courier, monospace;
+    --serif:   Georgia, "Times New Roman", serif;
+    --w:       375px;
+  }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #1a1a1a;
+    font-family: var(--serif);
+    color: var(--text);
+  }
+
+  /* ── Viewport wrapper ── */
+  #viewport {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #1a1a1a;
+  }
+
+  /* ── Passport shell ── */
+  #passport {
+    position: relative;
+    width: min(375px, 100vw);
+    height: min(667px, 100dvh);
+    overflow: hidden;
+    box-shadow: 0 40px 100px rgba(0,0,0,.8), 0 0 0 1px rgba(255,255,255,.04);
+    border-radius: 0;
+  }
+
+  /* ── Page track ── */
+  #track {
+    display: flex;
+    width: 500%;  /* 5 pages */
+    height: 100%;
+    transition: transform 300ms cubic-bezier(.4,0,.2,1);
+    will-change: transform;
+  }
+
+  .page {
+    width: 20%;  /* 100% / 5 pages = 20% each */
+    height: 100%;
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* ── Nav dots ── */
+  #nav {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 52px;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    z-index: 100;
+    border-top: 1px solid rgba(255,255,255,.06);
+  }
+
+  .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #444;
+    cursor: pointer;
+    transition: all 200ms ease;
+    border: none;
+    padding: 0;
+    flex-shrink: 0;
+  }
+
+  .dot.active {
+    background: var(--gold);
+    width: 9px;
+    height: 9px;
+  }
+
+  /* ═══════════════════════════════════
+     PAGE 0 — COVER
+  ═══════════════════════════════════ */
+  #p0 {
+    background: var(--navy);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0 0 52px 0;
+  }
+
+  /* Gold inset border */
+  #p0::before {
+    content: '';
+    position: absolute;
+    inset: 14px;
+    border: 1.5px solid rgba(232,184,75,.35);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  #p0::after {
+    content: '';
+    position: absolute;
+    inset: 18px;
+    border: .5px solid rgba(232,184,75,.12);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* Subtle linen texture via SVG filter */
+  #p0-texture {
+    position: absolute;
+    inset: 0;
+    opacity: .03;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+    background-size: 300px;
+  }
+
+  #cover-inner {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+
+  /* SVG Circular seal */
+  #seal-wrap {
+    position: relative;
+    width: 200px;
+    height: 200px;
+  }
+
+  #seal-svg {
+    animation: sealShimmer 4s ease-in-out infinite;
+  }
+
+  @keyframes sealShimmer {
+    0%, 100% { opacity: 1; filter: drop-shadow(0 0 8px rgba(232,184,75,.3)); }
+    50% { opacity: .82; filter: drop-shadow(0 0 18px rgba(232,184,75,.6)); }
+  }
+
+  #seal-center-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--serif);
+    font-size: 52px;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: .02em;
+    text-shadow: 0 0 30px rgba(232,184,75,.4);
+    pointer-events: none;
+    animation: sealShimmer 4s ease-in-out infinite;
+    animation-delay: .4s;
+  }
+
+  #cover-name {
+    font-family: var(--serif);
+    font-size: 22px;
+    letter-spacing: .28em;
+    text-transform: uppercase;
+    color: var(--cream);
+    font-weight: 400;
+  }
+
+  #cover-title {
+    font-size: 11px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: rgba(232,184,75,.7);
+    font-family: var(--mono);
+  }
+
+  #cover-issued {
+    font-size: 10px;
+    letter-spacing: .12em;
+    color: rgba(243,241,234,.35);
+    font-family: var(--mono);
+    margin-top: 6px;
+  }
+
+  /* ═══════════════════════════════════
+     PAGE 1 — IDENTITY
+  ═══════════════════════════════════ */
+  #p1 {
+    background: var(--cream);
+    color: var(--dark);
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 52px;
+    /* Paper noise filter */
+    position: relative;
+  }
+
+  #p1::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: .04;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+    background-size: 200px;
+    pointer-events: none;
+  }
+
+  /* Watermark */
+  #p1-watermark {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  #p1-watermark span {
+    font-family: var(--serif);
+    font-size: 88px;
+    font-weight: 700;
+    color: var(--gold);
+    opacity: .08;
+    transform: rotate(25deg);
+    white-space: nowrap;
+    letter-spacing: .04em;
+    user-select: none;
+  }
+
+  #p1-content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  #p1-header {
+    padding: 20px 22px 14px;
+    border-bottom: 1px solid rgba(0,0,0,.1);
+  }
+
+  #p1-header .doc-type {
+    font-size: 9px;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: #555;
+    font-family: var(--mono);
+  }
+
+  #p1-header .doc-title {
+    font-size: 17px;
+    letter-spacing: .06em;
+    font-variant: small-caps;
+    font-weight: 700;
+    color: #111;
+    line-height: 1.1;
+    margin-top: 2px;
+  }
+
+  #p1-header .doc-sub {
+    font-size: 9px;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: #888;
+    margin-top: 3px;
+    font-family: var(--mono);
+  }
+
+  #p1-body {
+    display: flex;
+    gap: 14px;
+    padding: 16px 22px;
+    flex: 1;
+  }
+
+  /* Photo box */
+  #photo-box {
+    width: 80px;
+    height: 100px;
+    border: 1.5px dashed #aaa;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: border-color 150ms ease, transform 100ms ease;
+    background: rgba(0,0,0,.02);
+  }
+
+  #photo-box:active {
+    transform: scale(.96);
+    border-color: #777;
+  }
+
+  #photo-box .photo-icon { font-size: 18px; margin-bottom: 4px; }
+
+  #photo-box .photo-label {
+    font-family: var(--mono);
+    font-size: 7px;
+    letter-spacing: .08em;
+    color: #999;
+    text-align: center;
+    line-height: 1.4;
+  }
+
+  /* Passport fields */
+  #p1-fields {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .field-row {}
+
+  .field-label {
+    font-family: var(--mono);
+    font-size: 7px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: #888;
+    display: block;
+    margin-bottom: 1px;
+  }
+
+  .field-value {
+    font-family: var(--serif);
+    font-size: 13px;
+    color: #111;
+    font-weight: 700;
+    letter-spacing: .02em;
+  }
+
+  /* MRZ zone */
+  #mrz {
+    background: #000;
+    padding: 10px 14px 12px;
+    font-family: var(--mono);
+    color: #fff;
+    font-size: 9.5px;
+    letter-spacing: .06em;
+    line-height: 1.7;
+    border-top: 2px solid #333;
+    flex-shrink: 0;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  #mrz .mrz-line {
+    display: block;
+    overflow: hidden;
+    text-overflow: clip;
+    font-size: 8.5px;
+  }
+
+  /* ═══════════════════════════════════
+     PAGE 2 — VERDICTS
+  ═══════════════════════════════════ */
+  #p2 {
+    background: var(--black);
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 52px;
+  }
+
+  #p2-header {
+    padding: 26px 24px 0;
+    border-bottom: none;
+  }
+
+  #p2-header .section-title {
+    font-family: var(--serif);
+    font-size: 11px;
+    letter-spacing: .3em;
+    text-transform: uppercase;
+    color: var(--text);
+    padding-bottom: 8px;
+    position: relative;
+    display: inline-block;
+  }
+
+  #p2-header .section-title::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--gold);
+    opacity: .6;
+  }
+
+  #verdicts-list {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    padding: 20px 24px;
+  }
+
+  .stamp {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 18px 28px;
+    cursor: default;
+    transition: transform 100ms ease;
+    position: relative;
+    width: 200px;
+  }
+
+  .stamp:active { transform: scale(.96) !important; }
+
+  .stamp-border {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 2px solid;
+    pointer-events: none;
+  }
+
+  /* Stamp 1 — HIT */
+  .stamp-hit {
+    transform: rotate(-3deg);
+    opacity: .95;
+  }
+
+  .stamp-hit .stamp-border {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 1px rgba(232,184,75,.12), inset 0 0 0 1px rgba(232,184,75,.06);
+  }
+
+  .stamp-verdict {
+    font-family: var(--serif);
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    color: var(--gold);
+    text-shadow: 0 0 20px rgba(232,184,75,.3);
+    line-height: 1;
+  }
+
+  /* Stamp 2 — DENIED */
+  .stamp-denied {
+    transform: rotate(2deg);
+    opacity: .9;
+  }
+
+  .stamp-denied .stamp-border {
+    border-color: var(--red);
+    box-shadow: 0 0 0 1px rgba(255,68,68,.1);
+  }
+
+  .stamp-denied .stamp-verdict {
+    color: var(--red);
+    text-shadow: 0 0 20px rgba(255,68,68,.25);
+  }
+
+  /* Stamp 3 — AWAITING */
+  .stamp-awaiting {
+    transform: rotate(-1deg);
+    opacity: .5;
+  }
+
+  .stamp-awaiting .stamp-border {
+    border-color: #555;
+    border-style: dashed;
+    box-shadow: none;
+  }
+
+  .stamp-awaiting .stamp-verdict {
+    font-size: 11px;
+    font-variant: small-caps;
+    letter-spacing: .18em;
+    color: #888;
+    text-shadow: none;
+    text-transform: uppercase;
+  }
+
+  .stamp-song {
+    font-family: var(--serif);
+    font-size: 10px;
+    color: rgba(243,241,234,.6);
+    text-align: center;
+    font-style: italic;
+    line-height: 1.4;
+  }
+
+  .stamp-week {
+    font-family: var(--mono);
+    font-size: 7px;
+    letter-spacing: .14em;
+    color: rgba(243,241,234,.35);
+    text-transform: uppercase;
+  }
+
+  /* ═══════════════════════════════════
+     PAGE 3 — TASTE PROFILE
+  ═══════════════════════════════════ */
+  #p3 {
+    background: var(--black);
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 52px;
+  }
+
+  #p3-header {
+    padding: 26px 24px 0;
+  }
+
+  #p3-header .section-title {
+    font-family: var(--serif);
+    font-size: 11px;
+    letter-spacing: .3em;
+    text-transform: uppercase;
+    color: var(--text);
+    padding-bottom: 8px;
+    position: relative;
+    display: inline-block;
+  }
+
+  #p3-header .section-title::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--gold);
+    opacity: .6;
+  }
+
+  #stats-list {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 28px 24px;
+    gap: 22px;
+  }
+
+  .stat-row {}
+
+  .stat-label {
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: rgba(243,241,234,.4);
+    display: block;
+    margin-bottom: 5px;
+  }
+
+  .stat-value-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .stat-value {
+    font-family: var(--serif);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    min-width: 50px;
+  }
+
+  .stat-value.gold { color: var(--gold); }
+
+  .stat-bar-track {
+    flex: 1;
+    height: 2px;
+    background: rgba(255,255,255,.08);
+    position: relative;
+  }
+
+  .stat-bar-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: var(--gold);
+    transition: width 600ms ease;
+  }
+
+  #p3-badge {
+    margin: 0 24px 16px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid var(--gold);
+    padding: 7px 16px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: .18em;
+    color: var(--gold);
+    text-transform: uppercase;
+    align-self: flex-start;
+  }
+
+  /* ═══════════════════════════════════
+     PAGE 4 — BADGES
+  ═══════════════════════════════════ */
+  #p4 {
+    background: var(--black);
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 52px;
+  }
+
+  #p4-header {
+    padding: 26px 24px 0;
+  }
+
+  #p4-header .section-title {
+    font-family: var(--serif);
+    font-size: 11px;
+    letter-spacing: .3em;
+    text-transform: uppercase;
+    color: var(--text);
+    padding-bottom: 8px;
+    position: relative;
+    display: inline-block;
+  }
+
+  #p4-header .section-title::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--gold);
+    opacity: .6;
+  }
+
+  #badges-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    padding: 32px 24px;
+    align-items: center;
+    align-content: center;
+  }
+
+  .badge-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .badge-circle {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    border: 2px solid var(--gold);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    box-shadow: 0 0 16px rgba(232,184,75,.2), inset 0 0 16px rgba(232,184,75,.04);
+    background: rgba(232,184,75,.04);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .badge-circle.locked {
+    border-color: #333;
+    box-shadow: none;
+    background: rgba(255,255,255,.02);
+    opacity: .4;
+  }
+
+  .badge-emoji {
+    font-size: 26px;
+    line-height: 1;
+  }
+
+  .badge-name {
+    font-family: var(--mono);
+    font-size: 7px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--gold);
+    text-align: center;
+    padding: 0 6px;
+    line-height: 1.3;
+  }
+
+  .badge-circle.locked .badge-name {
+    color: #555;
+  }
+
+  /* ═══════════════════════════════════
+     SWIPE DRAG SUPPORT
+  ═══════════════════════════════════ */
+  #passport { touch-action: pan-y; }
+
+  /* ═══════════════════════════════════
+     EDGE ARROW NAVIGATION
+  ═══════════════════════════════════ */
+  .nav-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 44px;
+    height: 44px;
+    background: rgba(0,0,0,.55);
+    color: var(--gold);
+    border: none;
+    font-size: 28px;
+    line-height: 44px;
+    text-align: center;
+    cursor: pointer;
+    z-index: 200;
+    padding: 0;
+    /* push above the nav bar */
+    margin-top: -26px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 150ms ease, background 150ms ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .nav-arrow:active {
+    background: rgba(0,0,0,.8);
+  }
+
+  #arrow-left  { left: 0; border-radius: 0 4px 4px 0; }
+  #arrow-right { right: 0; border-radius: 4px 0 0 4px; }
+
+  .nav-arrow.hidden { display: none; }
+</style>
+</head>
+<body>
+
+<div id="viewport">
+  <div id="passport">
+
+    <!-- ─── Track ─── -->
+    <div id="track">
+
+      <!-- ════════════ PAGE 0 — COVER ════════════ -->
+      <div class="page" id="p0">
+        <div id="p0-texture"></div>
+        <div id="cover-inner">
+
+          <!-- SVG circular seal -->
+          <div id="seal-wrap">
+            <svg id="seal-svg" viewBox="0 0 200 200" width="200" height="200" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <path id="ring-path"
+                  d="M 100,100 m -72,0
+                     a 72,72 0 1,1 144,0
+                     a 72,72 0 1,1 -144,0" />
+              </defs>
+
+              <!-- Outer decorative rings -->
+              <circle cx="100" cy="100" r="88" fill="none" stroke="rgba(232,184,75,.18)" stroke-width="1"/>
+              <circle cx="100" cy="100" r="82" fill="none" stroke="rgba(232,184,75,.10)" stroke-width=".5"/>
+              <circle cx="100" cy="100" r="72" fill="none" stroke="rgba(232,184,75,.35)" stroke-width="1.5"/>
+              <circle cx="100" cy="100" r="66" fill="none" stroke="rgba(232,184,75,.10)" stroke-width=".5"/>
+
+              <!-- Tick marks -->
+              <g stroke="rgba(232,184,75,.4)" stroke-width="1">
+                <!-- 36 small ticks every 10deg -->
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(0 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(10 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(20 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(30 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(40 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(50 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(60 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(70 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(80 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(90 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(100 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(110 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(120 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(130 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(140 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(150 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(160 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(170 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(180 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(190 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(200 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(210 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(220 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(230 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(240 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(250 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(260 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(270 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(280 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(290 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(300 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(310 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(320 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(330 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(340 100 100)"/>
+                <line x1="100" y1="12" x2="100" y2="18" transform="rotate(350 100 100)"/>
+              </g>
+
+              <!-- Circular text -->
+              <text font-family="Georgia, serif" font-size="9.5" fill="#E8B84B" letter-spacing="3.2" font-weight="400">
+                <textPath href="#ring-path" startOffset="0%">UNDENIABLE HITS · MUSIC PASSPORT ·</textPath>
+              </text>
+            </svg>
+            <div id="seal-center-text">UHT</div>
+          </div>
+
+          <div id="cover-name">Adrian</div>
+          <div id="cover-title">Founding Member No.&nbsp;001</div>
+          <div id="cover-issued">Issued 05/16/2026</div>
+        </div>
+      </div>
+
+      <!-- ════════════ PAGE 1 — IDENTITY ════════════ -->
+      <div class="page" id="p1">
+        <div id="p1-watermark"><span>FOUNDING 100</span></div>
+        <div id="p1-content">
+          <div id="p1-header">
+            <span class="doc-type">Document / Music Passport</span>
+            <div class="doc-title">Music Passport</div>
+            <div class="doc-sub">Undeniable Hits</div>
+          </div>
+
+          <div id="p1-body">
+            <!-- Photo -->
+            <div id="photo-box" onclick="alert('Photo upload coming soon.')">
+              <span class="photo-icon">📷</span>
+              <span class="photo-label">ADD<br>PHOTO</span>
+            </div>
+
+            <!-- Fields -->
+            <div id="p1-fields">
+              <div class="field-row">
+                <span class="field-label">Given Name</span>
+                <span class="field-value">ADRIAN</span>
+              </div>
+              <div class="field-row">
+                <span class="field-label">Music Lover No.</span>
+                <span class="field-value">001</span>
+              </div>
+              <div class="field-row">
+                <span class="field-label">Listener Since</span>
+                <span class="field-value">05/16/2026</span>
+              </div>
+              <div class="field-row">
+                <span class="field-label">Status</span>
+                <span class="field-value" style="font-size:11px;letter-spacing:.05em;">FOUNDING MEMBER</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Divider -->
+          <div style="height:1px;background:rgba(0,0,0,.12);margin:0 22px;"></div>
+
+          <!-- MRZ zone -->
+          <div id="mrz">
+            <span class="mrz-line">P&lt;UHTMLOVRMARTIN&lt;&lt;ADRIAN&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;</span>
+            <span class="mrz-line">001&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;0516202601UHT&lt;ONE&lt;HIT&lt;ONE&lt;LIFE&lt;&lt;6</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════════════ PAGE 2 — VERDICTS ════════════ -->
+      <div class="page" id="p2">
+        <div id="p2-header">
+          <span class="section-title">Weekly Verdicts</span>
+        </div>
+
+        <div id="verdicts-list">
+
+          <!-- Stamp 1 — HIT -->
+          <div class="stamp stamp-hit">
+            <div class="stamp-border"></div>
+            <div class="stamp-verdict">HIT</div>
+            <div class="stamp-song">Smoke Flower / Lucas Moon</div>
+            <div class="stamp-week">Week 01 &middot; May 12 2026</div>
+          </div>
+
+          <!-- Stamp 2 — DENIED -->
+          <div class="stamp stamp-denied">
+            <div class="stamp-border"></div>
+            <div class="stamp-verdict">DENIED</div>
+            <div class="stamp-song">TBD / —</div>
+            <div class="stamp-week">Week 02 &middot; May 19 2026</div>
+          </div>
+
+          <!-- Stamp 3 — AWAITING -->
+          <div class="stamp stamp-awaiting">
+            <div class="stamp-border"></div>
+            <div class="stamp-verdict">Awaiting Verdict</div>
+            <div class="stamp-week">Week 03 &middot; May 26 2026 &middot; Upcoming</div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ════════════ PAGE 3 — TASTE PROFILE ════════════ -->
+      <div class="page" id="p3">
+        <div id="p3-header">
+          <span class="section-title">Taste Profile</span>
+        </div>
+
+        <div id="stats-list">
+
+          <div class="stat-row">
+            <span class="stat-label">Hit Rate</span>
+            <div class="stat-value-wrap">
+              <span class="stat-value gold">100%</span>
+              <div class="stat-bar-track">
+                <div class="stat-bar-fill" style="width:100%"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="stat-row">
+            <span class="stat-label">Votes Cast</span>
+            <div class="stat-value-wrap">
+              <span class="stat-value">1</span>
+              <div class="stat-bar-track">
+                <div class="stat-bar-fill" style="width:4%"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="stat-row">
+            <span class="stat-label">Top Genre</span>
+            <div class="stat-value-wrap">
+              <span class="stat-value" style="font-size:15px;letter-spacing:.04em;">Rock</span>
+            </div>
+          </div>
+
+          <div class="stat-row">
+            <span class="stat-label">Top Curator</span>
+            <div class="stat-value-wrap">
+              <span class="stat-value" style="font-size:13px;letter-spacing:.03em;">Lucas Moon</span>
+            </div>
+          </div>
+
+        </div>
+
+        <div id="p3-badge">
+          <span>&#9679;</span>
+          <span>Streak &middot; 1 Week</span>
+        </div>
+      </div>
+
+      <!-- ════════════ PAGE 4 — BADGES ════════════ -->
+      <div class="page" id="p4">
+        <div id="p4-header">
+          <span class="section-title">Earned</span>
+        </div>
+
+        <div id="badges-grid">
+
+          <div class="badge-item">
+            <div class="badge-circle">
+              <span class="badge-emoji">🎖</span>
+              <span class="badge-name">Founding<br>100</span>
+            </div>
+          </div>
+
+          <div class="badge-item">
+            <div class="badge-circle">
+              <span class="badge-emoji">🎯</span>
+              <span class="badge-name">First<br>Vote</span>
+            </div>
+          </div>
+
+          <div class="badge-item">
+            <div class="badge-circle locked">
+              <span class="badge-emoji">🔒</span>
+              <span class="badge-name">10-Week<br>Streak</span>
+            </div>
+          </div>
+
+          <div class="badge-item">
+            <div class="badge-circle locked">
+              <span class="badge-emoji">🔒</span>
+              <span class="badge-name">Mega Hit<br>Caller</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div><!-- /track -->
+
+    <!-- ─── Edge arrows ─── -->
+    <button id="arrow-left"  class="nav-arrow hidden" onclick="goTo(window._current - 1)" aria-label="Previous page">&#8249;</button>
+    <button id="arrow-right" class="nav-arrow"        onclick="goTo(window._current + 1)" aria-label="Next page">&#8250;</button>
+
+    <!-- ─── Nav dots ─── -->
+    <div id="nav">
+      <button class="dot active" onclick="goTo(0)" aria-label="Cover"></button>
+      <button class="dot" onclick="goTo(1)" aria-label="Identity"></button>
+      <button class="dot" onclick="goTo(2)" aria-label="Verdicts"></button>
+      <button class="dot" onclick="goTo(3)" aria-label="Taste Profile"></button>
+      <button class="dot" onclick="goTo(4)" aria-label="Badges"></button>
+    </div>
+
+  </div><!-- /passport -->
+</div><!-- /viewport -->
+
+<script>
+  (function () {
+    // ── Read URL params and inject into DOM ──────────────────────────────────
+    const params = new URLSearchParams(window.location.search);
+    const pName   = (params.get('name')   || 'Adrian').trim();
+    const pNumber = (params.get('number') || '001').trim().padStart(3, '0');
+    const pDate   = (params.get('date')   || '05/16/2026').trim();
+    const pPage   = parseInt(params.get('page') || '0', 10);
+
+    // Cover
+    const coverNameEl = document.getElementById('cover-name');
+    if (coverNameEl) coverNameEl.textContent = pName;
+    const coverTitleEl = document.getElementById('cover-title');
+    if (coverTitleEl) coverTitleEl.innerHTML = 'Founding Member No.&nbsp;' + pNumber;
+    const coverIssuedEl = document.getElementById('cover-issued');
+    if (coverIssuedEl) coverIssuedEl.textContent = 'Issued ' + pDate;
+
+    // Identity page fields
+    document.querySelectorAll('.field-value').forEach(function(el, i) {
+      if (i === 0) el.textContent = pName.toUpperCase();
+      if (i === 1) el.textContent = pNumber;
+      if (i === 2) el.textContent = pDate;
+    });
+
+    // MRZ line 2
+    const mrzLines = document.querySelectorAll('.mrz-line');
+    if (mrzLines[1]) {
+      mrzLines[1].textContent = pNumber + '<<<<<<<<0516202601UHT<ONE<HIT<ONE<LIFE<<6';
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
+    const PAGES      = 5;
+    const track      = document.getElementById('track');
+    const dots       = document.querySelectorAll('.dot');
+    const arrowLeft  = document.getElementById('arrow-left');
+    const arrowRight = document.getElementById('arrow-right');
+    let   current    = 0;
+
+    function updateArrows(n) {
+      arrowLeft.classList.toggle('hidden', n === 0);
+      arrowRight.classList.toggle('hidden', n === PAGES - 1);
+    }
+
+    function goTo(n) {
+      n = Math.max(0, Math.min(PAGES - 1, n));
+      current = n;
+      window._current = n;
+      const pct = n * (100 / PAGES);
+      track.style.transform = `translateX(-${pct}%)`;
+      dots.forEach((d, i) => d.classList.toggle('active', i === n));
+      updateArrows(n);
+    }
+
+    // Expose globally for onclick
+    window.goTo = goTo;
+    window._current = 0;
+
+    // ── Touch / swipe ──
+    let tx0 = 0, ty0 = 0;
+
+    document.getElementById('passport').addEventListener('touchstart', function (e) {
+      tx0 = e.touches[0].clientX;
+      ty0 = e.touches[0].clientY;
+    }, { passive: true });
+
+    document.getElementById('passport').addEventListener('touchend', function (e) {
+      const dx = e.changedTouches[0].clientX - tx0;
+      const dy = e.changedTouches[0].clientY - ty0;
+      // Only swipe if horizontal dominates
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+        goTo(current + (dx < 0 ? 1 : -1));
+      }
+    }, { passive: true });
+
+    // ── Keyboard nav ──
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown')  goTo(current + 1);
+      if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')    goTo(current - 1);
+    });
+
+    // Animate stat bars when page 3 becomes visible
+    let p3Animated = false;
+    function maybeAnimateBars() {
+      if (current === 3 && !p3Animated) {
+        p3Animated = true;
+        // bars already at final width in HTML, animation via CSS transition
+      }
+    }
+
+    // Wrap goTo to trigger side effects
+    const _goTo = window.goTo;
+    window.goTo = function (n) {
+      _goTo(n);
+      maybeAnimateBars();
+    };
+
+    // Initial render
+    goTo(pPage || 0);
+  })();
+</script>
+</body>
+</html>

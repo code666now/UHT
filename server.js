@@ -3882,10 +3882,11 @@ app.post('/api/send-founding-card', async (req, res) => {
   const to     = digits.length === 10 ? '+1' + digits
     : digits.length === 11 && digits.startsWith('1') ? '+' + digits : phone;
 
-  const base      = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
-  const imgUrl    = `${base}/test-founding-card.png?name=${encodeURIComponent(safeName)}&number=${encodeURIComponent(safeNumber)}&date=${encodeURIComponent(safeDate)}`;
-  const memberUrl = `${base}/member/${slug}?name=${encodeURIComponent(safeName)}&number=${encodeURIComponent(safeNumber)}&date=${encodeURIComponent(safeDate)}`;
-  const body      = `Welcome to Undeniable Hits, ${safeName}! You're Founding Member #${safeNumber}.\n\nOne of the first 100. Your card is permanent record.\n\nEvery week, one song via text. Vote on your taste.\n\nYour first drop arrives Friday.\n\nPersonalize your card → ${memberUrl}`;
+  const base       = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+  const imgUrl     = `${base}/test-founding-card.png?name=${encodeURIComponent(safeName)}&number=${encodeURIComponent(safeNumber)}&date=${encodeURIComponent(safeDate)}`;
+  const passportUrl = `${base}/member/${slug}?name=${encodeURIComponent(safeName)}&number=${encodeURIComponent(safeNumber)}&date=${encodeURIComponent(safeDate)}`;
+  const cardUrl     = `${base}/card/${slug}?name=${encodeURIComponent(safeName)}&number=${encodeURIComponent(safeNumber)}&date=${encodeURIComponent(safeDate)}`;
+  const body       = `Welcome to Undeniable Hits, ${safeName}! You're Founding Member #${safeNumber}.\n\nOne of the first 100. Your card is permanent record.\n\nEvery week, one song via text. Vote on your taste.\n\nYour first drop arrives Friday.\n\nYour passport → ${passportUrl}`;
 
   try {
     await twilioClient.messages.create({
@@ -3895,14 +3896,22 @@ app.post('/api/send-founding-card', async (req, res) => {
       mediaUrl: [imgUrl],
     });
     console.log(`[FoundingCard] MMS sent to ${to}`);
-    res.json({ ok: true, to, imgUrl, memberUrl });
+    res.json({ ok: true, to, imgUrl, passportUrl, cardUrl });
   } catch(e) {
     console.error('[FoundingCard] MMS error:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
 
-// ── GET /member/:slug — Personal member card page ────────────────────────────
+// ── GET /card/:slug — Public card URL (passport page 0) ──────────────────────
+app.get('/card/:slug', (req, res) => {
+  const name   = (req.query.name   || 'Member').trim();
+  const number = (req.query.number || '001').trim().padStart(3, '0');
+  const date   = (req.query.date   || '').trim();
+  res.redirect(`/passport-demo.html?name=${encodeURIComponent(name)}&number=${encodeURIComponent(number)}&date=${encodeURIComponent(date)}&page=0`);
+});
+
+// ── GET /member/:slug — Private passport (all pages) ─────────────────────────
 app.get('/member/:slug', (req, res) => {
   const slug     = req.params.slug;
   const name     = (req.query.name   || 'Member').trim();
