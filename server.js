@@ -372,7 +372,27 @@ app.get("/admin", requireAdmin, (req, res) => res.sendFile(require("path").join(
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may16-v51' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may16-v52' });
+});
+
+// TEMP — remove after blast
+app.get('/admin/blast-preview-x7k9', async (req, res) => {
+  const { rows } = await db.query(`
+    SELECT id, name, phone, member_number
+    FROM users
+    WHERE member_number IS NOT NULL
+      AND name IS NOT NULL
+      AND name NOT ILIKE 'Unknown%'
+    ORDER BY member_number ASC
+  `);
+  const preview = rows.map(u => {
+    const firstName = (u.name.trim().split(/\s+/)[0].replace(/[^a-zA-Z'-]/g,''));
+    const cardName  = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
+    const num       = String(u.member_number).padStart(3,'0');
+    const msg       = `Hi ${cardName}! This is your Founding 100 card. You showed up early. This is a permanent token of gratitude. #${num}. Thank you for being here from the beginning.`;
+    return { member_number: u.member_number, db_name: u.name, card_name: cardName, number_on_card: num, message_preview: msg, phone: u.phone.slice(-4) };
+  });
+  res.json(preview);
 });
 
 
