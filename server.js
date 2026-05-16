@@ -3782,7 +3782,7 @@ body{
         <div class="field-value-gold">${number}</div>
       </div>
       <div class="field">
-        <div class="field-label">Listener Since</div>
+        <div class="field-label">Member Since</div>
         <div class="field-value">${date}</div>
       </div>
     </div>
@@ -3900,7 +3900,8 @@ app.post('/api/send-founding-card', async (req, res) => {
 
   const safeName   = (name   || 'Peter').trim();
   const safeNumber = (number || '027').trim().padStart(3, '0');
-  const safeDate   = (date   || '05/19/2026').trim();
+  const today      = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  const safeDate   = (date || today).trim();
   const slug       = safeName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + safeNumber;
 
   const digits = phone.replace(/\D/g, '');
