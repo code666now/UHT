@@ -375,17 +375,6 @@ app.get('/health', (req, res) => {
   res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may16-v50' });
 });
 
-// TEMP — remove after use
-app.get('/admin/reorder-peter-x7k9', async (req, res) => {
-  // Peter (id=39) → #027, Unknowns (id=16,19,20) → #028,029,030
-  await db.query(`UPDATE users SET member_number = NULL WHERE id IN (16,19,20,39)`);
-  await db.query(`UPDATE users SET member_number = 27 WHERE id = 39`); // Peter → 027
-  await db.query(`UPDATE users SET member_number = 28 WHERE id = 16`); // Unknown 1 → 028
-  await db.query(`UPDATE users SET member_number = 29 WHERE id = 19`); // Unknown 2 → 029
-  await db.query(`UPDATE users SET member_number = 30 WHERE id = 20`); // Unknown 3 → 030
-  const { rows } = await db.query(`SELECT id, name, member_number FROM users WHERE id IN (16,19,20,39) ORDER BY member_number`);
-  res.json({ ok: true, updated: rows });
-});
 
 
 
