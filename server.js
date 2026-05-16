@@ -3930,6 +3930,8 @@ app.post('/api/send-founding-card', async (req, res) => {
     });
     const page = await browser.newPage();
     await page.goto(cardHtml, { waitUntil: 'networkidle0', timeout: 15000 });
+    // Extra wait for CSS background-images to fully paint
+    await new Promise(r => setTimeout(r, 800));
     const cardEl = await page.$('#card');
     const box    = cardEl ? await cardEl.boundingBox() : null;
     const clip   = box ? { x: box.x, y: box.y, width: box.width, height: box.height } : undefined;
