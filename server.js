@@ -3908,6 +3908,10 @@ app.post('/api/send-founding-card', async (req, res) => {
     : digits.length === 11 && digits.startsWith('1') ? '+' + digits : phone;
 
   const base        = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+  // Railway hosts the generated files — use the Railway URL directly so Twilio
+  // can fetch them. BASE_URL may point to WordPress (undeniablehits.com) which
+  // doesn't have the /generated/ directory.
+  const railwayBase = process.env.RAILWAY_BASE_URL || 'https://uht-app-production.up.railway.app';
   const passportUrl = `${base}/member/${slug}?name=${encodeURIComponent(safeName)}&number=${encodeURIComponent(safeNumber)}&date=${encodeURIComponent(safeDate)}`;
   const cardUrl     = `${base}/card/${slug}?name=${encodeURIComponent(safeName)}&number=${encodeURIComponent(safeNumber)}&date=${encodeURIComponent(safeDate)}`;
   const body        = `Welcome to Undeniable Hits, ${safeName}! You're Founding Member #${safeNumber}.\n\nOne of the first 100. Your card is permanent record.\n\nEvery week, one song via text. Vote on your taste.\n\nYour first drop arrives Friday.`;
@@ -3919,7 +3923,7 @@ app.post('/api/send-founding-card', async (req, res) => {
     const ts       = Date.now();
     const fname    = `${slug}-${ts}.png`;
     const outPath  = require('path').join(__dirname, 'public', 'generated', fname);
-    const cardHtml = `${base}/test-founding-card?name=${encodeURIComponent(safeName)}&number=${encodeURIComponent(safeNumber)}&date=${encodeURIComponent(safeDate)}&puppeteer=1`;
+    const cardHtml = `${railwayBase}/test-founding-card?name=${encodeURIComponent(safeName)}&number=${encodeURIComponent(safeNumber)}&date=${encodeURIComponent(safeDate)}&puppeteer=1`;
 
     const puppeteer = require('puppeteer-core');
     const browser   = await puppeteer.launch({
@@ -3939,7 +3943,7 @@ app.post('/api/send-founding-card', async (req, res) => {
     await browser.close();
 
     require('fs').writeFileSync(outPath, png);
-    imgUrl = `${base}/generated/${fname}`;
+    imgUrl = `${railwayBase}/generated/${fname}`;
     console.log(`[FoundingCard] Generated ${fname}`);
   } catch(genErr) {
     console.error('[FoundingCard] PNG gen error:', genErr.message);
