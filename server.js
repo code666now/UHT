@@ -3644,6 +3644,16 @@ body{
   overflow:hidden;
   box-shadow:0 0 60px rgba(232,184,75,0.08),0 32px 80px rgba(0,0,0,0.9)
 }
+.card-bg{
+  position:absolute;inset:0;
+  background-image:url('/record-store.png');
+  background-size:cover;
+  background-position:center;
+  opacity:0.07;
+  mix-blend-mode:luminosity;
+  pointer-events:none;
+  z-index:0
+}
 
 /* Inner inset border */
 .card::before{
@@ -3661,7 +3671,8 @@ body{
   padding:5px 14px;
   display:flex;
   justify-content:space-between;
-  align-items:center
+  align-items:center;
+  position:relative;z-index:1
 }
 .band-label{font-size:6px;letter-spacing:.55em;text-transform:uppercase;color:#000;font-weight:700}
 .band-num{font-size:10px;letter-spacing:.25em;color:#000;font-weight:700}
@@ -3673,7 +3684,8 @@ body{
   flex-direction:column;
   align-items:center;
   text-align:center;
-  gap:0
+  gap:0;
+  position:relative;z-index:1
 }
 
 /* UHT mark */
@@ -3727,7 +3739,8 @@ body{
   padding:10px 14px;
   border-top:1px solid rgba(232,184,75,0.1);
   display:flex;
-  justify-content:center
+  justify-content:center;
+  position:relative;z-index:1
 }
 .footer-text{font-size:6px;letter-spacing:.5em;text-transform:uppercase;color:rgba(232,184,75,0.3)}
 
@@ -3750,6 +3763,7 @@ body{
 <body>
 
 <div class="card" id="card">
+  <div class="card-bg"></div>
   <div class="card-band">
     <span class="band-label">Founding 100</span>
     <span class="band-num">#${number}</span>
