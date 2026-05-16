@@ -3908,11 +3908,43 @@ app.post('/api/send-founding-card', async (req, res) => {
   const to     = digits.length === 10 ? '+1' + digits
     : digits.length === 11 && digits.startsWith('1') ? '+' + digits : phone;
 
-  const base       = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
-  const imgUrl     = `${base}/test-founding-card.png?name=${encodeURIComponent(safeName)}&number=${encodeURIComponent(safeNumber)}&date=${encodeURIComponent(safeDate)}&t=${Date.now()}`;
+  const base        = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
   const passportUrl = `${base}/member/${slug}?name=${encodeURIComponent(safeName)}&number=${encodeURIComponent(safeNumber)}&date=${encodeURIComponent(safeDate)}`;
   const cardUrl     = `${base}/card/${slug}?name=${encodeURIComponent(safeName)}&number=${encodeURIComponent(safeNumber)}&date=${encodeURIComponent(safeDate)}`;
-  const body       = `Welcome to Undeniable Hits, ${safeName}! You're Founding Member #${safeNumber}.\n\nOne of the first 100. Your card is permanent record.\n\nEvery week, one song via text. Vote on your taste.\n\nYour first drop arrives Friday.`;
+  const body        = `Welcome to Undeniable Hits, ${safeName}! You're Founding Member #${safeNumber}.\n\nOne of the first 100. Your card is permanent record.\n\nEvery week, one song via text. Vote on your taste.\n\nYour first drop arrives Friday.`;
+
+  // Generate PNG via Puppeteer and save with a unique timestamped filename
+  // so Twilio always fetches a fresh image (it caches by path, not query params)
+  let imgUrl;
+  try {
+    const ts       = Date.now();
+    const fname    = `${slug}-${ts}.png`;
+    const outPath  = require('path').join(__dirname, 'public', 'generated', fname);
+    const cardHtml = `${base}/test-founding-card?name=${encodeURIComponent(safeName)}&number=${encodeURIComponent(safeNumber)}&date=${encodeURIComponent(safeDate)}&puppeteer=1`;
+
+    const puppeteer = require('puppeteer-core');
+    const browser   = await puppeteer.launch({
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+      defaultViewport: { width: 640, height: 900, deviceScaleFactor: 2 },
+      executablePath: process.env.CHROMIUM_EXECUTABLE_PATH || '/usr/bin/chromium',
+      headless: true,
+    });
+    const page = await browser.newPage();
+    await page.goto(cardHtml, { waitUntil: 'networkidle0', timeout: 15000 });
+    const cardEl = await page.$('#card');
+    const box    = cardEl ? await cardEl.boundingBox() : null;
+    const clip   = box ? { x: box.x, y: box.y, width: box.width, height: box.height } : undefined;
+    const png    = await page.screenshot({ type: 'png', clip });
+    await browser.close();
+
+    require('fs').writeFileSync(outPath, png);
+    imgUrl = `${base}/generated/${fname}`;
+    console.log(`[FoundingCard] Generated ${fname}`);
+  } catch(genErr) {
+    console.error('[FoundingCard] PNG gen error:', genErr.message);
+    // Fallback to dynamic URL if generation fails
+    imgUrl = `${base}/test-founding-card.png?name=${encodeURIComponent(safeName)}&number=${encodeURIComponent(safeNumber)}&date=${encodeURIComponent(safeDate)}&t=${Date.now()}`;
+  }
 
   try {
     await twilioClient.messages.create({
