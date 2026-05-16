@@ -375,12 +375,6 @@ app.get('/health', (req, res) => {
   res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may16-v50' });
 });
 
-// TEMP read-only check — remove after verifying
-app.get('/admin/check-members-x7k9', async (req, res) => {
-  const { rows } = await db.query(`SELECT id, name, member_number, member_tier, taste_token IS NOT NULL as has_token FROM users ORDER BY member_number ASC NULLS LAST`);
-  res.json(rows);
-});
-
 
 
 // ── POST /api/admin/backfill-members — run member backfill on Railway DB ─────
