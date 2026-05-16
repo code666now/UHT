@@ -2513,6 +2513,60 @@ app.post('/api/subscribe', async (req, res) => {
       } catch (smsErr) {
         console.error('[Subscribe] Failed to send opt-in SMS:', smsErr.message);
       }
+
+      // ── Send Founding 100 card MMS for members 1–100 ──────────────────────
+      if (member_number && member_number <= 100) {
+        // Sanitize name: first word only, letters only, title-cased, fallback "Member"
+        const rawName    = (name || '').trim();
+        const firstName  = rawName.split(/\s+/)[0].replace(/[^a-zA-Z'-]/g, '');
+        const cardName   = firstName
+          ? firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase()
+          : 'Member';
+        const cardNumber = String(member_number).padStart(3, '0');
+        const cardDate   = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+        const cardSlug   = cardName.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + cardNumber;
+
+        // Fire-and-forget — don't block the subscribe response
+        (async () => {
+          try {
+            const railwayBase = process.env.RAILWAY_BASE_URL || 'https://uht-app-production.up.railway.app';
+            const ts          = Date.now();
+            const fname       = `${cardSlug}-${ts}.png`;
+            const outPath     = require('path').join(__dirname, 'public', 'generated', fname);
+            const cardHtml    = `${railwayBase}/test-founding-card?name=${encodeURIComponent(cardName)}&number=${encodeURIComponent(cardNumber)}&date=${encodeURIComponent(cardDate)}&puppeteer=1`;
+
+            const puppeteer = require('puppeteer-core');
+            const browser   = await puppeteer.launch({
+              args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+              defaultViewport: { width: 640, height: 900, deviceScaleFactor: 2 },
+              executablePath: process.env.CHROMIUM_EXECUTABLE_PATH || '/usr/bin/chromium',
+              headless: true,
+            });
+            const page = await browser.newPage();
+            await page.goto(cardHtml, { waitUntil: 'networkidle0', timeout: 15000 });
+            await new Promise(r => setTimeout(r, 800));
+            const cardEl = await page.$('#card');
+            const box    = cardEl ? await cardEl.boundingBox() : null;
+            const clip   = box ? { x: box.x, y: box.y, width: box.width, height: box.height } : undefined;
+            const png    = await page.screenshot({ type: 'png', clip });
+            await browser.close();
+            require('fs').writeFileSync(outPath, png);
+
+            const imgUrl  = `${railwayBase}/generated/${fname}`;
+            const mmsBody = `Welcome to Undeniable Hits, ${cardName}! You're Founding Member #${cardNumber}.\n\nOne of the first 100. Your card is permanent record.\n\nEvery week, one song via text. Vote on your taste.\n\nYour first drop arrives Friday.`;
+            await twilioClient.messages.create({
+              from: process.env.TWILIO_FROM || process.env.TWILIO_PHONE_NUMBER,
+              to: normalPhone,
+              body: mmsBody,
+              mediaUrl: [imgUrl],
+            });
+            console.log(`[FoundingCard] Auto-sent card to ${normalPhone} (member #${member_number})`);
+          } catch (cardErr) {
+            console.error('[FoundingCard] Auto-send error:', cardErr.message);
+          }
+        })();
+      }
+      // ──────────────────────────────────────────────────────────────────────
     }
 
     res.json({
