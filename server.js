@@ -3894,7 +3894,7 @@ app.post('/api/send-founding-card', async (req, res) => {
     : digits.length === 11 && digits.startsWith('1') ? '+' + digits : phone;
 
   const base       = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
-  const imgUrl     = `${base}/test-founding-card.png?name=${encodeURIComponent(safeName)}&number=${encodeURIComponent(safeNumber)}&date=${encodeURIComponent(safeDate)}`;
+  const imgUrl     = `${base}/test-founding-card.png?name=${encodeURIComponent(safeName)}&number=${encodeURIComponent(safeNumber)}&date=${encodeURIComponent(safeDate)}&t=${Date.now()}`;
   const passportUrl = `${base}/member/${slug}?name=${encodeURIComponent(safeName)}&number=${encodeURIComponent(safeNumber)}&date=${encodeURIComponent(safeDate)}`;
   const cardUrl     = `${base}/card/${slug}?name=${encodeURIComponent(safeName)}&number=${encodeURIComponent(safeNumber)}&date=${encodeURIComponent(safeDate)}`;
   const body       = `Welcome to Undeniable Hits, ${safeName}! You're Founding Member #${safeNumber}.\n\nOne of the first 100. Your card is permanent record.\n\nEvery week, one song via text. Vote on your taste.\n\nYour first drop arrives Friday.`;
