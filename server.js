@@ -372,7 +372,7 @@ app.get("/admin", requireAdmin, (req, res) => res.sendFile(require("path").join(
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may13-v49' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may16-v50' });
 });
 
 
@@ -3861,7 +3861,7 @@ app.post('/api/send-founding-card', async (req, res) => {
 
   const base   = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
   const imgUrl = `${base}/test-founding-card.png?name=${encodeURIComponent(safeName)}&number=${encodeURIComponent(safeNumber)}&date=${encodeURIComponent(safeDate)}`;
-  const body   = `${safeName}, you're Founding Member #${safeNumber}.\n\nYour UHT Music Lover card is here. Weekly drops. HIT or DENIED. Permanent record.\n\nUndeniable Hit Theory`;
+  const body   = `Welcome to Undeniable Hits, ${safeName}. You're Founding Member #${safeNumber}.\n\nOne of the first 100. Your card is permanent record.\n\nEvery week, one song via text. Vote on your taste.`;
 
   try {
     await twilioClient.messages.create({
