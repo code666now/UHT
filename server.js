@@ -3646,11 +3646,10 @@ body{
 }
 .card-bg{
   position:absolute;inset:0;
-  background-image:url('${base}/record-store.png');
+  background-image:url('${base}/vinyl-bg.png');
   background-size:cover;
   background-position:center;
-  opacity:0.30;
-  mix-blend-mode:luminosity;
+  opacity:0.38;
   pointer-events:none;
   z-index:0
 }
@@ -3699,13 +3698,13 @@ body{
 
 /* Name */
 .card-name{
-  font-size:34px;
+  font-size:42px;
   color:#fff;
-  letter-spacing:.08em;
+  letter-spacing:.06em;
   text-transform:uppercase;
   line-height:1;
   margin-bottom:6px;
-  text-shadow:0 0 30px rgba(232,184,75,0.2)
+  text-shadow:0 2px 40px rgba(0,0,0,0.9),0 0 60px rgba(232,184,75,0.25)
 }
 
 /* Divider line */
