@@ -377,7 +377,7 @@ app.get('/health', (req, res) => {
 
 // TEMP — remove after use
 app.get('/admin/unnumbered-x7k9', async (req, res) => {
-  const { rows } = await db.query(`SELECT id, name, phone, created_at FROM users WHERE member_number IS NULL ORDER BY created_at ASC`);
+  const { rows } = await db.query(`SELECT id, name, phone, member_number, member_tier FROM users ORDER BY member_number ASC NULLS LAST`);
   res.json(rows);
 });
 
