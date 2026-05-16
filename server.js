@@ -4033,17 +4033,32 @@ function downloadCard() {
 }
 
 function shareCard() {
-  if (navigator.share) {
-    navigator.share({
-      title: name + ' · Founding Member #' + number + ' · Undeniable Hits',
-      url: pageUrl
-    }).catch(function(){});
-  } else {
-    navigator.clipboard.writeText(pageUrl).then(function(){
-      document.getElementById('status').textContent = 'Link copied';
-      setTimeout(function(){ document.getElementById('status').textContent = ''; }, 2000);
-    });
-  }
+  var status = document.getElementById('status');
+  status.textContent = 'Preparing…';
+  fetch(cardPngUrl + '&t=' + Date.now())
+    .then(function(r){ return r.blob(); })
+    .then(function(blob){
+      var file = new File([blob], name.toLowerCase() + '-founding-card.png', { type: 'image/png' });
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        status.textContent = '';
+        return navigator.share({
+          files: [file],
+          title: name + ' · Founding Member #' + number + ' · Undeniable Hits',
+        });
+      } else if (navigator.share) {
+        status.textContent = '';
+        return navigator.share({
+          title: name + ' · Founding Member #' + number + ' · Undeniable Hits',
+          url: pageUrl
+        });
+      } else {
+        // Desktop fallback — copy link
+        navigator.clipboard.writeText(pageUrl);
+        status.textContent = 'Link copied';
+        setTimeout(function(){ status.textContent = ''; }, 2000);
+      }
+    })
+    .catch(function(){ status.textContent = ''; });
 }
 
 function uploadPhoto(input) {
