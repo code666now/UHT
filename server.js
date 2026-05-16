@@ -3693,18 +3693,19 @@ body{
   font-size:9px;
   letter-spacing:.55em;
   text-transform:uppercase;
-  color:rgba(232,184,75,0.5);
+  color:#E8B84B;
   margin-bottom:28px
 }
 
 /* Name */
 .card-name{
-  font-size:32px;
-  color:#f3f1ea;
-  letter-spacing:.06em;
+  font-size:34px;
+  color:#fff;
+  letter-spacing:.08em;
   text-transform:uppercase;
   line-height:1;
-  margin-bottom:6px
+  margin-bottom:6px;
+  text-shadow:0 0 30px rgba(232,184,75,0.2)
 }
 
 /* Divider line */
@@ -3723,8 +3724,8 @@ body{
   gap:14px
 }
 .field{display:flex;flex-direction:column;gap:3px;align-items:center}
-.field-label{font-size:6px;letter-spacing:.5em;text-transform:uppercase;color:rgba(243,241,234,0.3)}
-.field-value{font-size:13px;color:#f3f1ea;letter-spacing:.12em}
+.field-label{font-size:7px;letter-spacing:.5em;text-transform:uppercase;color:rgba(243,241,234,0.75)}
+.field-value{font-size:14px;color:#fff;letter-spacing:.12em;font-weight:bold}
 .field-value-gold{font-size:18px;color:#E8B84B;letter-spacing:.15em}
 
 /* Shimmer */
