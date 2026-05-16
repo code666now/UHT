@@ -372,7 +372,7 @@ app.get("/admin", requireAdmin, (req, res) => res.sendFile(require("path").join(
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may16-v50' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may16-v51' });
 });
 
 
