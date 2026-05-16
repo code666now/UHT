@@ -375,48 +375,6 @@ app.get('/health', (req, res) => {
   res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may16-v50' });
 });
 
-// ── TEMP: one-time member number backfill — DELETE AFTER USE ─────────────────
-app.get('/admin/backfill-members-x7k9', async (req, res) => {
-  const assignments = [
-    { id: 23, member_number:  1, member_tier: 'FIRST 100' },
-    { id:  1, member_number:  2, member_tier: 'FIRST 100' },
-    { id:  7, member_number:  3, member_tier: 'FIRST 100' },
-    { id:  6, member_number:  4, member_tier: 'FIRST 100' },
-    { id: 12, member_number:  5, member_tier: 'FIRST 100' },
-    { id: 13, member_number:  6, member_tier: 'FIRST 100' },
-    { id: 15, member_number:  7, member_tier: 'FIRST 100' },
-    { id: 18, member_number:  8, member_tier: 'FIRST 100' },
-    { id:  3, member_number:  9, member_tier: 'FIRST 100' },
-    { id:  4, member_number: 10, member_tier: 'FIRST 100' },
-    { id:  5, member_number: 11, member_tier: 'FIRST 100' },
-    { id:  8, member_number: 12, member_tier: 'FIRST 100' },
-    { id:  9, member_number: 13, member_tier: 'FIRST 100' },
-    { id: 10, member_number: 14, member_tier: 'FIRST 100' },
-    { id: 11, member_number: 15, member_tier: 'FIRST 100' },
-    { id: 14, member_number: 16, member_tier: 'FIRST 100' },
-    { id: 17, member_number: 17, member_tier: 'FIRST 100' },
-    { id:  2, member_number: 18, member_tier: 'FIRST 100' },
-    { id: 28, member_number: 19, member_tier: 'FIRST 100', name: 'Elaine S.' },
-    { id: 29, member_number: 20, member_tier: 'FIRST 100' },
-    { id: 30, member_number: 21, member_tier: 'FIRST 100' },
-    { id: 31, member_number: 22, member_tier: 'FIRST 100' },
-    { id: 32, member_number: 23, member_tier: 'FIRST 100' },
-    { id: 34, member_number: 24, member_tier: 'FIRST 100' },
-    { id: 33, member_number: 25, member_tier: 'FIRST 100' },
-    { id: 38, member_number: 26, member_tier: 'FIRST 100' },
-  ];
-  const results = [];
-  for (const a of assignments) {
-    if (a.name) {
-      await db.query(`UPDATE users SET member_number=$1, member_tier=$2, name=$3 WHERE id=$4`, [a.member_number, a.member_tier, a.name, a.id]);
-    } else {
-      await db.query(`UPDATE users SET member_number=$1, member_tier=$2 WHERE id=$3`, [a.member_number, a.member_tier, a.id]);
-    }
-    results.push(`#${String(a.member_number).padStart(3,'0')} → user ${a.id}${a.name ? ' (renamed: '+a.name+')' : ''}`);
-  }
-  res.json({ ok: true, results });
-});
-// ── END TEMP ──────────────────────────────────────────────────────────────────
 
 
 // ── POST /api/admin/backfill-members — run member backfill on Railway DB ─────
