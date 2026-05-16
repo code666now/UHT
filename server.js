@@ -3014,7 +3014,87 @@ app.post('/api/verify_code', async (req, res) => {
       }
     }
 
-    res.json({ ok: true, status: 'approved', is_new: !user.name && !genre_id && !curator_id ? undefined : true, taste_token: user.taste_token || null });
+    // ── Assign member_number + taste_token if not yet set ────────────────────
+    let memberNumber = user.member_number;
+    let tasteToken   = user.taste_token;
+    if (!memberNumber || !tasteToken) {
+      const tokenUpdates = {};
+      if (!memberNumber) {
+        const { rows: mx } = await db.query(
+          `SELECT COALESCE(MAX(member_number),0) AS m FROM users WHERE member_number IS NOT NULL`
+        );
+        tokenUpdates.member_number = mx[0].m + 1;
+      }
+      if (!tasteToken) {
+        tokenUpdates.taste_token = require('crypto').randomBytes(8).toString('hex');
+      }
+      const effectiveNum = memberNumber || tokenUpdates.member_number;
+      if (!user.member_tier && effectiveNum <= 100) tokenUpdates.member_tier = 'FIRST 100';
+      const setClauses = Object.keys(tokenUpdates).map((k, i) => `${k}=$${i + 1}`).join(', ');
+      await db.query(
+        `UPDATE users SET ${setClauses} WHERE id=$${Object.keys(tokenUpdates).length + 1}`,
+        [...Object.values(tokenUpdates), user.id]
+      );
+      memberNumber = memberNumber || tokenUpdates.member_number;
+      tasteToken   = tasteToken   || tokenUpdates.taste_token;
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // ── Auto-send Founding 100 card for members 1–100 (fire-and-forget) ──────
+    const isNewUser = !user.member_number; // was just assigned above = brand new
+    if (isNewUser && memberNumber && memberNumber <= 100) {
+      const rawName   = (name || '').trim();
+      const firstName = rawName.split(/\s+/)[0].replace(/[^a-zA-Z'-]/g, '');
+      const cardName  = firstName
+        ? firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase()
+        : 'Member';
+      const cardNumber = String(memberNumber).padStart(3, '0');
+      const cardDate   = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+      const cardSlug   = cardName.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + cardNumber;
+
+      (async () => {
+        try {
+          const railwayBase = process.env.RAILWAY_BASE_URL || 'https://uht-app-production.up.railway.app';
+          const ts       = Date.now();
+          const fname    = `${cardSlug}-${ts}.png`;
+          const outPath  = require('path').join(__dirname, 'public', 'generated', fname);
+          const cardHtml = `${railwayBase}/test-founding-card?name=${encodeURIComponent(cardName)}&number=${encodeURIComponent(cardNumber)}&date=${encodeURIComponent(cardDate)}&puppeteer=1`;
+
+          const puppeteer = require('puppeteer-core');
+          const browser   = await puppeteer.launch({
+            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+            defaultViewport: { width: 640, height: 900, deviceScaleFactor: 2 },
+            executablePath: process.env.CHROMIUM_EXECUTABLE_PATH || '/usr/bin/chromium',
+            headless: true,
+          });
+          const page = await browser.newPage();
+          await page.goto(cardHtml, { waitUntil: 'networkidle0', timeout: 15000 });
+          await new Promise(r => setTimeout(r, 800));
+          const cardEl = await page.$('#card');
+          const box    = cardEl ? await cardEl.boundingBox() : null;
+          const clip   = box ? { x: box.x, y: box.y, width: box.width, height: box.height } : undefined;
+          const png    = await page.screenshot({ type: 'png', clip });
+          await browser.close();
+          require('fs').writeFileSync(outPath, png);
+
+          const imgUrl  = `${railwayBase}/generated/${fname}`;
+          const mmsBody = `Welcome to Undeniable Hits, ${cardName}! You're Founding Member #${cardNumber}.\n\nOne of the first 100. Your card is permanent record.\n\nEvery week, one song via text. Vote on your taste.\n\nYour first drop arrives Friday.`;
+          const twilioC = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+          await twilioC.messages.create({
+            from: process.env.TWILIO_FROM || process.env.TWILIO_PHONE_NUMBER,
+            to: normalPhone,
+            body: mmsBody,
+            mediaUrl: [imgUrl],
+          });
+          console.log(`[FoundingCard] Auto-sent via verify_code to ${normalPhone} (member #${memberNumber})`);
+        } catch (cardErr) {
+          console.error('[FoundingCard] verify_code auto-send error:', cardErr.message);
+        }
+      })();
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
+    res.json({ ok: true, status: 'approved', is_new: isNewUser, taste_token: tasteToken || null, member_number: memberNumber || null });
   } catch (err) {
     console.error('verify_code error:', err.message);
     res.status(500).json({ error: err.message });
