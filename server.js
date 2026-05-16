@@ -375,6 +375,12 @@ app.get('/health', (req, res) => {
   res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may16-v50' });
 });
 
+// TEMP — remove after use
+app.get('/admin/unnumbered-x7k9', async (req, res) => {
+  const { rows } = await db.query(`SELECT id, name, phone, created_at FROM users WHERE member_number IS NULL ORDER BY created_at ASC`);
+  res.json(rows);
+});
+
 
 
 // ── POST /api/admin/backfill-members — run member backfill on Railway DB ─────
