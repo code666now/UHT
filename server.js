@@ -3603,6 +3603,281 @@ app.get('/curator/:slug/card.png', async (req, res) => {
   }
 });
 
+// ══════════════════════════════════════════════════════════════════════════════
+// UHT FOUNDING 100 — Member Card Generator (v1)
+// GET /test-founding-card?name=Peter&number=027&date=05/19/2026
+// ══════════════════════════════════════════════════════════════════════════════
+app.get('/test-founding-card', (req, res) => {
+  const name   = (req.query.name   || 'Peter').trim();
+  const number = (req.query.number || '027').trim().padStart(3, '0');
+  const date   = (req.query.date   || '05/19/2026').trim();
+  const base   = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+  const pngUrl = `${base}/test-founding-card.png?name=${encodeURIComponent(name)}&number=${encodeURIComponent(number)}&date=${encodeURIComponent(date)}`;
+
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${name} · Founding 100 · UHT</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0a;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 16px;font-family:Georgia,'Times New Roman',serif;gap:20px}
+
+/* ── Card ── */
+.card{
+  width:340px;
+  background:#000;
+  border:1.5px solid #E8B84B;
+  border-radius:3px;
+  overflow:hidden;
+  position:relative;
+  box-shadow:0 0 50px rgba(232,184,75,0.18),0 24px 64px rgba(0,0,0,0.7)
+}
+
+/* Top band */
+.top-band{
+  background:#E8B84B;
+  padding:7px 14px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center
+}
+.top-label{font-size:7px;letter-spacing:.45em;text-transform:uppercase;color:#000;font-weight:700}
+.top-num{font-size:12px;letter-spacing:.2em;color:#000;font-weight:700}
+
+/* Hero block */
+.hero{
+  padding:28px 20px 22px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+  border-bottom:1px solid rgba(232,184,75,0.15);
+  position:relative
+}
+.hero-icon{
+  width:70px;height:70px;border-radius:50%;
+  background:rgba(232,184,75,0.08);
+  border:1.5px solid rgba(232,184,75,0.3);
+  display:flex;align-items:center;justify-content:center;
+  font-size:28px;margin-bottom:14px
+}
+.member-name{font-size:28px;color:#f3f1ea;letter-spacing:.02em;line-height:1.1;margin-bottom:4px}
+.member-tag{font-size:8px;letter-spacing:.35em;text-transform:uppercase;color:rgba(243,241,234,0.4)}
+
+/* Number block */
+.number-block{
+  padding:16px 20px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  border-bottom:1px solid rgba(232,184,75,0.15)
+}
+.num-group{display:flex;flex-direction:column;gap:3px}
+.num-label{font-size:7px;letter-spacing:.35em;text-transform:uppercase;color:rgba(243,241,234,0.35)}
+.num-value{font-size:22px;color:#E8B84B;letter-spacing:.1em}
+.since-group{display:flex;flex-direction:column;gap:3px;text-align:right}
+.since-label{font-size:7px;letter-spacing:.35em;text-transform:uppercase;color:rgba(243,241,234,0.35)}
+.since-value{font-size:13px;color:#f3f1ea;letter-spacing:.06em}
+
+/* Perks block */
+.perks-block{padding:14px 20px;border-bottom:1px solid rgba(232,184,75,0.15)}
+.perks-label{font-size:7px;letter-spacing:.35em;text-transform:uppercase;color:rgba(243,241,234,0.3);margin-bottom:10px}
+.perk-row{display:flex;align-items:center;gap:8px;padding:4px 0}
+.perk-dot{width:5px;height:5px;border-radius:50%;background:#E8B84B;flex-shrink:0}
+.perk-text{font-size:10px;color:rgba(243,241,234,0.6);letter-spacing:.04em}
+
+/* Footer */
+.card-footer{
+  padding:8px 20px;
+  display:flex;
+  justify-content:center;
+  background:rgba(232,184,75,0.04)
+}
+.footer-text{font-size:7px;letter-spacing:.45em;text-transform:uppercase;color:rgba(232,184,75,0.45)}
+
+/* Holographic shimmer stripe */
+.shimmer{
+  position:absolute;top:0;right:0;bottom:0;
+  width:60px;
+  background:linear-gradient(135deg,transparent 0%,rgba(232,184,75,0.04) 40%,rgba(255,255,255,0.06) 50%,rgba(232,184,75,0.04) 60%,transparent 100%);
+  pointer-events:none
+}
+
+/* Actions */
+.actions{display:flex;gap:10px;width:340px}
+.btn{flex:1;padding:13px;border:1px solid rgba(232,184,75,0.4);background:transparent;color:#f3f1ea;font-family:Georgia,serif;font-size:11px;letter-spacing:.2em;text-transform:uppercase;cursor:pointer;transition:all .2s}
+.btn:hover{background:rgba(232,184,75,0.08);border-color:#E8B84B}
+.btn-gold{background:#E8B84B;color:#000;border-color:#E8B84B;font-weight:700}
+.btn-gold:hover{background:#d4a73c}
+.copy-msg{font-size:10px;letter-spacing:.15em;color:rgba(232,184,75,0.6);text-align:center;height:14px}
+</style>
+</head>
+<body>
+
+<div class="card" id="card">
+  <div class="top-band">
+    <span class="top-label">Founding 100 · UHT</span>
+    <span class="top-num">#${number}</span>
+  </div>
+
+  <div class="hero">
+    <div class="hero-icon">🎧</div>
+    <div class="member-name">${name}</div>
+    <div class="member-tag">Music Lover · Founding Member</div>
+    <div class="shimmer"></div>
+  </div>
+
+  <div class="number-block">
+    <div class="num-group">
+      <div class="num-label">Music Lover No.</div>
+      <div class="num-value">#${number}</div>
+    </div>
+    <div class="since-group">
+      <div class="since-label">Listener Since</div>
+      <div class="since-value">${date}</div>
+    </div>
+  </div>
+
+  <div class="perks-block">
+    <div class="perks-label">Founding Access</div>
+    <div class="perk-row"><div class="perk-dot"></div><div class="perk-text">Weekly song drops — curated picks</div></div>
+    <div class="perk-row"><div class="perk-dot"></div><div class="perk-text">HIT or DENIED voting rights</div></div>
+    <div class="perk-row"><div class="perk-dot"></div><div class="perk-text">First 100 members · permanent record</div></div>
+  </div>
+
+  <div class="card-footer">
+    <span class="footer-text">Undeniable Hit Theory</span>
+  </div>
+</div>
+
+<div class="actions">
+  <button class="btn btn-gold" onclick="saveCard()">↓ Save Card</button>
+  <button class="btn" onclick="shareCard()">↑ Share</button>
+</div>
+<div class="copy-msg" id="copyMsg"></div>
+
+<script>
+var pngUrl = '${pngUrl}';
+var memberName = '${name}';
+
+function saveCard() {
+  var btn = document.querySelector('.btn-gold');
+  btn.textContent = 'Generating…';
+  btn.disabled = true;
+  fetch(pngUrl)
+    .then(function(r){ if(!r.ok) throw new Error('Failed'); return r.blob(); })
+    .then(function(blob){
+      var a = document.createElement('a');
+      a.download = memberName.toLowerCase() + '-founding-card.png';
+      a.href = URL.createObjectURL(blob);
+      a.click();
+      btn.textContent = '↓ Save Card';
+      btn.disabled = false;
+    })
+    .catch(function(){
+      btn.textContent = '↓ Save Card';
+      btn.disabled = false;
+    });
+}
+
+function shareCard() {
+  var pageUrl = window.location.href;
+  if (navigator.share) {
+    navigator.share({ title: memberName + ' · Founding 100 · UHT', url: pageUrl }).catch(function(){});
+  } else {
+    navigator.clipboard.writeText(pageUrl).then(function(){
+      document.getElementById('copyMsg').textContent = 'Link copied';
+      setTimeout(function(){ document.getElementById('copyMsg').textContent = ''; }, 2000);
+    });
+  }
+}
+</script>
+</body>
+</html>`);
+});
+
+// ── GET /test-founding-card.png — Puppeteer PNG of the founding card ─────────
+app.get('/test-founding-card.png', async (req, res) => {
+  const name   = (req.query.name   || 'Peter').trim();
+  const number = (req.query.number || '027').trim().padStart(3, '0');
+  const date   = (req.query.date   || '05/19/2026').trim();
+
+  // Slug for filename: "peter-027"
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const filename = `${slug}-${number}.png`;
+  const outPath  = require('path').join(__dirname, 'public', 'generated', filename);
+
+  try {
+    const base    = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+    const cardUrl = `${base}/test-founding-card?name=${encodeURIComponent(name)}&number=${encodeURIComponent(number)}&date=${encodeURIComponent(date)}&puppeteer=1`;
+
+    const puppeteer = require('puppeteer-core');
+    const browser   = await puppeteer.launch({
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+      defaultViewport: { width: 640, height: 900, deviceScaleFactor: 2 },
+      executablePath: process.env.CHROMIUM_EXECUTABLE_PATH || '/usr/bin/chromium',
+      headless: true,
+    });
+
+    const page = await browser.newPage();
+    await page.goto(cardUrl, { waitUntil: 'networkidle0', timeout: 15000 });
+
+    const cardEl = await page.$('#card');
+    const box    = cardEl ? await cardEl.boundingBox() : null;
+    const clip   = box
+      ? { x: box.x, y: box.y, width: box.width, height: box.height }
+      : undefined;
+
+    const png = await page.screenshot({ type: 'png', clip });
+    await browser.close();
+
+    // Save to disk for MMS reuse
+    require('fs').writeFileSync(outPath, png);
+    console.log(`[FoundingCard] Saved ${filename}`);
+
+    res.set('Content-Type', 'image/png');
+    res.set('Cache-Control', 'public, max-age=60');
+    res.send(png);
+  } catch(e) {
+    console.error('/test-founding-card.png error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── POST /api/send-founding-card — Send MMS to a phone number ────────────────
+app.post('/api/send-founding-card', async (req, res) => {
+  const { phone, name, number, date } = req.body;
+  if (!phone) return res.status(400).json({ error: 'phone required' });
+
+  const safeName   = (name   || 'Peter').trim();
+  const safeNumber = (number || '027').trim().padStart(3, '0');
+  const safeDate   = (date   || '05/19/2026').trim();
+
+  const digits = phone.replace(/\D/g, '');
+  const to     = digits.length === 10 ? '+1' + digits
+    : digits.length === 11 && digits.startsWith('1') ? '+' + digits : phone;
+
+  const base   = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+  const imgUrl = `${base}/test-founding-card.png?name=${encodeURIComponent(safeName)}&number=${encodeURIComponent(safeNumber)}&date=${encodeURIComponent(safeDate)}`;
+  const body   = `${safeName}, you're Founding Member #${safeNumber}.\n\nYour UHT Music Lover card is here. Weekly drops. HIT or DENIED. Permanent record.\n\nUndeniable Hit Theory`;
+
+  try {
+    await twilioClient.messages.create({
+      from: process.env.TWILIO_FROM || process.env.TWILIO_PHONE_NUMBER,
+      to,
+      body,
+      mediaUrl: [imgUrl],
+    });
+    console.log(`[FoundingCard] MMS sent to ${to}`);
+    res.json({ ok: true, to, imgUrl });
+  } catch(e) {
+    console.error('[FoundingCard] MMS error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── GET /curator/:slug — Curator intro page (Friday teaser, no song) ─────────
 // Hardcoded fallback data for known curators — renders instantly even if DB is
 // slow or unreachable (common on cellular / Railway cold-start). Real DB data
