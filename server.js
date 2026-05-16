@@ -3646,7 +3646,7 @@ body{
 }
 .card-bg{
   position:absolute;inset:0;
-  background-image:url('/record-store.png');
+  background-image:url('${base}/record-store.png');
   background-size:cover;
   background-position:center;
   opacity:0.07;
