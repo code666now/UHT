@@ -3868,7 +3868,7 @@ app.get('/test-founding-card.png', async (req, res) => {
 
     // Save to disk for MMS reuse
     require('fs').writeFileSync(outPath, png);
-    console.log(`[FoundingCard] Saved ${filename}`);
+    console.log(`[FoundingCard] Saved ${slug}.png`);
 
     res.set('Content-Type', 'image/png');
     res.set('Cache-Control', 'public, max-age=60');
