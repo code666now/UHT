@@ -3612,206 +3612,222 @@ app.get('/test-founding-card', (req, res) => {
   const number = (req.query.number || '027').trim().padStart(3, '0');
   const date   = (req.query.date   || '05/19/2026').trim();
   const base   = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
-
-  // Resolve slug — use explicit slug param if provided (from member page), else derive
-  const slug = req.query.slug
-    ? req.query.slug
-    : name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + number;
-
-  // Check for uploaded photo
-  const fs   = require('fs');
-  const path = require('path');
-  const exts = ['jpg', 'jpeg', 'png', 'webp'];
-  let photoUrl = '';
-  for (const ext of exts) {
-    if (fs.existsSync(path.join(__dirname, 'public', 'generated', `${slug}-photo.${ext}`))) {
-      photoUrl = `${base}/generated/${slug}-photo.${ext}`;
-      break;
-    }
-  }
-
-  const pngUrl = `${base}/test-founding-card.png?name=${encodeURIComponent(name)}&number=${encodeURIComponent(number)}&date=${encodeURIComponent(date)}&slug=${encodeURIComponent(slug)}`;
+  const slug   = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + number;
+  const pngUrl = `${base}/test-founding-card.png?name=${encodeURIComponent(name)}&number=${encodeURIComponent(number)}&date=${encodeURIComponent(date)}`;
 
   res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${name} · Founding 100 · UHT</title>
+<title>${name} · Founding 100 · Undeniable Hits</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#0a0a0a;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 16px;font-family:Georgia,'Times New Roman',serif;gap:20px}
+body{
+  background:#000;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:40px 16px;
+  font-family:Georgia,'Times New Roman',serif;
+  gap:24px
+}
 
 /* ── Card ── */
 .card{
-  width:340px;
+  width:320px;
   background:#000;
-  border:1.5px solid #E8B84B;
-  border-radius:3px;
-  overflow:hidden;
+  border:1px solid rgba(232,184,75,0.6);
   position:relative;
-  box-shadow:0 0 50px rgba(232,184,75,0.18),0 24px 64px rgba(0,0,0,0.7)
+  overflow:hidden;
+  box-shadow:0 0 60px rgba(232,184,75,0.08),0 32px 80px rgba(0,0,0,0.9)
 }
 
-/* Top band */
-.top-band{
+/* Inner inset border */
+.card::before{
+  content:'';
+  position:absolute;
+  inset:5px;
+  border:1px solid rgba(232,184,75,0.15);
+  pointer-events:none;
+  z-index:1
+}
+
+/* Gold header band */
+.card-band{
   background:#E8B84B;
-  padding:7px 14px;
+  padding:5px 14px;
   display:flex;
   justify-content:space-between;
   align-items:center
 }
-.top-label{font-size:7px;letter-spacing:.45em;text-transform:uppercase;color:#000;font-weight:700}
-.top-num{font-size:12px;letter-spacing:.2em;color:#000;font-weight:700}
+.band-label{font-size:6px;letter-spacing:.55em;text-transform:uppercase;color:#000;font-weight:700}
+.band-num{font-size:10px;letter-spacing:.25em;color:#000;font-weight:700}
 
-/* Hero block */
-.hero{
-  padding:28px 20px 22px;
+/* Main body */
+.card-body{
+  padding:36px 24px 28px;
   display:flex;
   flex-direction:column;
   align-items:center;
   text-align:center;
-  border-bottom:1px solid rgba(232,184,75,0.15);
-  position:relative
+  gap:0
 }
-.hero-icon{
-  width:70px;height:70px;border-radius:50%;
-  background:rgba(232,184,75,0.08);
-  border:1.5px solid rgba(232,184,75,0.3);
-  display:flex;align-items:center;justify-content:center;
-  font-size:28px;margin-bottom:14px
-}
-.member-name{font-size:28px;color:#f3f1ea;letter-spacing:.02em;line-height:1.1;margin-bottom:4px}
-.member-tag{font-size:8px;letter-spacing:.35em;text-transform:uppercase;color:rgba(243,241,234,0.4)}
 
-/* Number block */
-.number-block{
-  padding:16px 20px;
+/* UHT mark */
+.card-mark{
+  font-size:9px;
+  letter-spacing:.55em;
+  text-transform:uppercase;
+  color:rgba(232,184,75,0.5);
+  margin-bottom:28px
+}
+
+/* Name */
+.card-name{
+  font-size:32px;
+  color:#f3f1ea;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  line-height:1;
+  margin-bottom:6px
+}
+
+/* Divider line */
+.card-rule{
+  width:40px;
+  height:1px;
+  background:rgba(232,184,75,0.35);
+  margin:18px auto
+}
+
+/* Fields */
+.card-fields{
+  width:100%;
   display:flex;
-  align-items:center;
-  justify-content:space-between;
-  border-bottom:1px solid rgba(232,184,75,0.15)
+  flex-direction:column;
+  gap:14px
 }
-.num-group{display:flex;flex-direction:column;gap:3px}
-.num-label{font-size:7px;letter-spacing:.35em;text-transform:uppercase;color:rgba(243,241,234,0.35)}
-.num-value{font-size:22px;color:#E8B84B;letter-spacing:.1em}
-.since-group{display:flex;flex-direction:column;gap:3px;text-align:right}
-.since-label{font-size:7px;letter-spacing:.35em;text-transform:uppercase;color:rgba(243,241,234,0.35)}
-.since-value{font-size:13px;color:#f3f1ea;letter-spacing:.06em}
+.field{display:flex;flex-direction:column;gap:3px;align-items:center}
+.field-label{font-size:6px;letter-spacing:.5em;text-transform:uppercase;color:rgba(243,241,234,0.3)}
+.field-value{font-size:13px;color:#f3f1ea;letter-spacing:.12em}
+.field-value-gold{font-size:18px;color:#E8B84B;letter-spacing:.15em}
 
-/* Perks block */
-.perks-block{padding:14px 20px;border-bottom:1px solid rgba(232,184,75,0.15)}
-.perks-label{font-size:7px;letter-spacing:.35em;text-transform:uppercase;color:rgba(243,241,234,0.3);margin-bottom:10px}
-.perk-row{display:flex;align-items:center;gap:8px;padding:4px 0}
-.perk-dot{width:5px;height:5px;border-radius:50%;background:#E8B84B;flex-shrink:0}
-.perk-text{font-size:10px;color:rgba(243,241,234,0.6);letter-spacing:.04em}
+/* Shimmer */
+.shimmer{
+  position:absolute;inset:0;
+  background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,0.03) 50%,transparent 60%);
+  pointer-events:none;z-index:2
+}
 
 /* Footer */
 .card-footer{
-  padding:8px 20px;
+  padding:10px 14px;
+  border-top:1px solid rgba(232,184,75,0.1);
   display:flex;
-  justify-content:center;
-  background:rgba(232,184,75,0.04)
+  justify-content:center
 }
-.footer-text{font-size:7px;letter-spacing:.45em;text-transform:uppercase;color:rgba(232,184,75,0.45)}
-
-/* Holographic shimmer stripe */
-.shimmer{
-  position:absolute;top:0;right:0;bottom:0;
-  width:60px;
-  background:linear-gradient(135deg,transparent 0%,rgba(232,184,75,0.04) 40%,rgba(255,255,255,0.06) 50%,rgba(232,184,75,0.04) 60%,transparent 100%);
-  pointer-events:none
-}
+.footer-text{font-size:6px;letter-spacing:.5em;text-transform:uppercase;color:rgba(232,184,75,0.3)}
 
 /* Actions */
-.actions{display:flex;gap:10px;width:340px}
-.btn{flex:1;padding:13px;border:1px solid rgba(232,184,75,0.4);background:transparent;color:#f3f1ea;font-family:Georgia,serif;font-size:11px;letter-spacing:.2em;text-transform:uppercase;cursor:pointer;transition:all .2s}
-.btn:hover{background:rgba(232,184,75,0.08);border-color:#E8B84B}
+.actions{display:flex;gap:10px;width:320px}
+.btn{
+  flex:1;padding:13px;
+  border:1px solid rgba(232,184,75,0.35);
+  background:transparent;color:#f3f1ea;
+  font-family:Georgia,serif;font-size:10px;
+  letter-spacing:.25em;text-transform:uppercase;
+  cursor:pointer;transition:border-color .2s
+}
+.btn:hover{border-color:rgba(232,184,75,0.7)}
 .btn-gold{background:#E8B84B;color:#000;border-color:#E8B84B;font-weight:700}
 .btn-gold:hover{background:#d4a73c}
-.copy-msg{font-size:10px;letter-spacing:.15em;color:rgba(232,184,75,0.6);text-align:center;height:14px}
+.status{font-size:9px;letter-spacing:.2em;color:rgba(232,184,75,0.5);text-align:center;min-height:14px;text-transform:uppercase}
 </style>
 </head>
 <body>
 
 <div class="card" id="card">
-  <div class="top-band">
-    <span class="top-label">Founding 100 · UHT</span>
-    <span class="top-num">#${number}</span>
+  <div class="card-band">
+    <span class="band-label">Founding 100</span>
+    <span class="band-num">#${number}</span>
   </div>
 
-  <div class="hero">
-    ${photoUrl
-      ? `<div class="hero-icon" style="background:none;border:2px solid #E8B84B;overflow:hidden;padding:0"><img src="${photoUrl}" style="width:100%;height:100%;object-fit:cover;display:block"></div>`
-      : `<div class="hero-icon">🎧</div>`}
-    <div class="member-name">${name}</div>
-    <div class="member-tag">Music Lover · Founding Member</div>
-    <div class="shimmer"></div>
-  </div>
+  <div class="card-body">
+    <div class="card-mark">Undeniable Hits</div>
 
-  <div class="number-block">
-    <div class="num-group">
-      <div class="num-label">Music Lover No.</div>
-      <div class="num-value">#${number}</div>
+    <div class="card-name">${name}</div>
+
+    <div class="card-rule"></div>
+
+    <div class="card-fields">
+      <div class="field">
+        <div class="field-label">Music Lover No.</div>
+        <div class="field-value-gold">${number}</div>
+      </div>
+      <div class="field">
+        <div class="field-label">Listener Since</div>
+        <div class="field-value">${date}</div>
+      </div>
     </div>
-    <div class="since-group">
-      <div class="since-label">Listener Since</div>
-      <div class="since-value">${date}</div>
-    </div>
-  </div>
-
-  <div class="perks-block">
-    <div class="perks-label">Founding Access</div>
-    <div class="perk-row"><div class="perk-dot"></div><div class="perk-text">Weekly song drops — curated picks</div></div>
-    <div class="perk-row"><div class="perk-dot"></div><div class="perk-text">HIT or DENIED voting rights</div></div>
-    <div class="perk-row"><div class="perk-dot"></div><div class="perk-text">First 100 members · permanent record</div></div>
   </div>
 
   <div class="card-footer">
-    <span class="footer-text">Undeniable Hit Theory</span>
+    <span class="footer-text">Undeniable Hit Theory · Founding Member</span>
   </div>
+
+  <div class="shimmer"></div>
 </div>
 
 <div class="actions">
-  <button class="btn btn-gold" onclick="saveCard()">↓ Save Card</button>
+  <button class="btn btn-gold" onclick="downloadCard()">↓ Save</button>
   <button class="btn" onclick="shareCard()">↑ Share</button>
 </div>
-<div class="copy-msg" id="copyMsg"></div>
+<div class="status" id="status"></div>
 
 <script>
 var pngUrl = '${pngUrl}';
 var memberName = '${name}';
 
-function saveCard() {
+function downloadCard() {
   var btn = document.querySelector('.btn-gold');
   btn.textContent = 'Generating…';
   btn.disabled = true;
-  fetch(pngUrl)
-    .then(function(r){ if(!r.ok) throw new Error('Failed'); return r.blob(); })
+  fetch(pngUrl + '&t=' + Date.now())
+    .then(function(r){ return r.blob(); })
     .then(function(blob){
       var a = document.createElement('a');
       a.download = memberName.toLowerCase() + '-founding-card.png';
       a.href = URL.createObjectURL(blob);
       a.click();
-      btn.textContent = '↓ Save Card';
+      btn.textContent = '↓ Save';
       btn.disabled = false;
     })
-    .catch(function(){
-      btn.textContent = '↓ Save Card';
-      btn.disabled = false;
-    });
+    .catch(function(){ btn.textContent = '↓ Save'; btn.disabled = false; });
 }
 
 function shareCard() {
-  var pageUrl = window.location.href;
-  if (navigator.share) {
-    navigator.share({ title: memberName + ' · Founding 100 · UHT', url: pageUrl }).catch(function(){});
-  } else {
-    navigator.clipboard.writeText(pageUrl).then(function(){
-      document.getElementById('copyMsg').textContent = 'Link copied';
-      setTimeout(function(){ document.getElementById('copyMsg').textContent = ''; }, 2000);
-    });
-  }
+  var status = document.getElementById('status');
+  status.textContent = 'Preparing…';
+  fetch(pngUrl + '&t=' + Date.now())
+    .then(function(r){ return r.blob(); })
+    .then(function(blob){
+      var file = new File([blob], memberName.toLowerCase() + '-founding-card.png', { type: 'image/png' });
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        status.textContent = '';
+        return navigator.share({ files: [file], title: memberName + ' · Founding 100 · Undeniable Hits' });
+      } else if (navigator.share) {
+        status.textContent = '';
+        return navigator.share({ title: memberName + ' · Founding 100 · Undeniable Hits', url: window.location.href });
+      } else {
+        navigator.clipboard.writeText(window.location.href);
+        status.textContent = 'Link copied';
+        setTimeout(function(){ status.textContent = ''; }, 2000);
+      }
+    })
+    .catch(function(){ status.textContent = ''; });
 }
 </script>
 </body>
@@ -3823,17 +3839,12 @@ app.get('/test-founding-card.png', async (req, res) => {
   const name   = (req.query.name   || 'Peter').trim();
   const number = (req.query.number || '027').trim().padStart(3, '0');
   const date   = (req.query.date   || '05/19/2026').trim();
-
-  // Use explicit slug if passed (preserves photo lookup consistency)
-  const slug     = req.query.slug
-    ? req.query.slug
-    : name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + number;
-  const filename = `${slug}.png`;
-  const outPath  = require('path').join(__dirname, 'public', 'generated', filename);
+  const slug   = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + number;
+  const outPath = require('path').join(__dirname, 'public', 'generated', `${slug}.png`);
 
   try {
     const base    = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
-    const cardUrl = `${base}/test-founding-card?name=${encodeURIComponent(name)}&number=${encodeURIComponent(number)}&date=${encodeURIComponent(date)}&slug=${encodeURIComponent(slug)}&puppeteer=1`;
+    const cardUrl = `${base}/test-founding-card?name=${encodeURIComponent(name)}&number=${encodeURIComponent(number)}&date=${encodeURIComponent(date)}&puppeteer=1`;
 
     const puppeteer = require('puppeteer-core');
     const browser   = await puppeteer.launch({
