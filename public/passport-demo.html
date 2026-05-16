@@ -852,6 +852,8 @@
           <div id="cover-name">Adrian</div>
           <div id="cover-title">Founding Member No.&nbsp;001</div>
           <div id="cover-issued">Issued 05/16/2026</div>
+          <button id="share-btn" onclick="shareCard()" style="margin-top:20px;background:transparent;border:1px solid rgba(232,184,75,0.5);color:#E8B84B;font-family:Georgia,serif;font-size:10px;letter-spacing:.3em;text-transform:uppercase;padding:10px 22px;cursor:pointer;">↑ Share Card</button>
+          <div id="share-status" style="font-size:9px;letter-spacing:.2em;color:rgba(232,184,75,0.5);margin-top:8px;min-height:14px;text-transform:uppercase;"></div>
         </div>
       </div>
 
@@ -1144,6 +1146,34 @@
     // Initial render
     goTo(pPage || 0);
   })();
+
+  function shareCard() {
+    var status = document.getElementById('share-status');
+    var params = new URLSearchParams(window.location.search);
+    var name   = params.get('name')   || 'Member';
+    var number = params.get('number') || '001';
+    var date   = params.get('date')   || '';
+    var base   = window.location.origin;
+    var imgUrl = base + '/test-founding-card.png?name=' + encodeURIComponent(name) + '&number=' + encodeURIComponent(number) + '&date=' + encodeURIComponent(date);
+    status.textContent = 'Preparing…';
+    fetch(imgUrl)
+      .then(function(r){ return r.blob(); })
+      .then(function(blob){
+        var file = new File([blob], name.toLowerCase() + '-founding-card.png', { type: 'image/png' });
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          status.textContent = '';
+          return navigator.share({ files: [file], title: name + ' · Founding Member #' + number + ' · Undeniable Hits' });
+        } else if (navigator.share) {
+          status.textContent = '';
+          return navigator.share({ title: name + ' · Founding Member #' + number + ' · Undeniable Hits', url: window.location.href });
+        } else {
+          navigator.clipboard.writeText(window.location.href);
+          status.textContent = 'Link copied';
+          setTimeout(function(){ status.textContent = ''; }, 2000);
+        }
+      })
+      .catch(function(){ status.textContent = ''; });
+  }
 </script>
 </body>
 </html>
