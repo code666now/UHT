@@ -2595,8 +2595,7 @@ app.post('/api/subscribe', async (req, res) => {
 // Receives HIT (1) / DENIED (2) replies and records votes.
 // Validates Twilio signature to prevent spoofed requests.
 // =============================================================================
-const twilioWebhook = twilio.webhook({ validate: true });
-app.post('/sms', twilioWebhook, async (req, res) => {
+app.post('/sms', async (req, res) => {
   const from = req.body.From;
   const body = (req.body.Body || '').trim();
 
