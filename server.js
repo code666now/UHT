@@ -508,6 +508,202 @@ async function submitPick() {
   }
 });
 
+// ── GET /intake/curator/:token — Monthly intake form (4 songs + photo + statement + theme) ──
+app.get('/intake/curator/:token', async (req, res) => {
+  try {
+    const { rows } = await db.query(
+      `SELECT id, name, curator_month FROM curators WHERE submit_token=$1 LIMIT 1`,
+      [req.params.token]
+    );
+    if (!rows.length) return res.status(404).send('Invalid link.');
+    const c = rows[0];
+    const firstName = c.name.split(' ')[0];
+    res.setHeader('Content-Type', 'text/html');
+    res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Curator Intake — Undeniable Hits</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:#000;color:#f3f1ea;font-family:Georgia,"Times New Roman",serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:40px 20px 80px;}
+.wrap{width:100%;max-width:480px;display:flex;flex-direction:column;gap:28px;}
+.eyebrow{font-size:0.62rem;letter-spacing:0.38em;text-transform:uppercase;color:#E8B84B;}
+h1{font-size:1.7rem;font-weight:normal;line-height:1.2;margin-top:8px;}
+.sub{font-size:0.82rem;opacity:0.4;font-style:italic;margin-top:6px;}
+.section{display:flex;flex-direction:column;gap:16px;border-top:1px solid rgba(243,241,234,0.08);padding-top:24px;}
+.section-title{font-size:0.62rem;letter-spacing:0.38em;text-transform:uppercase;color:#E8B84B;}
+.field{display:flex;flex-direction:column;gap:6px;}
+label{font-size:0.62rem;letter-spacing:0.15em;text-transform:uppercase;opacity:0.4;}
+input,textarea,select{background:#0d0d0d;border:1px solid #222;color:#f3f1ea;font-family:Georgia,"Times New Roman",serif;font-size:1rem;padding:0.9rem 1rem;outline:none;width:100%;-webkit-appearance:none;transition:border-color 0.2s;}
+input:focus,textarea:focus{border-color:#E8B84B;}
+textarea{resize:vertical;min-height:100px;line-height:1.6;}
+.song-block{background:#0a0a0a;border:1px solid #1a1a1a;padding:18px;display:flex;flex-direction:column;gap:12px;}
+.song-num{font-size:0.62rem;letter-spacing:0.38em;text-transform:uppercase;color:#E8B84B;margin-bottom:2px;}
+.photo-hint{font-size:0.75rem;opacity:0.35;font-style:italic;margin-top:4px;}
+.btn{width:100%;background:#f3f1ea;color:#000;font-family:Georgia,"Times New Roman",serif;font-size:0.82rem;font-weight:bold;letter-spacing:0.16em;text-transform:uppercase;padding:1rem;border:none;cursor:pointer;transition:opacity 0.15s;margin-top:8px;}
+.btn:disabled{opacity:0.3;cursor:default;}
+.msg{font-size:0.85rem;text-align:center;min-height:1em;line-height:1.5;}
+.msg.ok{color:#E8B84B;} .msg.err{color:#ff6b6b;}
+.success-screen{display:none;text-align:center;padding:60px 20px;}
+.success-screen h2{font-size:2rem;font-weight:normal;margin-bottom:16px;}
+.success-screen p{opacity:0.5;font-style:italic;}
+</style>
+</head>
+<body>
+<div class="wrap" id="form-wrap">
+  <div>
+    <div class="eyebrow">Undeniable Hits · Curator Intake</div>
+    <h1>${firstName}, let's set up your month.</h1>
+    <p class="sub">${c.curator_month || 'This month'} — fill this out once and we'll handle the rest.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Your Profile</div>
+    <div class="field">
+      <label>Monthly Theme *</label>
+      <input type="text" id="theme" placeholder="e.g. Songs that make you feel alive">
+    </div>
+    <div class="field">
+      <label>Your Statement * <span style="opacity:.4;font-weight:normal;text-transform:none;letter-spacing:0">— who are you as a music person?</span></label>
+      <textarea id="statement" placeholder="Tell subscribers what drives your taste…"></textarea>
+    </div>
+    <div class="field">
+      <label>Your Photo *</label>
+      <input type="file" id="photo" accept="image/*" style="padding:0.7rem 1rem;">
+      <span class="photo-hint">Headshot or anything that represents you. JPG or PNG.</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Your 4 Songs — In Order</div>
+    <p style="font-size:0.78rem;opacity:0.35;font-style:italic;">These drop one per week, Monday mornings.</p>
+
+    ${[1,2,3,4].map(n => `
+    <div class="song-block">
+      <div class="song-num">Week ${n}</div>
+      <div class="field"><label>Song Title *</label><input type="text" id="title${n}" placeholder="Song name"></div>
+      <div class="field"><label>Artist *</label><input type="text" id="artist${n}" placeholder="Artist name"></div>
+      <div class="field"><label>YouTube URL</label><input type="url" id="youtube${n}" placeholder="https://youtube.com/watch?v=…"></div>
+      <div class="field"><label>Your Note — why this one?</label><textarea id="note${n}" placeholder="Optional — tell them why…" style="min-height:70px;"></textarea></div>
+    </div>`).join('')}
+  </div>
+
+  <button class="btn" id="submit-btn" onclick="submitIntake()">Submit My Month</button>
+  <div class="msg" id="msg"></div>
+</div>
+
+<div class="success-screen" id="success-screen">
+  <div style="font-size:0.62rem;letter-spacing:.38em;text-transform:uppercase;color:#E8B84B;margin-bottom:24px;">Undeniable Hits</div>
+  <h2>You're set.</h2>
+  <p>Your picks are locked in. First drop goes out Monday morning.<br>We'll be in touch.</p>
+</div>
+
+<script>
+async function submitIntake() {
+  const btn = document.getElementById('submit-btn');
+  const msg = document.getElementById('msg');
+  const theme     = document.getElementById('theme').value.trim();
+  const statement = document.getElementById('statement').value.trim();
+  const photoFile = document.getElementById('photo').files[0];
+
+  if (!theme)     { msg.className='msg err'; msg.textContent='Monthly theme is required.'; return; }
+  if (!statement) { msg.className='msg err'; msg.textContent='Your statement is required.'; return; }
+  if (!photoFile) { msg.className='msg err'; msg.textContent='A photo is required.'; return; }
+
+  const songs = [];
+  for (let n = 1; n <= 4; n++) {
+    const title   = document.getElementById('title'+n).value.trim();
+    const artist  = document.getElementById('artist'+n).value.trim();
+    const youtube = document.getElementById('youtube'+n).value.trim();
+    const note    = document.getElementById('note'+n).value.trim();
+    if (!title || !artist) { msg.className='msg err'; msg.textContent='All 4 songs need a title and artist.'; return; }
+    songs.push({ title, artist, youtube_url: youtube||null, curator_note: note||null, week_number: n });
+  }
+
+  btn.disabled = true; btn.textContent = 'Submitting…';
+  msg.className='msg'; msg.textContent='';
+
+  try {
+    // Upload photo first
+    const photoForm = new FormData();
+    photoForm.append('photo', photoFile);
+    const photoRes = await fetch('/api/intake/curator/${req.params.token}/photo', {
+      method: 'POST', body: photoForm
+    }).then(r=>r.json());
+    if (!photoRes.ok) throw new Error(photoRes.error || 'Photo upload failed');
+
+    // Submit profile + songs
+    const r = await fetch('/api/intake/curator/${req.params.token}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ theme, statement, songs })
+    }).then(r=>r.json());
+    if (!r.ok) throw new Error(r.error || 'Submission failed');
+
+    document.getElementById('form-wrap').style.display = 'none';
+    document.getElementById('success-screen').style.display = 'block';
+  } catch(e) {
+    msg.className='msg err'; msg.textContent=e.message;
+    btn.disabled=false; btn.textContent='Submit My Month';
+  }
+}
+</script>
+</body>
+</html>`);
+  } catch(e) {
+    console.error('[intake/curator]', e.message);
+    res.status(500).send('Server error');
+  }
+});
+
+// ── POST /api/intake/curator/:token/photo — photo upload ──────────────────────
+app.post('/api/intake/curator/:token/photo', multer({ storage: multer.memoryStorage(), limits: { fileSize: 8*1024*1024 } }).single('photo'), async (req, res) => {
+  try {
+    const { rows } = await db.query(`SELECT id FROM curators WHERE submit_token=$1 LIMIT 1`, [req.params.token]);
+    if (!rows.length) return res.status(403).json({ error: 'Invalid token' });
+    if (!req.file) return res.status(400).json({ error: 'No photo uploaded' });
+    await db.query(`UPDATE curators SET image_url=$1 WHERE id=$2`, [req.file.buffer, rows[0].id]);
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('[intake/photo]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── POST /api/intake/curator/:token — save profile + 4 songs ──────────────────
+app.post('/api/intake/curator/:token', async (req, res) => {
+  try {
+    const { rows } = await db.query(`SELECT id FROM curators WHERE submit_token=$1 LIMIT 1`, [req.params.token]);
+    if (!rows.length) return res.status(403).json({ error: 'Invalid token' });
+    const curatorId = rows[0].id;
+    const { theme, statement, songs } = req.body;
+    if (!theme || !statement || !Array.isArray(songs) || songs.length !== 4) {
+      return res.status(400).json({ error: 'theme, statement, and 4 songs required' });
+    }
+    // Update curator profile
+    await db.query(
+      `UPDATE curators SET monthly_theme=$1, statement=$2 WHERE id=$3`,
+      [theme, statement, curatorId]
+    );
+    // Insert 4 songs — clear any existing pending ones first
+    await db.query(`DELETE FROM curator_submissions WHERE curator_id=$1 AND status='pending'`, [curatorId]);
+    for (const s of songs) {
+      await db.query(
+        `INSERT INTO curator_submissions (curator_id, title, artist, youtube_url, curator_note, week_number, status)
+         VALUES ($1,$2,$3,$4,$5,$6,'pending')`,
+        [curatorId, s.title, s.artist, s.youtube_url||null, s.curator_note||null, s.week_number]
+      );
+    }
+    console.log(`[Intake] Curator #${curatorId} submitted profile + 4 songs`);
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('[intake/curator]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── POST /api/curator-submit/:token — save pending submission ─────────────────
 app.post('/api/curator-submit/:token', async (req, res) => {
   try {
