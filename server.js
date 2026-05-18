@@ -372,7 +372,20 @@ app.get("/admin", requireAdmin, (req, res) => res.sendFile(require("path").join(
 
 // ── Health check ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
-  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may16-v52' });
+  res.json({ status: 'UHT SMS Platform running', version: '1.0.0', deploy: 'may16-v53' });
+});
+
+// TEMP — remove after use
+app.get('/admin/add-mark-x7k9', async (req, res) => {
+  const token = require('crypto').randomBytes(16).toString('hex');
+  const { rows } = await db.query(
+    `INSERT INTO curators (name, instagram, phone, curator_month, submit_token)
+     VALUES ($1,$2,$3,$4,$5)
+     ON CONFLICT (phone) DO UPDATE SET curator_month=$4, submit_token=$5
+     RETURNING id, name, submit_token`,
+    ['Mark Mattos', '@all_hat.no_cattle', '+15306136845', 'June 2026', token]
+  );
+  res.json({ ok: true, curator: rows[0], intake_url: \`https://uht-app-production.up.railway.app/intake/curator/\${rows[0].submit_token}\` });
 });
 
 
