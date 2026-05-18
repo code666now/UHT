@@ -385,7 +385,7 @@ app.get('/admin/add-mark-x7k9', async (req, res) => {
      RETURNING id, name, submit_token`,
     ['Mark Mattos', '@all_hat.no_cattle', '+15306136845', 'June 2026', token]
   );
-  res.json({ ok: true, curator: rows[0], intake_url: \`https://uht-app-production.up.railway.app/intake/curator/\${rows[0].submit_token}\` });
+  res.json({ ok: true, curator: rows[0], intake_url: 'https://uht-app-production.up.railway.app/intake/curator/' + rows[0].submit_token });
 });
 
 
