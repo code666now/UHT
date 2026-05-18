@@ -566,6 +566,10 @@ textarea{resize:vertical;min-height:100px;line-height:1.6;}
       <input type="text" id="theme" placeholder="e.g. Songs that make you feel alive">
     </div>
     <div class="field">
+      <label>Your Bio * <span style="opacity:.4;font-weight:normal;text-transform:none;letter-spacing:0">— who are you?</span></label>
+      <textarea id="bio" placeholder="A sentence or two about you…" style="min-height:70px;"></textarea>
+    </div>
+    <div class="field">
       <label>Your Statement * <span style="opacity:.4;font-weight:normal;text-transform:none;letter-spacing:0">— who are you as a music person?</span></label>
       <textarea id="statement" placeholder="Tell subscribers what drives your taste…"></textarea>
     </div>
@@ -605,10 +609,12 @@ async function submitIntake() {
   const btn = document.getElementById('submit-btn');
   const msg = document.getElementById('msg');
   const theme     = document.getElementById('theme').value.trim();
+  const bio       = document.getElementById('bio').value.trim();
   const statement = document.getElementById('statement').value.trim();
   const photoFile = document.getElementById('photo').files[0];
 
   if (!theme)     { msg.className='msg err'; msg.textContent='Monthly theme is required.'; return; }
+  if (!bio)       { msg.className='msg err'; msg.textContent='Your bio is required.'; return; }
   if (!statement) { msg.className='msg err'; msg.textContent='Your statement is required.'; return; }
   if (!photoFile) { msg.className='msg err'; msg.textContent='A photo is required.'; return; }
 
@@ -638,7 +644,7 @@ async function submitIntake() {
     const r = await fetch('/api/intake/curator/${req.params.token}', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ theme, statement, songs })
+      body: JSON.stringify({ theme, bio, statement, songs })
     }).then(r=>r.json());
     if (!r.ok) throw new Error(r.error || 'Submission failed');
 
@@ -678,14 +684,14 @@ app.post('/api/intake/curator/:token', async (req, res) => {
     const { rows } = await db.query(`SELECT id FROM curators WHERE submit_token=$1 LIMIT 1`, [req.params.token]);
     if (!rows.length) return res.status(403).json({ error: 'Invalid token' });
     const curatorId = rows[0].id;
-    const { theme, statement, songs } = req.body;
-    if (!theme || !statement || !Array.isArray(songs) || songs.length !== 4) {
-      return res.status(400).json({ error: 'theme, statement, and 4 songs required' });
+    const { theme, bio, statement, songs } = req.body;
+    if (!theme || !bio || !statement || !Array.isArray(songs) || songs.length !== 4) {
+      return res.status(400).json({ error: 'theme, bio, statement, and 4 songs required' });
     }
     // Update curator profile
     await db.query(
-      `UPDATE curators SET monthly_theme=$1, statement=$2 WHERE id=$3`,
-      [theme, statement, curatorId]
+      `UPDATE curators SET monthly_theme=$1, statement=$2, bio=$3 WHERE id=$4`,
+      [theme, statement, bio, curatorId]
     );
     // Insert 4 songs — clear any existing pending ones first
     await db.query(`DELETE FROM curator_submissions WHERE curator_id=$1 AND status='pending'`, [curatorId]);
