@@ -12,6 +12,7 @@ const db      = require('./db');
 const twilio  = require('twilio');
 const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 const crypto  = require('crypto');
+const multer  = require('multer');
 
 // ── Admin auth helpers ────────────────────────────────────────────────────────
 const ADMIN_USER   = (process.env.ADMIN_USER || 'admin').trim();
@@ -378,14 +379,17 @@ app.get('/health', (req, res) => {
 // TEMP — remove after use
 app.get('/admin/add-mark-x7k9', async (req, res) => {
   const token = require('crypto').randomBytes(16).toString('hex');
-  const { rows } = await db.query(
-    `INSERT INTO curators (name, instagram, phone, curator_month, submit_token)
-     VALUES ($1,$2,$3,$4,$5)
-     ON CONFLICT (phone) DO UPDATE SET curator_month=$4, submit_token=$5
-     RETURNING id, name, submit_token`,
-    ['Mark Mattos', '@all_hat.no_cattle', '+15306136845', 'June 2026', token]
-  );
-  res.json({ ok: true, curator: rows[0], intake_url: 'https://uht-app-production.up.railway.app/intake/curator/' + rows[0].submit_token });
+  // Check if already exists
+  const existing = await db.query(`SELECT id FROM curators WHERE name='Mark Mattos' LIMIT 1`);
+  let row;
+  if (existing.rows.length) {
+    const r = await db.query(`UPDATE curators SET instagram=$1, phone=$2, curator_month=$3, submit_token=$4 WHERE name='Mark Mattos' RETURNING id, name, submit_token`, ['@all_hat.no_cattle', '+15306136845', 'June 2026', token]);
+    row = r.rows[0];
+  } else {
+    const r = await db.query(`INSERT INTO curators (name, instagram, phone, curator_month, submit_token) VALUES ($1,$2,$3,$4,$5) RETURNING id, name, submit_token`, ['Mark Mattos', '@all_hat.no_cattle', '+15306136845', 'June 2026', token]);
+    row = r.rows[0];
+  }
+  res.json({ ok: true, curator: row, intake_url: 'https://uht-app-production.up.railway.app/intake/curator/' + row.submit_token });
 });
 
 
@@ -4339,7 +4343,6 @@ app.get('/member/:slug', (req, res) => {
 });
 
 // ── POST /member/:slug/photo — Upload photo for a member card ─────────────────
-const multer  = require('multer');
 const _photoStorage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, require('path').join(__dirname, 'public', 'generated')),
   filename:    (req, file, cb) => {
